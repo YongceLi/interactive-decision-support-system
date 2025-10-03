@@ -26,6 +26,7 @@ class IDSSCli:
         self.debug = debug
         self.app = None  # Will be initialized after env vars are loaded
         self.conversation_history: list[tuple[str, str]] = []
+        self.thread_id = "default"  # LangGraph thread for conversation persistence
 
     def print_banner(self) -> None:
         """Display welcome banner."""
@@ -94,7 +95,11 @@ class IDSSCli:
 
     async def process_request(self, user_input: str) -> str:
         """Process a single user request and return the final response."""
-        config = {"recursion_limit": self.recursion_limit}
+        # Include thread_id in config for conversation persistence
+        config = {
+            "recursion_limit": self.recursion_limit,
+            "configurable": {"thread_id": self.thread_id}
+        }
 
         final_response = ""
         current_step = ""
@@ -201,7 +206,9 @@ class IDSSCli:
                     continue
 
                 if user_input.lower() == "new":
+                    import uuid
                     self.conversation_history.clear()
+                    self.thread_id = str(uuid.uuid4())  # New thread for new conversation
                     self.console.print("[green]Started new conversation.[/green]")
                     continue
 

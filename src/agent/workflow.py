@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Sequence
 
+from langchain_core.messages import trim_messages
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from src.tools import (
@@ -121,22 +123,49 @@ def build_plan_execute_app(
     )
 
     async def plan_step(state: PlanExecuteState) -> Dict[str, Any]:
-        user_input = state.get("input")
-        if not user_input:
-            raise ValueError("Planner requires 'input' in state")
-        plan_result = await planner.ainvoke({"messages": [("user", user_input)]})
+        """Planner sees full state including conversation history (messages).
+
+        Decides initial plan based on user input and conversation context.
+        """
+        # Use messages from state for conversation history
+        messages = state.get("messages", [])
+        if not messages:
+            user_input = state.get("input")
+            if not user_input:
+                raise ValueError("Planner requires either 'messages' or 'input' in state")
+            messages = [("user", user_input)]
+
+        plan_result = await planner.ainvoke({"messages": messages})
         return {"plan": plan_result.steps}
 
     async def execute_step(state: PlanExecuteState) -> Dict[str, Any]:
+        """Executor sees full state and executes ONLY the first remaining step.
+
+        Has access to:
+        - messages: Full conversation history
+        - plan: Current plan (first item is next to execute)
+        - past_steps: Previously executed steps
+        - tool_results: Previous tool call results
+
+        Returns updated state with tool results accumulated.
+        """
         plan = list(state.get("plan") or [])
         if not plan:
             raise ValueError("Execute step received empty plan")
+
+        # Get full context from state
+        messages = state.get("messages", [])
+        past_steps = list(state.get("past_steps") or [])
+        tool_results = list(state.get("tool_results") or [])
+
+        # Execute ONLY first step
         plan_str = "\n".join(f"{i + 1}. {step}" for i, step in enumerate(plan))
         task = plan[0]
         task_formatted = (
             f"For the following plan:\n{plan_str}\n\n"
             f"You are tasked with executing step 1, {task}."
         )
+
         agent_response = await agent_executor.ainvoke({"messages": [("user", task_formatted)]})
         agent_messages = (
             agent_response.get("messages")
@@ -145,11 +174,24 @@ def build_plan_execute_app(
         )
         if not agent_messages:
             raise ValueError("Agent executor returned no messages")
+
         final_message = agent_messages[-1]
         if hasattr(final_message, "content"):
             result_content = final_message.content
         else:
             result_content = str(final_message)
+
+        # Collect tool results from this execution
+        new_tool_results = []
+        for msg in agent_messages:
+            if hasattr(msg, "type") and msg.type == "tool":
+                tool_name = getattr(msg, "name", "unknown_tool")
+                content = getattr(msg, "content", "")
+                new_tool_results.append({
+                    "tool": tool_name,
+                    "result": content,
+                    "step": task
+                })
 
         # Check if we got meaningful data from tool calls that should be presented
         should_present = _should_present_to_human(agent_messages, task)
@@ -159,12 +201,15 @@ def build_plan_execute_app(
             from src.tools import present_to_human
             present_to_human.invoke({"context": presentation_context})
 
+        # Update state
         remaining_plan = plan[1:]
-        past_steps = list(state.get("past_steps") or [])
-        past_steps.append((task, result_content))
-        update: Dict[str, Any] = {"past_steps": past_steps}
+        update: Dict[str, Any] = {
+            "past_steps": [(task, result_content)],  # operator.add will accumulate
+            "tool_results": new_tool_results,  # operator.add will accumulate
+        }
         if remaining_plan:
             update["plan"] = remaining_plan
+
         return update
 
     async def replan_step(state: PlanExecuteState) -> Dict[str, Any]:
@@ -197,7 +242,9 @@ def build_plan_execute_app(
         ["agent", END],
     )
 
-    return workflow.compile()
+    # Add memory checkpointer for conversation persistence
+    memory = MemorySaver()
+    return workflow.compile(checkpointer=memory)
 
 
 def _default_planner_factory(**kwargs: Any) -> Any:

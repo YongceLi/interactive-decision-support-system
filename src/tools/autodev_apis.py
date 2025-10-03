@@ -76,8 +76,8 @@ def search_vehicle_listings(
     zip: Optional[str] = None,
     distance: Optional[int] = None,
     # Pagination
-    page: Optional[int] = None,
-    limit: Optional[int] = None,
+    page: Optional[int] = 1,
+    limit: Optional[int] = 10,
 ) -> str:
     """Search for vehicle listings with comprehensive filtering options.
 
@@ -119,17 +119,17 @@ def search_vehicle_listings(
         url = "https://api.auto.dev/listings"
         params = {}
 
-        # Vehicle filters
+        # Vehicle filters (ensure proper formatting with spaces after commas)
         if vehicle_make:
-            params["vehicle.make"] = vehicle_make
+            params["vehicle.make"] = vehicle_make.replace(",", ", ") if "," in vehicle_make else vehicle_make
         if vehicle_model:
-            params["vehicle.model"] = vehicle_model
+            params["vehicle.model"] = vehicle_model.replace(",", ", ") if "," in vehicle_model else vehicle_model
         if vehicle_year:
             params["vehicle.year"] = vehicle_year
         if vehicle_trim:
-            params["vehicle.trim"] = vehicle_trim
+            params["vehicle.trim"] = vehicle_trim.replace(",", ", ") if "," in vehicle_trim else vehicle_trim
         if vehicle_body_style:
-            params["vehicle.bodyStyle"] = vehicle_body_style
+            params["vehicle.bodyStyle"] = vehicle_body_style.replace(",", ", ") if "," in vehicle_body_style else vehicle_body_style
         if vehicle_engine:
             params["vehicle.engine"] = vehicle_engine
         if vehicle_transmission:
@@ -172,6 +172,10 @@ def search_vehicle_listings(
             params["limit"] = limit
 
         return _make_request(url, params)
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 500:
+            return f'{{"error": "Auto.dev API server error (500). This might be due to invalid parameter combinations. Try simplifying your search (fewer filters, single make/bodyStyle, or broader price range). Original error: {str(e)}"}}'
+        return f'{{"error": "Error searching vehicle listings: {str(e)}"}}'
     except Exception as e:
         return f'{{"error": "Error searching vehicle listings: {str(e)}"}}'
 

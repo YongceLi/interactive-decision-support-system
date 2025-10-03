@@ -30,7 +30,7 @@ PRESENT_TO_HUMAN_PROMPT = ChatPromptTemplate.from_messages(
 def _present_to_human_llm(model: Optional[str] = None, temperature: float = 0.3) -> ChatOpenAI:
     """Return a cached LLM instance for presentation responses."""
 
-    llm_kwargs = {"model": model or "gpt-4o-mini", "temperature": temperature}
+    llm_kwargs = {"model": model or "gpt-4o", "temperature": temperature}
     return ChatOpenAI(**llm_kwargs)
 
 

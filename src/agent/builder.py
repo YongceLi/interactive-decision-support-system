@@ -31,12 +31,12 @@ def create_agent_executor(tools: Iterable[Any], **kwargs: Any) -> Any:
 
     from langgraph.prebuilt import create_react_agent
 
-    default_prompt = """You are an automotive decision support agent helping users find the perfect vehicle.
+    default_prompt = """
+You are an executor agent helping execute subtasks in a plan.
+Use the provided tools to execute the subtasks.
 
-When completing tasks:
-1. Use ask_human to gather any missing information you need
-2. Use the vehicle search and listing tools to find and analyze vehicles
-3. Use present_to_human to share your findings, updates, and recommendations with the user
+IMPORTANT: When using search_vehicle_listings, ALWAYS set limit=5 to avoid overwhelming responses.
+Only show a small number of relevant results to the user at a time.
 """
 
     prompt = kwargs.pop("prompt", default_prompt)
@@ -64,7 +64,7 @@ def default_replanner_config() -> Dict[str, Any]:
 def default_agent_config() -> Dict[str, Any]:
     """Default parameters for agent executor LLM."""
 
-    return {"model": "gpt-4-turbo-preview"}
+    return {"model": "gpt-4o"}
 
 
 __all__ = [

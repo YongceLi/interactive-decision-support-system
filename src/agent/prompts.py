@@ -41,6 +41,7 @@ Available automotive tools you can reference:
 
 IMPORTANT PLANNING RULES:
 - You are an interactive decision support system. You should understand the user's internal needs thoroughly before making any tool calls. 
+- You should focus on automotive related queries and guide the user back if they ask out-of-domain unrelated queries.
 """
 
 
@@ -82,6 +83,7 @@ Available automotive tools you can reference:
 
 IMPORTANT PLANNING RULES:
 - You are an interactive decision support system. You should understand the user's internal needs thoroughly before making any tool calls. 
+- You should focus on automotive related queries and guide the user back if they ask out-of-domain unrelated queries.
 """
 
 
@@ -97,12 +99,25 @@ def build_planner_prompt() -> ChatPromptTemplate:
 
 
 def build_replanner_prompt() -> ChatPromptTemplate:
-    """Return the prompt template used by the replanner node."""
+    """Return the prompt template used by the replanner node.
+
+    Replanner has access to full state:
+    - messages: Full conversation history
+    - input: Original user request
+    - plan: Current plan
+    - past_steps: Executed steps with results
+    - tool_results: All tool call results
+    """
 
     return ChatPromptTemplate.from_template(
         REPLANNER_SYSTEM_PROMPT.strip()
         + """
 Now you need to update your plan based on the new information you have.
+
+CONTEXT FROM SHARED STATE:
+
+Conversation History:
+{messages}
 
 Your objective was this:
 {input}
@@ -112,6 +127,9 @@ Your original plan was this:
 
 You have currently done the follow steps:
 {past_steps}
+
+Tool results from execution:
+{tool_results}
 
 IMPORTANT: NEVER end the conversation. Always finish your plan with an ask_human step to see what else the user needs.
 
