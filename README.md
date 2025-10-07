@@ -4,6 +4,7 @@ A conversational product decision support assistant built with LangGraph that he
 
 ## Architecture Overview
  ![Workflow Graph](graph_visualization.png)
+ 
 The agent uses a multi-node LangGraph workflow with two operating modes:
 - **Discovery Mode** (simple mode, simple LLM node): Helps users explore and refine their vehicle search, asking questions to get user's implicit preferences.
 - **Analytical Mode** (complex mode, ReAct agent with SQL database, api tools, etc.): Answers specific questions about vehicles using tools. E.g. compare two vehicles, list features of a vehicle, etc.
