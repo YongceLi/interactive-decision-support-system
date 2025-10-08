@@ -4,7 +4,7 @@ A conversational product decision support assistant built with LangGraph that he
 
 ## Architecture Overview
  ![Workflow Graph](graph_visualization.png)
- 
+
 The agent uses a multi-node LangGraph workflow with two operating modes:
 - **Discovery Mode** (simple mode, simple LLM node): Helps users explore and refine their vehicle search, asking questions to get user's implicit preferences.
 - **Analytical Mode** (complex mode, ReAct agent with SQL database, api tools, etc.): Answers specific questions about vehicles using tools. E.g. compare two vehicles, list features of a vehicle, etc.
@@ -61,26 +61,6 @@ VehicleSearchState = {
   - SQL tools: `sql_db_query`, `sql_db_schema`, `sql_db_list_tables`
 - Can query safety_data (NHTSA ratings) and feature_data (EPA fuel economy) databases
 
-## Project Structure
-
-```
-.
-├── state_schema.py           # State definitions
-├── semantic_parser.py        # Semantic parsing node
-├── recommendation_agent.py   # Vehicle search with ReAct
-├── mode_router.py            # Discovery vs analytical routing
-├── discovery_agent.py        # Vehicle listing & questions
-├── analytical_agent.py       # Answer questions with tools
-├── vehicle_agent.py          # Main workflow
-├── demo.py                   # Interactive demo
-├── tools/
-│   ├── autodev_apis.py      # Auto.dev API tools
-│   └── vehicle_database.py  # SQL database tools
-├── safety_data.db           # NHTSA safety ratings
-├── feature_data.db          # EPA fuel economy data
-└── requirements.txt
-```
-
 ## Tools & Data Sources
 
 ### Auto.dev API
@@ -96,21 +76,58 @@ Both databases combined using SQLite ATTACH for unified querying.
 
 ## Installation
 
+### 1. Create Conda Environment
+
+```bash
+conda create -n idss python=3.10
+conda activate idss
+```
+
+### 2. Install Dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
-Set environment variables:
-- `OPENAI_API_KEY`
-- `AUTODEV_API_KEY`
+### 3. Set Environment Variables
+
+Create a `.env` file in the project root:
+```bash
+OPENAI_API_KEY=your_openai_key_here
+AUTODEV_API_KEY=your_autodev_key_here
+```
 
 ## Usage
 
-### Interactive Demo
+### Interactive CLI Demo
 
 ```bash
-python demo.py
+python scripts/demo.py
 ```
 
 Commands: `state` (view filters), `reset`, `quit`/`exit`
 
+### API Server
+
+Start the server:
+```bash
+python api/server.py
+```
+
+Stop the server:
+```bash
+# Press Ctrl+C for graceful shutdown
+```
+
+API Documentation: http://localhost:8000/docs
+
+### API Endpoints
+
+- `GET /` - Health check
+- `POST /chat` - Main conversation endpoint
+  - Request: `{"message": "I want a Jeep", "session_id": "optional"}`
+  - Response: `{"response": "...", "vehicles": [...], "filters": {...}, "preferences": {...}, "session_id": "..."}`
+- `GET /session/{session_id}` - Get session state
+- `POST /session/reset` - Reset session
+- `DELETE /session/{session_id}` - Delete session
+- `GET /sessions` - List all active sessions (debug)

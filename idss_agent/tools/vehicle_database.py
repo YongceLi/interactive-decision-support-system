@@ -43,8 +43,8 @@ def get_vehicle_database_tools(llm):
     Returns:
         List of SQL tools that can access both databases
     """
-    safety_db_path = os.path.join(os.path.dirname(__file__), "..", "safety_data.db")
-    feature_db_path = os.path.join(os.path.dirname(__file__), "..", "feature_data.db")
+    safety_db_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "safety_data.db")
+    feature_db_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "feature_data.db")
 
     if not os.path.exists(safety_db_path):
         print(f"Warning: Safety database not found at {safety_db_path}")
@@ -68,24 +68,3 @@ def get_vehicle_database_tools(llm):
     toolkit = SQLDatabaseToolkit(db=db, llm=llm)
     return toolkit.get_tools()
 
-
-# Keep the old functions for backward compatibility, but they now call the combined function
-def get_safety_database_tools(llm):
-    """
-    DEPRECATED: Use get_vehicle_database_tools() instead.
-
-    This function is kept for backward compatibility but now returns
-    the combined database tools.
-    """
-    return get_vehicle_database_tools(llm)
-
-
-def get_feature_database_tools(llm):
-    """
-    DEPRECATED: Use get_vehicle_database_tools() instead.
-
-    This function is kept for backward compatibility but returns empty list
-    to avoid duplicate tools (since get_safety_database_tools already returns
-    the combined tools).
-    """
-    return []

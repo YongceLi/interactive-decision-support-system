@@ -6,8 +6,8 @@ from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-from state_schema import VehicleSearchState
-from tools.autodev_apis import search_vehicle_listings
+from idss_agent.state import VehicleSearchState
+from idss_agent.tools.autodev_apis import search_vehicle_listings
 
 
 def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
@@ -26,9 +26,6 @@ def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
     Returns:
         Updated state with recommended_vehicles populated
     """
-
-    # For now, we'll simulate the ReAct agent
-    # TODO: Integrate actual search_vehicle_listings tool
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
@@ -126,7 +123,7 @@ def parse_vehicle_list(response_content: str) -> list[Dict[str, Any]]:
         vehicles = json.loads(content)
 
         if isinstance(vehicles, list):
-            return vehicles[:20]  # Ensure max 20
+            return vehicles[:20]  
         elif isinstance(vehicles, dict) and 'vehicles' in vehicles:
             return vehicles['vehicles'][:20]
         else:

@@ -1,9 +1,4 @@
 """AutoDev API tools for vehicle information.
-
-This module provides tools to interact with the Auto.dev API for:
-- VIN decoding (global vehicle identification)
-- Vehicle listings search (millions of active listings)
-- Vehicle photos retrieval (high-quality images)
 """
 
 import os

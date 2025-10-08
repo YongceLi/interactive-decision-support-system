@@ -2,12 +2,12 @@
 Complete vehicle search agent workflow using LangGraph.
 """
 from langgraph.graph import StateGraph, END
-from state_schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
-from semantic_parser import semantic_parser_node
-from recommendation_agent import update_recommendation_list
-from mode_router import route_conversation_mode
-from discovery_agent import discovery_response_generator
-from analytical_agent import analytical_response_generator
+from idss_agent.state import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
+from idss_agent.nodes.semantic_parser import semantic_parser_node
+from idss_agent.nodes.recommendation import update_recommendation_list
+from idss_agent.nodes.mode_router import route_conversation_mode
+from idss_agent.nodes.discovery import discovery_response_generator
+from idss_agent.nodes.analytical import analytical_response_generator
 
 
 def create_vehicle_agent():

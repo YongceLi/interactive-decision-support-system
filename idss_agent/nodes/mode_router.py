@@ -3,7 +3,7 @@ Mode router node - classifies user message as discovery or analytical.
 """
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
-from state_schema import VehicleSearchState, get_latest_user_message
+from idss_agent.state import VehicleSearchState, get_latest_user_message
 
 
 def route_conversation_mode(state: VehicleSearchState) -> str:

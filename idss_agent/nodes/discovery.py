@@ -4,7 +4,7 @@ Discovery agent node - generates responses with listing summary and elicitation 
 import json
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
-from state_schema import VehicleSearchState
+from idss_agent.state import VehicleSearchState
 
 
 def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 10) -> str:
@@ -23,7 +23,6 @@ def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 10) -> 
 
     formatted = []
     for i, vehicle in enumerate(vehicles[:limit], 1):
-        # Extract key fields (adjust based on actual API response structure)
         year = vehicle.get('year', 'N/A')
         make = vehicle.get('make', 'N/A')
         model = vehicle.get('model', 'N/A')
@@ -31,13 +30,11 @@ def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 10) -> 
         miles = vehicle.get('miles', vehicle.get('retailListing', {}).get('miles', 'N/A'))
         location = vehicle.get('location', vehicle.get('retailListing', {}).get('city', 'N/A'))
 
-        # Format price
         if isinstance(price, (int, float)):
             price_str = f"${price:,}"
         else:
             price_str = str(price)
 
-        # Format mileage
         if isinstance(miles, (int, float)):
             miles_str = f"{miles:,} miles"
         else:
@@ -183,10 +180,7 @@ If no questions were asked, return an empty array: []
     result = llm.invoke(extraction_prompt)
 
     try:
-        # Parse JSON response
         content = result.content.strip()
-
-        # Strip markdown if present
         if content.startswith("```json"):
             content = content[7:]
         if content.startswith("```"):
@@ -198,7 +192,6 @@ If no questions were asked, return an empty array: []
         topics = json.loads(content)
 
         if isinstance(topics, list):
-            # Extend questions_asked (avoid duplicates)
             current_questions = state.get('questions_asked', [])
             for topic in topics:
                 if topic not in current_questions:
@@ -206,7 +199,6 @@ If no questions were asked, return an empty array: []
             state['questions_asked'] = current_questions
 
     except json.JSONDecodeError as e:
-        # If parsing fails, just continue without updating
         print(f"Warning: Could not parse topics from response: {e}")
 
     return state

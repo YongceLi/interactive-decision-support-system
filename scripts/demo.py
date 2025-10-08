@@ -2,10 +2,13 @@
 Interactive demo for the vehicle search agent.
 """
 import os
+import sys
+# Add parent directory to path to import idss_agent
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dotenv import load_dotenv
-from vehicle_agent import run_agent
-from state_schema import create_initial_state
-from semantic_parser import format_state_summary
+from idss_agent import run_agent, create_initial_state
+from idss_agent.nodes.semantic_parser import format_state_summary
 from langchain_core.messages import HumanMessage, AIMessage
 import json
 

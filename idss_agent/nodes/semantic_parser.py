@@ -5,7 +5,7 @@ import json
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from state_schema import VehicleSearchState, add_user_message, get_latest_user_message
+from idss_agent.state import VehicleSearchState, add_user_message, get_latest_user_message
 
 
 # System prompt for the semantic parser

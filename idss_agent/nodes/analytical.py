@@ -5,22 +5,16 @@ import json
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-from state_schema import VehicleSearchState, get_latest_user_message
-from discovery_agent import format_vehicles_for_llm
-from tools.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
-from tools.vehicle_database import get_safety_database_tools, get_feature_database_tools
+from idss_agent.state import VehicleSearchState, get_latest_user_message
+from idss_agent.nodes.discovery import format_vehicles_for_llm
+from idss_agent.tools.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
+from idss_agent.tools.vehicle_database import get_vehicle_database_tools
 
 
 def analytical_response_generator(state: VehicleSearchState) -> VehicleSearchState:
     """
     Handle analytical questions using ReAct agent with tools.
-
-    Examples:
-    - "Tell me more about #3"
-    - "Compare #1 and #5"
-    - "What's the safety rating of this vehicle?"
-    - "Is #2 a good deal?"
-
+    
     The ReAct agent has access to:
     - get_vehicle_listing_by_vin
     - get_vehicle_photos_by_vin
@@ -66,8 +60,8 @@ You are a helpful vehicle shopping assistant with access to tools.
    - sql_db_query_checker: Verify query syntax
 
    Available tables:
-   - safety_data: NHTSA safety ratings, crash tests, safety features (query by make, model, model_yr)
-   - feature_db.feature_data: EPA fuel economy, MPG ratings, emissions (query by Make, Model, Year)
+   - safety_data: NHTSA safety ratings, crash tests, safety features
+   - feature_db.feature_data: EPA fuel economy, MPG ratings, emissions
 
 **Your Task:**
 Answer the user's question using the listings above and tools as needed.
@@ -81,27 +75,21 @@ Tips:
 After answering, ask 1-2 follow-up questions.
 """
 
-    # Create ReAct agent with tools
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
-    # Gather all tools
     tools = [
         get_vehicle_listing_by_vin,
         get_vehicle_photos_by_vin
     ]
 
-    # Add database tools (safety and feature data)
-    safety_tools = get_safety_database_tools(llm)
-    feature_tools = get_feature_database_tools(llm)
-    tools.extend(safety_tools)
-    tools.extend(feature_tools)
+    # Add database tools (combined safety and feature data)
+    db_tools = get_vehicle_database_tools(llm)
+    tools.extend(db_tools)
 
     agent = create_react_agent(llm, tools)
 
-    # Run the agent
     result = agent.invoke({"messages": [HumanMessage(content=context)]})
 
-    # Extract final response
     state['ai_response'] = result['messages'][-1].content
 
     return state
@@ -157,42 +145,3 @@ def format_vehicles_with_vins(vehicles: list, limit: int = 20) -> str:
         formatted.append(vehicle_line)
 
     return "\n\n".join(formatted)
-
-
-def extract_vehicle_reference(user_question: str, vehicles: list) -> dict:
-    """
-    Extract which vehicle the user is referring to.
-
-    Examples:
-    - "#3" → vehicles[2]
-    - "the first one" → vehicles[0]
-    - "the Toyota" → search for Toyota in list
-
-    Args:
-        user_question: User's question
-        vehicles: List of current vehicles
-
-    Returns:
-        Vehicle dict or None
-    """
-    question_lower = user_question.lower()
-
-    # Check for numeric reference (#1, #3, etc.)
-    import re
-    match = re.search(r'#(\d+)', user_question)
-    if match:
-        index = int(match.group(1)) - 1  # Convert to 0-indexed
-        if 0 <= index < len(vehicles):
-            return vehicles[index]
-
-    # Check for ordinal references (first, second, third)
-    ordinals = {
-        'first': 0, 'second': 1, 'third': 2, 'fourth': 3, 'fifth': 4,
-        'sixth': 5, 'seventh': 6, 'eighth': 7, 'ninth': 8, 'tenth': 9
-    }
-
-    for word, index in ordinals.items():
-        if word in question_lower and index < len(vehicles):
-            return vehicles[index]
-
-    return None
