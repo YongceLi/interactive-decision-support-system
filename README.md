@@ -103,6 +103,9 @@ Create a `.env` file in the project root:
 ```bash
 OPENAI_API_KEY=your_openai_key_here
 AUTODEV_API_KEY=your_autodev_key_here
+
+# Optional: Prioritize vehicles with photos in recommendations (default: false)
+REQUIRE_PHOTOS_IN_RECOMMENDATIONS=true
 ```
 
 ## Usage

@@ -2,12 +2,83 @@
 Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 """
 import json
-from typing import Dict, Any
+import os
+from typing import Dict, Any, List
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from idss_agent.state import VehicleSearchState
-from idss_agent.tools.autodev_apis import search_vehicle_listings
+from idss_agent.tools.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
+
+
+def has_photos(vehicle: Dict[str, Any]) -> bool:
+    """
+    Check if a vehicle has photos available.
+
+    Args:
+        vehicle: Vehicle dictionary with VIN
+
+    Returns:
+        True if vehicle has photos, False otherwise
+    """
+    # Extract VIN from vehicle data
+    vin = vehicle.get('vehicle', {}).get('vin') or vehicle.get('vin')
+
+    if not vin or len(vin) != 17:
+        return False
+
+    try:
+        # Call photo API
+        result = get_vehicle_photos_by_vin.invoke({"vin": vin})
+        data = json.loads(result)
+
+        # Check if photos exist
+        if "error" in data:
+            return False
+
+        retail_photos = data.get('data', {}).get('retail', [])
+        return len(retail_photos) > 0
+
+    except Exception:
+        return False
+
+
+def filter_vehicles_by_photos(vehicles: List[Dict[str, Any]], target_count: int = 20) -> List[Dict[str, Any]]:
+    """
+    Filter vehicles to prioritize those with photos.
+
+    Strategy:
+    1. First, collect vehicles WITH photos (up to target_count)
+    2. If not enough, add vehicles WITHOUT photos to reach target_count
+
+    Args:
+        vehicles: List of vehicle dictionaries
+        target_count: Target number of vehicles (default: 20)
+
+    Returns:
+        List of up to target_count vehicles, prioritizing those with photos
+    """
+    vehicles_with_photos = []
+    vehicles_without_photos = []
+
+    for vehicle in vehicles:
+        if has_photos(vehicle):
+            vehicles_with_photos.append(vehicle)
+        else:
+            vehicles_without_photos.append(vehicle)
+
+        # Early exit if we have enough vehicles with photos
+        if len(vehicles_with_photos) >= target_count:
+            break
+
+    # Combine: prioritize vehicles with photos, then add those without if needed
+    result = vehicles_with_photos[:target_count]
+
+    if len(result) < target_count:
+        remaining = target_count - len(result)
+        result.extend(vehicles_without_photos[:remaining])
+
+    return result
 
 
 def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
@@ -88,8 +159,16 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
             except (json.JSONDecodeError, AttributeError):
                 continue
 
-    # Limit to 20 vehicles
-    state['recommended_vehicles'] = vehicles[:20]
+    # Check if photo filtering is enabled via environment variable
+    require_photos = os.getenv('REQUIRE_PHOTOS_IN_RECOMMENDATIONS', 'false').lower() == 'true'
+
+    if require_photos and vehicles:
+        # Filter vehicles to prioritize those with photos
+        filtered_vehicles = filter_vehicles_by_photos(vehicles, target_count=20)
+        state['recommended_vehicles'] = filtered_vehicles
+    else:
+        # Default behavior: just take first 20
+        state['recommended_vehicles'] = vehicles[:20]
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()
