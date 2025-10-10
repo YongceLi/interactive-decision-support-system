@@ -1,5 +1,6 @@
 """
 Mode router node - classifies user message as discovery or analytical.
+Also handles routing for recommendation updates.
 """
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
@@ -66,3 +67,32 @@ Respond with ONLY one word: discovery or analytical
         mode = "discovery"
 
     return mode
+
+
+def should_update_recommendations(state: VehicleSearchState) -> str:
+    """
+    Determine if we need to update the recommendation list.
+
+    Only update recommendations when:
+    1. No vehicles exist yet (first search or error recovery)
+    2. Explicit filters have changed (new search criteria)
+
+    Args:
+        state: Current vehicle search state
+
+    Returns:
+        "update" - Need to fetch new recommendations
+        "skip" - Use existing recommendations
+    """
+    # Always update if no vehicles yet
+    if not state.get('recommended_vehicles'):
+        return "update"
+
+    # Check if filters changed
+    current_filters = state.get('explicit_filters', {})
+    previous_filters = state.get('previous_filters', {})
+
+    if current_filters != previous_filters:
+        return "update"
+
+    return "skip"

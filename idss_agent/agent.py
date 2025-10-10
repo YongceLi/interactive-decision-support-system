@@ -5,7 +5,7 @@ from langgraph.graph import StateGraph, END
 from idss_agent.state import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.nodes.semantic_parser import semantic_parser_node
 from idss_agent.nodes.recommendation import update_recommendation_list
-from idss_agent.nodes.mode_router import route_conversation_mode
+from idss_agent.nodes.mode_router import route_conversation_mode, should_update_recommendations
 from idss_agent.nodes.discovery import discovery_response_generator
 from idss_agent.nodes.analytical import analytical_response_generator
 
@@ -37,12 +37,23 @@ def create_vehicle_agent():
     # Define the flow
     workflow.set_entry_point("semantic_parser")
 
-    # Always update recommendations after parsing
-    workflow.add_edge("semantic_parser", "update_recommendations")
-
-    # Route based on message mode after recommendations are updated
+    # Conditionally update recommendations only if filters changed
     workflow.add_conditional_edges(
-        "update_recommendations",
+        "semantic_parser",
+        should_update_recommendations,  # Returns "update" or "skip"
+        {
+            "update": "update_recommendations",
+            "skip": "mode_router"
+        }
+    )
+
+    # After updating recommendations, route to mode router
+    workflow.add_node("mode_router", lambda state: state)  # Pass-through node for routing
+    workflow.add_edge("update_recommendations", "mode_router")
+
+    # Route based on message mode
+    workflow.add_conditional_edges(
+        "mode_router",
         route_conversation_mode,  # Returns "discovery" or "analytical"
         {
             "discovery": "discovery_responder",

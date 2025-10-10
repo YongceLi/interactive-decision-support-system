@@ -91,6 +91,9 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
     # Limit to 20 vehicles
     state['recommended_vehicles'] = vehicles[:20]
 
+    # Store current filters as previous for next comparison
+    state['previous_filters'] = state['explicit_filters'].copy()
+
     return state
 
 

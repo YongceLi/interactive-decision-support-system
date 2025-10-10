@@ -73,6 +73,7 @@ class VehicleSearchState(TypedDict):
 
     # Metadata
     questions_asked: List[str]  # Track questions to avoid repetition
+    previous_filters: VehicleFilters  # Track previous filters to detect changes
 
     # Output
     ai_response: str
@@ -86,6 +87,7 @@ def create_initial_state() -> VehicleSearchState:
         implicit_preferences=ImplicitPreferences(),
         recommended_vehicles=[],
         questions_asked=[],
+        previous_filters=VehicleFilters(),
         ai_response=""
     )
 

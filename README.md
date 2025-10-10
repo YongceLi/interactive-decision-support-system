@@ -9,6 +9,8 @@ The agent uses a multi-node LangGraph workflow with two operating modes:
 - **Discovery Mode** (simple mode, simple LLM node): Helps users explore and refine their vehicle search, asking questions to get user's implicit preferences.
 - **Analytical Mode** (complex mode, ReAct agent with SQL database, api tools, etc.): Answers specific questions about vehicles using tools. E.g. compare two vehicles, list features of a vehicle, etc.
 
+The workflow intelligently skips recommendation updates when filters haven't changed, reducing API calls and improving response time.
+
 ## State Variables
 
 ```python
@@ -18,6 +20,7 @@ VehicleSearchState = {
     "implicit_preferences": ImplicitPreferences,  # Inferred preferences
     "recommended_vehicles": List[Dict],           # Top 20 matches
     "questions_asked": List[str],                 # Topics already discussed
+    "previous_filters": VehicleFilters,           # Previous filters for change detection
     "ai_response": str                            # Latest response
 }
 ```
@@ -39,21 +42,26 @@ VehicleSearchState = {
 - Merges new filters with existing state
 - Updates implicit preferences throughout conversation
 
-### 2. Update Recommendations
-- ReAct agent with API tools and SQL database
-- Update the recommended list everytime the filter changes
+### 2. Should Update Recommendations (Router)
+- Checks if filters changed or if this is the first search
+- Routes to "update" or "skip" to avoid unnecessary API calls
 
-### 3. Mode Router
+### 3. Update Recommendations
+- ReAct agent with API tools and SQL database
+- Updates the recommended list only when filters change or no vehicles exist yet
+- Stores current filters as previous_filters for next comparison
+
+### 4. Mode Router
 - **Discovery**: When user update filters and preferences, or ask simple questions, the discovery agent will describe the current recommendation list and ask follow-up questions to extract more user preferences.
 - **Analytical**: When user ask more complex questions that needs tool use / query database. E.g. compare the pros and cons of two vehicles.
 
-### 4. Discovery Responder
+### 5. Discovery Responder
 - Displays top 10 vehicles with details
 - Summarizes listings with recommendations
 - Asks 2-3 elicitation questions
 - Tracks questions to avoid repetition
 
-### 5. Analytical Responder
+### 6. Analytical Responder
 - ReAct agent with multiple tools:
   - `get_vehicle_listing`: Detailed listing of vehicles given filters.
   - `get_vehicle_listing_by_vin`: Detailed listing by VIN
