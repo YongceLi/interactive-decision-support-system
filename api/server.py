@@ -39,6 +39,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Configure request size limits
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+
+# Add gzip compression to reduce response size
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
@@ -73,6 +80,94 @@ def format_conversation_history(state: VehicleSearchState) -> List[Dict[str, Any
     return history
 
 
+def create_lightweight_vehicles(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Create lightweight vehicle objects for API response to reduce payload size."""
+    lightweight_vehicles = []
+    
+    for vehicle in vehicles[:10]:  # Limit to 10 vehicles
+        # Debug: Print vehicle structure for first vehicle
+        if len(lightweight_vehicles) == 0:
+            print(f"DEBUG: Vehicle structure: {json.dumps(vehicle, indent=2)[:500]}...")
+        
+        # Handle auto.dev API nested structure
+        vehicle_data = vehicle.get('vehicle', vehicle)
+        retail_listing = vehicle.get('retailListing', {})
+        
+        # Extract price from various possible locations
+        price = None
+        if retail_listing.get('price'):
+            price = retail_listing['price']
+        elif retail_listing.get('listPrice'):
+            price = retail_listing['listPrice']
+        elif vehicle.get('price'):
+            price = vehicle['price']
+        elif vehicle_data.get('price'):
+            price = vehicle_data['price']
+        
+        # Extract mileage from various possible locations
+        mileage = None
+        if retail_listing.get('miles'):
+            mileage = retail_listing['miles']
+        elif vehicle_data.get('mileage'):
+            mileage = vehicle_data['mileage']
+        elif vehicle.get('mileage'):
+            mileage = vehicle['mileage']
+        elif retail_listing.get('mileage'):
+            mileage = retail_listing['mileage']
+        
+        # Extract location - prefer city/state over coordinates
+        location = None
+        if retail_listing.get('city') and retail_listing.get('state'):
+            location = f"{retail_listing['city']}, {retail_listing['state']}"
+        elif retail_listing.get('state'):
+            location = retail_listing['state']
+        elif retail_listing.get('city'):
+            location = retail_listing['city']
+        elif vehicle_data.get('location'):
+            location = vehicle_data['location']
+        elif vehicle.get('location'):
+            location = vehicle['location']
+        
+        # Skip vehicles with invalid location data
+        if location and location.strip() in ['00', '0', '']:
+            location = None
+        
+        # Extract VIN
+        vin = vehicle_data.get('vin') or vehicle.get('vin')
+        
+        lightweight = {
+            'id': vehicle_data.get('id', vehicle.get('id', '')),
+            'make': vehicle_data.get('make', vehicle.get('make', '')),
+            'model': vehicle_data.get('model', vehicle.get('model', '')),
+            'year': vehicle_data.get('year', vehicle.get('year', 0)),
+            'price': price,
+            'mileage': mileage,
+            'location': location,
+            'vin': vin,
+            'trim': vehicle_data.get('trim', vehicle.get('trim')),
+            'body_style': vehicle_data.get('bodyStyle', vehicle_data.get('body_style', vehicle.get('body_style'))),
+            'exterior_color': vehicle_data.get('exteriorColor', vehicle_data.get('exterior_color', vehicle.get('exterior_color'))),
+        }
+        
+        # Only include fuel economy if available
+        if vehicle_data.get('fuel_economy') or vehicle.get('fuel_economy'):
+            fuel_data = vehicle_data.get('fuel_economy', vehicle.get('fuel_economy', {}))
+            lightweight['fuel_economy'] = {
+                'combined': fuel_data.get('combined', 0)
+            }
+        
+        # Only include safety rating if available
+        if vehicle_data.get('safety_rating') or vehicle.get('safety_rating'):
+            safety_data = vehicle_data.get('safety_rating', vehicle.get('safety_rating', {}))
+            lightweight['safety_rating'] = {
+                'overall': safety_data.get('overall', 0)
+            }
+        
+        lightweight_vehicles.append(lightweight)
+    
+    return lightweight_vehicles
+
+
 # API Endpoints
 @app.get("/")
 async def root():
@@ -101,10 +196,13 @@ async def chat(request: ChatRequest):
         # Update session storage
         sessions[session_id] = updated_state
 
-        # Prepare response
+        # Prepare response with lightweight vehicle data
+        recommended_vehicles = updated_state.get('recommended_vehicles', [])
+        lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles)
+        
         return ChatResponse(
             response=updated_state.get('ai_response', ''),
-            vehicles=updated_state.get('recommended_vehicles', [])[:10],  # Top 10 for display
+            vehicles=lightweight_vehicles,
             filters=updated_state.get('explicit_filters', {}),
             preferences=updated_state.get('implicit_preferences', {}),
             session_id=session_id
@@ -129,11 +227,14 @@ async def get_session(session_id: str):
 
     state = sessions[session_id]
 
+    recommended_vehicles = state.get('recommended_vehicles', [])
+    lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles)
+    
     return SessionResponse(
         session_id=session_id,
         filters=state.get('explicit_filters', {}),
         preferences=state.get('implicit_preferences', {}),
-        vehicles=state.get('recommended_vehicles', [])[:10],
+        vehicles=lightweight_vehicles,
         conversation_history=format_conversation_history(state)
     )
 
@@ -184,4 +285,11 @@ if __name__ == "__main__":
     print("API Documentation: http://localhost:8000/docs")
     print("=" * 70)
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000,
+        # Increase limits to handle larger requests
+        limit_max_requests=1000,
+        limit_concurrency=100
+    )

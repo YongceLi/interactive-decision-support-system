@@ -75,7 +75,7 @@ Tips:
 After answering, ask 1-2 follow-up questions.
 """
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
     tools = [
         get_vehicle_listing_by_vin,

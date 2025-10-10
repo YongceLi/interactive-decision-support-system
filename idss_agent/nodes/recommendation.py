@@ -55,7 +55,7 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 
     # Create ReAct agent with search tool
     tools = [search_vehicle_listings]
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_react_agent(llm, tools)
 
     # Run the agent
