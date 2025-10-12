@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, Optional, List, Any
 import uuid
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -80,7 +81,7 @@ def format_conversation_history(state: VehicleSearchState) -> List[Dict[str, Any
     return history
 
 
-def create_lightweight_vehicles(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def create_lightweight_vehicles(vehicles: List[Dict[str, Any]], current_filters: Dict[str, Any] = None) -> List[Dict[str, Any]]:
     """Create lightweight vehicle objects for API response to reduce payload size."""
     lightweight_vehicles = []
     
@@ -131,6 +132,27 @@ def create_lightweight_vehicles(vehicles: List[Dict[str, Any]]) -> List[Dict[str
         # Skip vehicles with invalid location data
         if location and location.strip() in ['00', '0', '']:
             location = None
+        
+        # Check if vehicle should be filtered out based on missing critical data
+        should_skip = False
+        
+        # If user is filtering by price, skip vehicles without price
+        if current_filters and (current_filters.get('price') or current_filters.get('price_min') or current_filters.get('price_max')):
+            if price is None:
+                should_skip = True
+        
+        # If user is filtering by mileage, skip vehicles without mileage
+        if current_filters and current_filters.get('mileage_max'):
+            if mileage is None:
+                should_skip = True
+        
+        # If user is filtering by location, skip vehicles without location
+        if current_filters and (current_filters.get('state') or current_filters.get('zip')):
+            if location is None:
+                should_skip = True
+        
+        if should_skip:
+            continue
         
         # Extract VIN
         vin = vehicle_data.get('vin') or vehicle.get('vin')
@@ -198,7 +220,8 @@ async def chat(request: ChatRequest):
 
         # Prepare response with lightweight vehicle data
         recommended_vehicles = updated_state.get('recommended_vehicles', [])
-        lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles)
+        current_filters = updated_state.get('explicit_filters', {})
+        lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles, current_filters)
         
         return ChatResponse(
             response=updated_state.get('ai_response', ''),
@@ -228,7 +251,8 @@ async def get_session(session_id: str):
     state = sessions[session_id]
 
     recommended_vehicles = state.get('recommended_vehicles', [])
-    lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles)
+    current_filters = state.get('explicit_filters', {})
+    lightweight_vehicles = create_lightweight_vehicles(recommended_vehicles, current_filters)
     
     return SessionResponse(
         session_id=session_id,

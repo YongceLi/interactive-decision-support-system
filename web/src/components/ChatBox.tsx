@@ -57,7 +57,7 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
                 }
               `}
             >
-              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+              <div className="text-sm whitespace-pre-wrap break-words chat-message">{message.content}</div>
               <div className={`text-xs mt-1 ${
                 message.role === 'user' ? 'text-red-100' : 'text-stone-500'
               }`}>

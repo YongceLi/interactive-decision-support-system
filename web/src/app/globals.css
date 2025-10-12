@@ -56,3 +56,22 @@ html {
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+/* Responsive bullet point wrapping */
+.chat-message {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.chat-message .bullet-point {
+  display: block;
+  margin-left: 0.5rem;
+  padding-left: 0.5rem;
+  text-indent: -0.5rem;
+}
+
+.chat-message .bullet-point::before {
+  content: "• ";
+  color: inherit;
+}

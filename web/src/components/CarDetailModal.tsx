@@ -11,15 +11,16 @@ export default function CarDetailModal({ car, onClose }: CarDetailModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10 shadow-sm">
           <h2 className="text-2xl font-bold text-gray-900">
             {car.year} {car.make} {car.model}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+            className="bg-red-800 hover:bg-red-900 text-white px-6 py-2 rounded-lg transition-all duration-200 hover:scale-105 transform font-semibold shadow-md flex items-center space-x-2"
           >
-            ×
+            <span>←</span>
+            <span>Back</span>
           </button>
         </div>
 
@@ -188,7 +189,12 @@ export default function CarDetailModal({ car, onClose }: CarDetailModalProps) {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Vehicle Information</h3>
                   <p className="text-gray-600 text-sm">
-                    This vehicle is available for viewing and test drives. Contact us for more information about availability, financing options, and scheduling a test drive.
+                    This vehicle is available for viewing and test drives. Contact the dealer for more information about availability, financing options, and scheduling a test drive.
+                    {car.location && (
+                      <span className="block mt-2 text-gray-500">
+                        Dealership location: {car.location}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

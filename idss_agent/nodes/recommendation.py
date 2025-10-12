@@ -29,24 +29,49 @@ def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
+    
+    # Map semantic parser filter names to auto.dev API parameter names
+    api_filters = {}
+    filter_mapping = {
+        'make': 'vehicle_make',
+        'model': 'vehicle_model',
+        'year': 'vehicle_year',
+        'trim': 'vehicle_trim',
+        'body_style': 'vehicle_body_style',
+        'engine': 'vehicle_engine',
+        'transmission': 'vehicle_transmission',
+        'exterior_color': 'vehicle_exterior_color',
+        'interior_color': 'vehicle_interior_color',
+        'doors': 'vehicle_doors',
+        'price': 'retail_price',
+        'state': 'retail_state',
+        'miles': 'retail_miles',
+        'zip': 'zip',
+        'distance': 'distance'
+    }
+    
+    for key, value in filters.items():
+        if key in filter_mapping and value:
+            api_filters[filter_mapping[key]] = value
 
     # Build prompt for recommendation agent
     recommendation_prompt = f"""
 You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles for the user.
 
-**Current Filters:**
-{json.dumps(filters, indent=2)}
+**Current Filters (mapped to API parameters):**
+{json.dumps(api_filters, indent=2)}
 
 **User Preferences:**
 {json.dumps(implicit, indent=2)}
 
 **Instructions:**
-1. Use search_vehicle_listings tool with the current filters
+1. Use search_vehicle_listings tool with the mapped filters above
 2. ALWAYS set page=1 and limit=50
 3. Once you get the results from the tool, your job is DONE
 4. Respond with a simple summary like: "Found X vehicles matching the criteria."
 
 **IMPORTANT:**
+- Use the exact parameter names from the filters above (e.g., retail_price, vehicle_make, etc.)
 - Call the tool ONCE with current filters, page=1, limit=50
 - After you see the tool results, immediately finish with a brief summary
 - Do NOT call the tool multiple times

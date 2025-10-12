@@ -125,6 +125,7 @@ To help you find the perfect match:
 - Reference actual vehicles from the listings
 - Keep the summary concise but helpful
 - Ask 2-3 questions, not more
+- Be concise and to the point
 
 Generate your response:
 """

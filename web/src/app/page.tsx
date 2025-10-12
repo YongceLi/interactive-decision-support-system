@@ -21,26 +21,6 @@ function formatAgentResponse(response: string): string {
   // Convert dashes to bullet points with proper indentation
   formatted = formatted.replace(/^- /gm, '\n\t• ');
   
-  // Handle bullet point text wrapping - ensure wrapped text is also indented
-  formatted = formatted.replace(/(\n\t• [^\n]+)/g, (match) => {
-    // Split long bullet points into multiple lines with proper indentation
-    const bulletText = match.replace(/\n\t• /, '');
-    const words = bulletText.split(' ');
-    let result = '\n\t• ';
-    let currentLine = '';
-    
-    for (const word of words) {
-      if (currentLine.length + word.length + 1 > 60) { // Wrap at ~60 chars
-        result += currentLine.trim() + '\n\t  '; // Extra tab for continuation
-        currentLine = word;
-      } else {
-        currentLine += (currentLine ? ' ' : '') + word;
-      }
-    }
-    result += currentLine.trim();
-    return result;
-  });
-  
   // Clean up any double newlines
   formatted = formatted.replace(/\n\n+/g, '\n\n');
   
@@ -62,8 +42,7 @@ export default function Home() {
   const [filters, setFilters] = useState<Record<string, unknown>>({});
   const [isLoading, setIsLoading] = useState(false);
   
-  // Add refs for debouncing and canceling requests
-  const filterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Add ref for canceling requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleCarSelect = (car: Vehicle) => {
@@ -74,7 +53,7 @@ export default function Home() {
     setSelectedCar(null);
   };
 
-  const handleFilterChange = (newFilters: Record<string, unknown>) => {
+  const handleFilterChange = async (newFilters: Record<string, unknown>) => {
     setFilters(newFilters);
     
     // Cancel any pending filter requests
@@ -82,40 +61,44 @@ export default function Home() {
       abortControllerRef.current.abort();
     }
     
-    // Clear any existing timeout
-    if (filterTimeoutRef.current) {
-      clearTimeout(filterTimeoutRef.current);
+    // Convert filters to a natural language message for the agent
+    const filterMessages = [];
+    
+    if (newFilters.make) {
+      filterMessages.push(`I'm interested in ${newFilters.make}`);
     }
     
-    // Debounce filter changes - wait 500ms before sending request
-    filterTimeoutRef.current = setTimeout(async () => {
-      // Convert filters to a natural language message for the agent
-      const filterMessages = [];
-      
-      if (newFilters.year) {
-        filterMessages.push(`I'm looking for vehicles from ${newFilters.year}`);
-      }
-      
-      if (newFilters.body_style) {
-        filterMessages.push(`I prefer ${newFilters.body_style} body style`);
-      }
-      
-      if (newFilters.price_min || newFilters.price_max) {
-        const priceRange = [];
-        if (newFilters.price_min) priceRange.push(`$${newFilters.price_min.toLocaleString()}`);
-        if (newFilters.price_max) priceRange.push(`$${newFilters.price_max.toLocaleString()}`);
-        filterMessages.push(`My budget is ${priceRange.join(' to ')}`);
-      }
+    if (newFilters.model) {
+      filterMessages.push(`specifically the ${newFilters.model} model`);
+    }
+    
+    if (newFilters.year) {
+      filterMessages.push(`from ${newFilters.year}`);
+    }
+    
+    if (newFilters.body_style) {
+      filterMessages.push(`I prefer ${newFilters.body_style} body style`);
+    }
+    
+    if (newFilters.price_min || newFilters.price_max) {
+      const priceRange = [];
+      if (newFilters.price_min) priceRange.push(`minimum $${newFilters.price_min.toLocaleString()}`);
+      if (newFilters.price_max) priceRange.push(`maximum $${newFilters.price_max.toLocaleString()}`);
+      filterMessages.push(`price range: ${priceRange.join(', ')}`);
+    }
 
-      if (newFilters.mileage_max) {
-        filterMessages.push(`maximum mileage of ${newFilters.mileage_max.toLocaleString()} miles`);
-      }
-      
-      if (filterMessages.length > 0) {
-        const message = `I'd like to update my preferences: ${filterMessages.join(', ')}.`;
-        await handleChatMessage(message, true); // Pass true to hide user message
-      }
-    }, 500);
+    if (newFilters.mileage_max) {
+      filterMessages.push(`maximum mileage of ${newFilters.mileage_max.toLocaleString()} miles`);
+    }
+    
+    if (newFilters.seating_capacity) {
+      filterMessages.push(`seating for at least ${newFilters.seating_capacity} passengers`);
+    }
+    
+    if (filterMessages.length > 0) {
+      const message = `Show me vehicles with these preferences: ${filterMessages.join(', ')}.`;
+      await handleChatMessage(message, true); // Pass true to hide user message
+    }
   };
 
   const handleChatMessage = async (message: string, hideUserMessage = false) => {
@@ -235,7 +218,7 @@ export default function Home() {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-h-screen">
             {/* Chat Section */}
-            <div className="h-[32rem] max-h-[32rem] border-b border-stone-300 bg-stone-50">
+            <div className="h-[20rem] max-h-[20rem] border-b border-stone-300 bg-stone-50">
             <ChatBox 
               messages={chatMessages}
               onSendMessage={handleChatMessage}

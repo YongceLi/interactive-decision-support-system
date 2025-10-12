@@ -23,9 +23,11 @@ export default function CarGrid({ vehicles, onCarSelect }: CarGridProps) {
       {vehicles.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-center text-stone-500">
-            <div className="text-6xl mb-4">🚗</div>
             <h3 className="text-lg font-medium mb-2">No vehicles found</h3>
             <p className="text-sm">Try adjusting your search criteria or ask the agent for recommendations.</p>
+            <p className="text-xs mt-2 text-stone-400">
+              Only showing vehicles with complete information matching your filters.
+            </p>
           </div>
         </div>
       ) : (
