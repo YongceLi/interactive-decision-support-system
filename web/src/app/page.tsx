@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import Filters from '@/components/Filters';
+import { useState, useEffect } from 'react';
 import ChatBox from '@/components/ChatBox';
-import CarGrid from '@/components/CarGrid';
-import CarDetailModal from '@/components/CarDetailModal';
+import RecommendationCarousel from '@/components/RecommendationCarousel';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -28,95 +26,35 @@ function formatAgentResponse(response: string): string {
 }
 
 export default function Home() {
-  const [selectedCar, setSelectedCar] = useState<Vehicle | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hi! I\'m your vehicle search assistant. How can I help you find the perfect car today?',
-      timestamp: new Date()
-    }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Record<string, unknown>>({});
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Add ref for canceling requests
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleCarSelect = (car: Vehicle) => {
-    setSelectedCar(car);
-  };
-
-  const handleCarClose = () => {
-    setSelectedCar(null);
-  };
-
-  const handleFilterChange = async (newFilters: Record<string, unknown>) => {
-    setFilters(newFilters);
-    
-    // Cancel any pending filter requests
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Convert filters to a natural language message for the agent
-    const filterMessages = [];
-    
-    if (newFilters.make) {
-      filterMessages.push(`I'm interested in ${newFilters.make}`);
-    }
-    
-    if (newFilters.model) {
-      filterMessages.push(`specifically the ${newFilters.model} model`);
-    }
-    
-    if (newFilters.year) {
-      filterMessages.push(`from ${newFilters.year}`);
-    }
-    
-    if (newFilters.body_style) {
-      filterMessages.push(`I prefer ${newFilters.body_style} body style`);
-    }
-    
-    if (newFilters.price_min || newFilters.price_max) {
-      const priceRange = [];
-      if (newFilters.price_min) priceRange.push(`minimum $${newFilters.price_min.toLocaleString()}`);
-      if (newFilters.price_max) priceRange.push(`maximum $${newFilters.price_max.toLocaleString()}`);
-      filterMessages.push(`price range: ${priceRange.join(', ')}`);
-    }
-
-    if (newFilters.mileage_max) {
-      filterMessages.push(`maximum mileage of ${newFilters.mileage_max.toLocaleString()} miles`);
-    }
-    
-    if (newFilters.seating_capacity) {
-      filterMessages.push(`seating for at least ${newFilters.seating_capacity} passengers`);
-    }
-    
-    if (filterMessages.length > 0) {
-      const message = `Show me vehicles with these preferences: ${filterMessages.join(', ')}.`;
-      await handleChatMessage(message, true); // Pass true to hide user message
-    }
-  };
-
-  const handleChatMessage = async (message: string, hideUserMessage = false) => {
-    // Add user message immediately (unless hidden for filter changes)
-    if (!hideUserMessage) {
-      const userMessage: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: message,
+  // Initialize with the agent's first message
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      const initialMessage: ChatMessage = {
+        id: 'initial',
+        role: 'assistant',
+        content: "Let's find what you're looking for! What kind of car are you thinking about?",
         timestamp: new Date()
       };
-      setChatMessages(prev => [...prev, userMessage]);
+      setChatMessages([initialMessage]);
     }
-    setIsLoading(true);
+  }, [chatMessages.length]);
 
-    // Create new abort controller for this request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
+  const handleChatMessage = async (message: string) => {
+    // Add user message immediately
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: message,
+      timestamp: new Date()
+    };
+    setChatMessages(prev => [...prev, userMessage]);
+    
+    setIsLoading(true);
 
     try {
       // Send message to agent API
@@ -129,25 +67,9 @@ export default function Home() {
           message,
           session_id: sessionId,
         }),
-        signal: abortController.signal, // Add abort signal
       });
 
       if (!response.ok) {
-        // Handle empty response for cancelled requests
-        if (response.status === 400) {
-          try {
-            const errorData = await response.json();
-            if (errorData.error === 'Empty request body') {
-              console.log('Request was cancelled - empty body');
-              return;
-            }
-          } catch (e) {
-            // Response might not be JSON for cancelled requests
-            console.log('Request was cancelled - non-JSON response');
-            return;
-          }
-        }
-        
         const errorData = await response.json();
         throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
@@ -159,43 +81,32 @@ export default function Home() {
         setSessionId(data.session_id);
       }
 
-          // Add assistant response with formatting (single message)
-          const formattedResponse = formatAgentResponse(data.response);
-          const assistantMessage: ChatMessage = {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant' as const,
-            content: formattedResponse,
-            timestamp: new Date()
-          };
-          setChatMessages(prev => [...prev, assistantMessage]);
+      // Add assistant response with formatting
+      const formattedResponse = formatAgentResponse(data.response);
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: formattedResponse,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, assistantMessage]);
 
-          // Update vehicles - convert API format to our format
-          if (data.vehicles && data.vehicles.length > 0) {
-            const convertedVehicles = data.vehicles.map((apiVehicle: Record<string, unknown>) => {
-              return idssApiService.convertVehicle(apiVehicle);
-            });
-            setVehicles(convertedVehicles);
-          }
-
-      // Update filters
-      if (data.filters) {
-        setFilters(data.filters);
+      // Update vehicles - convert API format to our format
+      if (data.vehicles && data.vehicles.length > 0) {
+        const convertedVehicles = data.vehicles.map((apiVehicle: Record<string, unknown>) => {
+          return idssApiService.convertVehicle(apiVehicle);
+        });
+        setVehicles(convertedVehicles);
       }
 
     } catch (error) {
       console.error('Error sending message:', error);
       
-      // Don't show error message if request was aborted (user changed filters quickly)
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Request was aborted - user changed filters quickly');
-        return;
-      }
-      
-      // Add detailed error message for other errors
+      // Add error message
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Connection Error: Unable to reach the agent.`,
+        content: `Sorry, I ran into an issue. Mind trying again?`,
         timestamp: new Date()
       };
       setChatMessages(prev => [...prev, errorMessage]);
@@ -205,44 +116,59 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <div className="flex min-h-screen">
-        {/* Left Sidebar - Filters */}
-        <div className="w-80 bg-stone-100 border-r border-stone-300 flex flex-col min-h-screen">
-          <Filters 
-            filters={filters}
-            onFilterChange={handleFilterChange}
-          />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
+      <div className="h-screen flex flex-col">
+        {/* Chat Messages with Floating Cards */}
+        <div className="flex-1 overflow-y-auto p-6 relative">
+          <div className="max-w-6xl mx-auto space-y-6 relative">
+            {chatMessages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] p-4 rounded-2xl ${
+                    message.role === 'user'
+                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                      : 'glass-dark text-slate-100'
+                  }`}
+                >
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="glass-dark p-4 rounded-2xl">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Floating Recommendation Cards */}
+            {vehicles.length > 0 && (
+              <div className="mt-8 relative">
+                <RecommendationCarousel vehicles={vehicles} />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-h-screen">
-            {/* Chat Section */}
-            <div className="h-[20rem] max-h-[20rem] border-b border-stone-300 bg-stone-50">
-            <ChatBox 
-              messages={chatMessages}
+        {/* Chat Input */}
+        <div className="border-t border-slate-600/30 glass-dark p-6">
+          <div className="max-w-6xl mx-auto">
+            <ChatBox
+              messages={[]}
               onSendMessage={handleChatMessage}
               isLoading={isLoading}
             />
           </div>
-
-          {/* Car Grid Section */}
-          <div className="flex-1 p-6 bg-stone-50">
-            <CarGrid 
-              vehicles={vehicles}
-              onCarSelect={handleCarSelect}
-            />
-          </div>
         </div>
       </div>
-
-      {/* Car Detail Modal */}
-      {selectedCar && (
-        <CarDetailModal 
-          car={selectedCar}
-          onClose={handleCarClose}
-        />
-      )}
     </div>
   );
 }

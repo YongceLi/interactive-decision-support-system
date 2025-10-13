@@ -73,59 +73,22 @@ def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchStat
     # Format vehicles for LLM
     vehicles_summary = format_vehicles_for_llm(vehicles, limit=10)
 
-    # Build comprehensive prompt
+    # Build conversational prompt
     prompt = f"""
-You are a friendly, knowledgeable vehicle shopping assistant helping a user find their ideal car.
+You're a helpful friend helping someone find their perfect car. Be casual, friendly, and conversational.
 
-**User's Current Filters:**
-{json.dumps(filters, indent=2)}
-
-**User's Preferences:**
-{json.dumps(implicit, indent=2)}
-
-**Current Listings ({len(vehicles)} vehicles found, showing top 10):**
+**Current Listings ({len(vehicles)} vehicles found):**
 {vehicles_summary}
 
 **Topics Already Asked About:** {already_asked}
-(Avoid asking about these topics again)
 
 **Your Task:**
-Generate a natural, conversational response with these elements:
+Write a short, friendly response (1 paragraph max) that:
+1. Acknowledges what they're looking for
+2. Mentions 1-2 interesting options from the listings
+3. Asks 1-2 natural questions to help narrow things down
 
-1. **Brief acknowledgment** (1 sentence)
-   - Acknowledge their search or latest preference update
-
-2. **Listing summary & recommendation** (1 concise paragraph, 3-5 sentences)
-   - Reference the actual vehicles you see in the listings
-   - Highlight key strengths/pros (reliability, features, value, etc.)
-   - Point out interesting options or patterns
-   - Give a brief, helpful recommendation if appropriate
-   - Be specific but concise
-
-3. **Elicitation questions** (2-3 questions)
-   - Ask strategic questions to help narrow down their needs
-   - Focus on missing critical info: budget, location, usage patterns, priorities, mileage preferences
-   - Make questions conversational and bundled together naturally
-   - Avoid topics already asked about
-   - Space matters most when they have many options
-
-**Example Response Format:**
-
-"I found 47 Jeep vehicles that match your criteria!
-
-Looking at these options, the 2021 Wrangler and Grand Cherokee models stand out for their 4WD capability and strong reliability ratings. The Wranglers are perfect for off-road adventures, while the Grand Cherokees offer more comfort for daily driving and family use. Most of these are priced between $25k-$35k with reasonable mileage.
-
-To help you find the perfect match:
-- What's your budget range?
-- Where are you located (zip code)?
-- How will you mainly use this vehicle - daily commuting, weekend adventures, or family trips?"
-
-**Important:**
-- Be natural and conversational
-- Reference actual vehicles from the listings
-- Keep the summary concise but helpful
-- Ask 2-3 questions, not more
-- Be concise and to the point
+Be like a knowledgeable friend who knows cars - not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
 
 Generate your response:
 """
