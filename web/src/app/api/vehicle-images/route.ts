@@ -44,12 +44,23 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     
-    // Extract image URLs from the response
-    const images = data.retail || [];
+    // Extract image URLs from the response, filtering out SVGs
+    const allImages = data.retail || [];
+    const validImages = allImages.filter((img: any) => {
+      // Filter out SVG images and ensure we have valid image URLs
+      return img && 
+             typeof img === 'string' && 
+             !img.toLowerCase().includes('.svg') &&
+             (img.toLowerCase().includes('.jpg') || 
+              img.toLowerCase().includes('.jpeg') || 
+              img.toLowerCase().includes('.png') || 
+              img.toLowerCase().includes('.webp'));
+    });
     
     return NextResponse.json({ 
-      images: images.slice(0, 5), // Return first 5 images
-      count: images.length 
+      images: validImages.slice(0, 5), // Return first 5 valid images
+      count: validImages.length,
+      totalFound: allImages.length
     });
 
   } catch (error) {

@@ -198,9 +198,9 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
                 {card.isPlaceholder ? (
                   /* Placeholder Card Content */
                   <>
-                    <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                      <div className="text-slate-400 text-4xl opacity-50">🚗</div>
-                    </div>
+                            <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                              <div className="text-slate-400 text-sm opacity-50 text-center px-2">No Image Found</div>
+                            </div>
                     <div className="space-y-2">
                       <h4 className="text-sm font-bold text-slate-400 mb-2 leading-tight">
                         Tell us what you want
@@ -227,63 +227,14 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
                       </button>
                     </div>
                   </>
-                ) : (
-                  /* Real Item Card Content */
-                  <>
-                    <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                      {card.vehicle?.image_url ? (
-                        <img
-                          src={card.vehicle.image_url}
-                          alt={`${card.vehicle.year} ${card.vehicle.make} ${card.vehicle.model}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-slate-400 text-4xl">🚗</div>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-slate-100 mb-2 leading-tight">
-                        {card.vehicle?.year} {card.vehicle?.make} {card.vehicle?.model}
-                      </h4>
-                      
-                      <div className="space-y-1 text-xs">
-                        {card.vehicle?.price && (
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Price:</span>
-                            <span className="font-semibold text-green-400">
-                              ${card.vehicle.price.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {card.vehicle?.mileage && (
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Mileage:</span>
-                            <span className="text-slate-300">{card.vehicle.mileage.toLocaleString()} mi</span>
-                          </div>
-                        )}
-                        
-                        {card.vehicle?.location && (
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Location:</span>
-                            <span className="text-slate-300 text-right max-w-[140px] truncate">{card.vehicle.location}</span>
-                          </div>
-                        )}
+        ) : (
+          /* Real Item Card Content */
+          <VehicleCard vehicle={card.vehicle} onItemSelect={onItemSelect} />
+        )}
                       </div>
-
-                      <button 
-                        onClick={() => card.vehicle && onItemSelect?.(card.vehicle)}
-                        className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
-                      >
-                        View Details
-                      </button>
                     </div>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                  ))}
+                </div>
 
         {/* Right Arrow */}
         <button
@@ -304,5 +255,95 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
         </span>
       </div>
     </div>
+  );
+}
+
+// VehicleCard component
+function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect?: (vehicle: Vehicle) => void }) {
+  // Use Auto.dev image URL
+  const primaryImage = vehicle.image_url;
+  const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
+
+  return (
+    <>
+      <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+        {hasValidImage ? (
+          <>
+            <img
+              src={primaryImage}
+              alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Hide the image if it fails to load and show the emoji instead
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                                    if (parent && !parent.querySelector('.fallback-text')) {
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'fallback-text text-slate-400 text-sm absolute inset-0 flex items-center justify-center text-center px-2';
+                                      fallback.textContent = 'No Image Found';
+                                      parent.appendChild(fallback);
+                                    }
+              }}
+              onLoad={(e) => {
+                // Hide fallback text when image loads successfully
+                const target = e.target as HTMLImageElement;
+                const parent = target.parentElement;
+                const fallback = parent?.querySelector('.fallback-text');
+                if (fallback) {
+                  fallback.remove();
+                }
+              }}
+            />
+            {/* Show fallback text initially, will be hidden when image loads */}
+            <div className="fallback-text text-slate-400 text-sm absolute inset-0 flex items-center justify-center text-center px-2">
+              No Image Found
+            </div>
+          </>
+        ) : (
+          <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
+            No Image Found
+          </div>
+        )}
+      </div>
+      
+      <div className="space-y-2">
+        <h4 className="text-sm font-bold text-slate-100 mb-2 leading-tight">
+          {vehicle.year} {vehicle.make} {vehicle.model}
+        </h4>
+        
+        <div className="space-y-1 text-xs">
+          {vehicle.price && (
+            <div className="flex justify-between">
+              <span className="text-slate-400">Price:</span>
+              <span className="font-semibold text-green-400">
+                ${vehicle.price.toLocaleString()}
+              </span>
+            </div>
+          )}
+          
+          {vehicle.mileage && (
+            <div className="flex justify-between">
+              <span className="text-slate-400">Mileage:</span>
+              <span className="text-slate-300">{vehicle.mileage.toLocaleString()} mi</span>
+            </div>
+          )}
+          
+          {vehicle.location && (
+            <div className="flex justify-between">
+              <span className="text-slate-400">Location:</span>
+              <span className="text-slate-300 text-right max-w-[140px] truncate">{vehicle.location}</span>
+            </div>
+          )}
+        </div>
+
+        <button 
+          onClick={() => onItemSelect?.(vehicle)}
+          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
+        >
+          View Details
+        </button>
+      </div>
+    </>
   );
 }

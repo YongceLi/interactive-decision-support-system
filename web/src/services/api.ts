@@ -131,6 +131,11 @@ class IDSSApiService {
     // Extract VIN for image fetching
     const vin = (vehicle.vin as string) || (apiVehicle.vin as string);
     
+    // Extract image URL from retailListing.primaryImage (Auto.dev format)
+    const image_url = (retailListing.primaryImage as string) || 
+                     (vehicle.image_url as string) || 
+                     (apiVehicle.image_url as string);
+    
     return {
       id: (vehicle.id as string) || (apiVehicle.id as string) || Math.random().toString(36).substr(2, 9),
       make: (vehicle.make as string) || 'Unknown',
@@ -140,7 +145,7 @@ class IDSSApiService {
       mileage: mileage,
       location: location,
       vin: vin,
-      image_url: (vehicle.image_url as string) || (apiVehicle.image_url as string),
+      image_url: image_url,
       trim: (vehicle.trim as string) || (apiVehicle.trim as string),
       body_style: (vehicle.bodyStyle as string) || (vehicle.body_style as string) || (apiVehicle.body_style as string),
       engine: (vehicle.engine as string) || (apiVehicle.engine as string),

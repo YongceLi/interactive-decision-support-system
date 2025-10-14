@@ -56,7 +56,11 @@ def get_vehicle_database_tools(llm):
 
     # Use safety_data.db as primary and attach feature_data.db
     # This way both can be queried in a single connection
-    db = SQLDatabase.from_uri(f"sqlite:///{safety_db_path}")
+    # Set sample_rows_in_table_info=3 to include sample data in schema
+    db = SQLDatabase.from_uri(
+        f"sqlite:///{safety_db_path}",
+        sample_rows_in_table_info=3
+    )
 
     # Attach the feature database so we can query both
     # The feature database will be accessible as feature_db.feature_data
@@ -65,6 +69,32 @@ def get_vehicle_database_tools(llm):
         conn.execute(text(f"ATTACH DATABASE '{feature_db_path}' AS feature_db"))
         conn.commit()
 
+    custom_instructions = """
+IMPORTANT SQL Query Rules:
+1. ALWAYS add "LIMIT 50" to every SELECT query to limit results to 50 rows maximum
+2. ALWAYS use CASE-INSENSITIVE matching for text columns:
+   - Use "LOWER(column_name) LIKE LOWER('%search_term%')" for pattern matching
+   - Use "LOWER(column_name) = LOWER('exact_value')" for exact matching
+   - This ensures broader matches across different text cases
+3. ALWAYS sort the results by the year column in descending order if not specified
+
+Examples:
+- Instead of: SELECT * FROM safety_data WHERE make = 'Honda'
+  Use: SELECT * FROM safety_data WHERE LOWER(make) = LOWER('Honda') LIMIT 50
+
+- Instead of: SELECT * FROM safety_data WHERE model LIKE '%Accord%'
+  Use: SELECT * FROM safety_data WHERE LOWER(model) LIKE LOWER('%Accord%') LIMIT 50
+
+Always apply these rules to ensure consistent and limited results.
+"""
+
     toolkit = SQLDatabaseToolkit(db=db, llm=llm)
-    return toolkit.get_tools()
+    tools = toolkit.get_tools()
+
+    for tool in tools:
+        if tool.name == 'sql_db_query':
+            original_description = tool.description
+            tool.description = f"{original_description}\n\n{custom_instructions}"
+
+    return tools
 

@@ -8,6 +8,10 @@ interface ItemDetailModalProps {
 }
 
 export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps) {
+  // Use Auto.dev image URL
+  const primaryImage = item.image_url;
+  const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-md flex items-center justify-center p-4 z-50">
       <div className="glass-dark rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -30,22 +34,50 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Image Section */}
             <div className="space-y-4">
-              <div className="aspect-video bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl overflow-hidden">
-                {item.image_url ? (
-                  <img
-                    src={item.image_url}
-                    alt={`${item.year} ${item.make} ${item.model}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-400">
-                    <div className="text-center">
-                      <div className="text-6xl mb-2">🚗</div>
-                      <div className="text-lg">No Image Available</div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                      <div className="aspect-video bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl overflow-hidden relative">
+                        {hasValidImage ? (
+                          <>
+                            <img
+                              src={primaryImage}
+                              alt={`${item.year} ${item.make} ${item.model}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Hide the image if it fails to load and show the emoji instead
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent && !parent.querySelector('.fallback-text')) {
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'fallback-text text-slate-400 text-lg absolute inset-0 flex items-center justify-center';
+                                  fallback.innerHTML = '<div class="text-center px-4"><div class="text-lg font-medium">No Image Found</div></div>';
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                              onLoad={(e) => {
+                                // Hide fallback text when image loads successfully
+                                const target = e.target as HTMLImageElement;
+                                const parent = target.parentElement;
+                                const fallback = parent?.querySelector('.fallback-text');
+                                if (fallback) {
+                                  fallback.remove();
+                                }
+                              }}
+                            />
+                            {/* Show fallback text initially, will be hidden when image loads */}
+                            <div className="fallback-text text-slate-400 text-lg absolute inset-0 flex items-center justify-center">
+                              <div className="text-center px-4">
+                                <div className="text-lg font-medium">No Image Found</div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-400">
+                            <div className="text-center px-4">
+                              <div className="text-lg font-medium">No Image Found</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
               {/* Price and Key Info */}
               <div className="glass-card rounded-xl p-4">

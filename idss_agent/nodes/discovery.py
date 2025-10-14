@@ -73,36 +73,51 @@ def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchStat
     # Format vehicles for LLM
     vehicles_summary = format_vehicles_for_llm(vehicles, limit=10)
 
-    # Build conversational prompt
+    # Build comprehensive prompt
     prompt = f"""
-You're a helpful friend helping someone find their perfect car. Be casual, friendly, and conversational.
+You are a friendly, knowledgeable vehicle shopping assistant helping a user find their ideal car.
 
-**User's Current Preferences:**
+**User's Current Filters:**
 {json.dumps(filters, indent=2)}
 
-**Current Listings ({len(vehicles)} vehicles found):**
+**User's Preferences:**
+{json.dumps(implicit, indent=2)}
+
+**Current Listings ({len(vehicles)} vehicles found, showing top 10):**
 {vehicles_summary}
 
 **Topics Already Asked About:** {already_asked}
+(Avoid asking about these topics again)
 
 **Your Task:**
 Write a short, friendly response (1 paragraph max) that:
-1. Acknowledges what they're looking for
-2. Mentions 1-2 interesting options from the listings
-3. Asks 1-2 NEW questions to help narrow things down
 
-**IMPORTANT:** Do NOT ask about preferences they've already provided! Look at their current filters and only ask about missing information like:
-- Body style (if not specified)
-- Features/priorities (if not mentioned)
-- Timeline for purchase
-- Location/zip code (if not given)
+1. **Brief acknowledgment** (1 sentence)
+   - Acknowledge their search or latest preference update
 
-Be like a knowledgeable friend who knows cars - not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
+2. **Listing summary & recommendation** (1 concise paragraph, 1-3 sentences)
+   - Mentions 1-2 interesting options from the listings
+   - Highlight key strengths/pros
+   - Give a brief, helpful recommendation if appropriate
+   - Be specific but concise
+
+3. **Elicitation questions** (1-2 questions)
+   - Ask strategic questions to help narrow down their needs
+   - Focus on missing critical info: budget, location, usage patterns, priorities, mileage preferences, etc.
+   - Make questions conversational and bundled together naturally
+   - Avoid topics already asked about
+
+**Important:**
+- Be like a knowledgeable friend who knows cars 
+- not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
+- Reference actual vehicles from the listings
+- Keep the summary concise but helpful
+- Ask 1-2 questions, not more
 
 Generate your response:
 """
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
     response = llm.invoke(prompt)
 
     state['ai_response'] = response.content.strip()

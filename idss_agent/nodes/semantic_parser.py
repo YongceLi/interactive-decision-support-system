@@ -121,7 +121,7 @@ def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
     if not user_input:
         return state
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
     # Build conversation context from LangChain messages
     history_context = "\n".join([
