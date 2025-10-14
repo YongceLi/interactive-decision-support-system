@@ -43,6 +43,32 @@ def has_photos(vehicle: Dict[str, Any]) -> bool:
         return False
 
 
+def deduplicate_by_vin(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Remove duplicate vehicles by VIN, keeping the lowest price for each VIN.
+
+    Args:
+        vehicles: List of vehicle dictionaries
+
+    Returns:
+        List of unique vehicles (one per VIN)
+    """
+    seen_vins = {}
+
+    for vehicle in vehicles:
+        vin = vehicle.get('vehicle', {}).get('vin')
+        if not vin:
+            continue
+
+        price = vehicle.get('retailListing', {}).get('price', float('inf'))
+
+        # Keep vehicle with lowest price for this VIN
+        if vin not in seen_vins or price < seen_vins[vin].get('retailListing', {}).get('price', float('inf')):
+            seen_vins[vin] = vehicle
+
+    return list(seen_vins.values())
+
+
 def filter_vehicles_by_photos(vehicles: List[Dict[str, Any]], target_count: int = 20) -> List[Dict[str, Any]]:
     """
     Filter vehicles to prioritize those with photos.
@@ -158,6 +184,9 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
                         break
             except (json.JSONDecodeError, AttributeError):
                 continue
+
+    # Deduplicate vehicles by VIN (keep lowest price for each)
+    vehicles = deduplicate_by_vin(vehicles)
 
     # Check if photo filtering is enabled via environment variable
     require_photos = os.getenv('REQUIRE_PHOTOS_IN_RECOMMENDATIONS', 'false').lower() == 'true'

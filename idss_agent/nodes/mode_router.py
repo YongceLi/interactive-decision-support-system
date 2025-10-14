@@ -3,7 +3,7 @@ Mode router node - classifies user message as discovery or analytical.
 Also handles routing for recommendation updates.
 """
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from idss_agent.state import VehicleSearchState, get_latest_user_message
 
 
@@ -29,6 +29,22 @@ def route_conversation_mode(state: VehicleSearchState) -> str:
     if not user_msg:
         return "discovery"  # Default to discovery
 
+    # Get last 2 turns (4 messages) for context
+    recent_history = state.get("conversation_history", [])[-4:]
+
+    # Format recent conversation
+    context_str = ""
+    if recent_history:
+        context_lines = []
+        for msg in recent_history:
+            if isinstance(msg, HumanMessage):
+                context_lines.append(f"User: {msg.content}")
+            elif isinstance(msg, AIMessage):
+                # Truncate long responses for context
+                content = msg.content[:200] + "..." if len(msg.content) > 200 else msg.content
+                context_lines.append(f"Assistant: {content}")
+        context_str = "\n".join(context_lines)
+
     # Classification prompt
     classification_prompt = f"""
 You are a classifier for a vehicle shopping assistant.
@@ -52,7 +68,10 @@ Classify this user message as either "discovery" or "analytical":
 - "Show me photos of #1"
 - "What are the features of this vehicle?"
 
-User message: "{user_msg}"
+Recent conversation context:
+{context_str}
+
+Latest user message: "{user_msg}"
 
 Respond with ONLY one word: discovery or analytical
 """

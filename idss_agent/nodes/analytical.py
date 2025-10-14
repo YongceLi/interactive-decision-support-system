@@ -3,7 +3,7 @@ Analytical agent node - handles specific questions about vehicles using ReAct.
 """
 import json
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
 from idss_agent.state import VehicleSearchState, get_latest_user_message
 from idss_agent.nodes.discovery import format_vehicles_for_llm
@@ -19,6 +19,7 @@ def analytical_response_generator(state: VehicleSearchState) -> VehicleSearchSta
     - get_vehicle_listing_by_vin
     - get_vehicle_photos_by_vin
     - search_vehicle_listings
+    - SQL Database Tools
     (More tools can be added later)
 
     Args:
@@ -35,9 +36,26 @@ def analytical_response_generator(state: VehicleSearchState) -> VehicleSearchSta
     # Format current vehicle list with VINs for context
     vehicles_context = format_vehicles_with_vins(vehicles, limit=20)
 
+    # Format recent conversation
+    recent_history = state.get("conversation_history", [])[-4:]
+    recent_history_str = ""
+    if recent_history:
+        context_lines = []
+        for msg in recent_history:
+            if isinstance(msg, HumanMessage):
+                context_lines.append(f"User: {msg.content}")
+            elif isinstance(msg, AIMessage):
+                # Truncate long responses for context
+                content = msg.content[:200] + "..." if len(msg.content) > 200 else msg.content
+                context_lines.append(f"Assistant: {content}")
+        recent_history_str = "\n".join(context_lines)
+    
     # Build context for the ReAct agent
     context = f"""
 You are a helpful vehicle shopping assistant with access to tools.
+
+Recent conversation context:
+{recent_history_str}
 
 **User's Question:**
 {user_question}
@@ -53,7 +71,7 @@ You are a helpful vehicle shopping assistant with access to tools.
    - get_vehicle_listing_by_vin(vin): Get detailed listing for a 17-character VIN
    - get_vehicle_photos_by_vin(vin): Get photo URLs for a 17-character VIN
 
-2. SQL Database Tools (for additional vehicle data):
+2. SQL Database Tools (for additional vehicle data), you MUST use case insensitive queries for broaders matches.
    - sql_db_list_tables: List all available tables
    - sql_db_schema: Get schema for specific tables
    - sql_db_query: Execute SQL queries
@@ -64,7 +82,7 @@ You are a helpful vehicle shopping assistant with access to tools.
    - feature_db.feature_data: EPA fuel economy, MPG ratings, emissions
 
 **Your Task:**
-Answer the user's question using the listings above and tools as needed.
+Comprehensively answer the user's question using the listings above and tools as needed.
 
 Tips:
 - For VIN-based questions: Extract VIN from listings above (e.g., "#1" → find VIN in listing #1)
