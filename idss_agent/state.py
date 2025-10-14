@@ -62,6 +62,7 @@ class VehicleSearchState(TypedDict):
     - Recommended vehicles (up to 20, updated each turn)
     - Questions asked to avoid repetition
     - AI response for current turn
+    - User interaction events for tracking engagement
     """
     # Core data
     explicit_filters: VehicleFilters
@@ -74,6 +75,9 @@ class VehicleSearchState(TypedDict):
     # Metadata
     questions_asked: List[str]  # Track questions to avoid repetition
     previous_filters: VehicleFilters  # Track previous filters to detect changes
+
+    # User interaction tracking
+    interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
 
     # Output
     ai_response: str
@@ -88,6 +92,7 @@ def create_initial_state() -> VehicleSearchState:
         recommended_vehicles=[],
         questions_asked=[],
         previous_filters=VehicleFilters(),
+        interaction_events=[],
         ai_response=""
     )
 
