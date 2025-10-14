@@ -6,6 +6,7 @@ import { Vehicle } from '@/types/vehicle';
 interface RecommendationCarouselProps {
   vehicles: Vehicle[];
   onItemSelect?: (vehicle: Vehicle) => void;
+  showPlaceholders?: boolean;
 }
 
 interface ViewTimeData {
@@ -25,7 +26,7 @@ type DisplayCard = {
   isPlaceholder: false;
 };
 
-export default function RecommendationCarousel({ vehicles, onItemSelect }: RecommendationCarouselProps) {
+export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false }: RecommendationCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
@@ -123,14 +124,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
     }, 500);
   };
 
-  // Create placeholder cards if no vehicles
-  const showPlaceholder = vehicles.length === 0;
-  
-  const currentVehicle = !showPlaceholder ? vehicles[currentIndex] : null;
+  // Use the showPlaceholders prop to determine if we should show placeholder cards
+  const currentVehicle = !showPlaceholders ? vehicles[currentIndex] : null;
 
   // Get the 3 cards to display (current, next, previous)
   const getDisplayCards = (): DisplayCard[] => {
-    if (showPlaceholder) {
+    if (showPlaceholders) {
       // Return 3 placeholder cards
       return [
         { position: -1, isCenter: false, isPlaceholder: true },
@@ -157,19 +156,19 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
   return (
     <div className="relative w-full">
       {/* Header */}
-      <div className="mb-4 text-center">
-        <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
-        <p className="text-sm text-slate-400">
-          {showPlaceholder ? 'Waiting for your preferences' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
-        </p>
-      </div>
+              <div className="mb-4 text-center">
+                <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
+                <p className="text-sm text-slate-400">
+                  {showPlaceholders ? 'Start a conversation to see recommendations' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
+                </p>
+              </div>
 
       {/* Carousel Container */}
       <div className="relative flex items-center justify-center">
         {/* Left Arrow */}
         <button
           onClick={prevVehicle}
-          disabled={isAnimating || vehicles.length <= 1 || showPlaceholder}
+          disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
           className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed -translate-x-6"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,11 +198,11 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
                   /* Placeholder Card Content */
                   <>
                             <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-                              <div className="text-slate-400 text-sm opacity-50 text-center px-2">No Image Found</div>
+                              <div className="text-slate-400 text-sm opacity-50 text-center px-2">Future Recommendations</div>
                             </div>
                     <div className="space-y-2">
                       <h4 className="text-sm font-bold text-slate-400 mb-2 leading-tight">
-                        Tell us what you want
+                        Your recommendations will appear here
                       </h4>
                       <div className="space-y-1 text-xs">
                         <div className="flex justify-between">
@@ -239,7 +238,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
         {/* Right Arrow */}
         <button
           onClick={nextVehicle}
-          disabled={isAnimating || vehicles.length <= 1 || showPlaceholder}
+          disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
           className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed translate-x-6"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -251,7 +250,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
       {/* Counter */}
       <div className="text-center mt-4">
         <span className="text-sm text-slate-400 font-medium">
-          {showPlaceholder ? '0 of 0' : `${currentIndex + 1} of ${vehicles.length}`}
+          {showPlaceholders ? 'Ready for recommendations' : `${currentIndex + 1} of ${vehicles.length}`}
         </span>
       </div>
     </div>

@@ -32,6 +32,7 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Vehicle | null>(null);
+  const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -99,6 +100,7 @@ export default function Home() {
           return idssApiService.convertVehicle(apiVehicle);
         });
         setVehicles(convertedVehicles);
+        setHasReceivedRecommendations(true);
       }
 
     } catch (error) {
@@ -153,15 +155,14 @@ export default function Home() {
               </div>
             )}
 
-            {/* Recommendation Cards */}
-            {vehicles.length > 0 && (
-              <div className="mt-8 relative">
-                <RecommendationCarousel 
-                  vehicles={vehicles} 
-                  onItemSelect={setSelectedItem}
-                />
-              </div>
-            )}
+            {/* Recommendation Cards - Always show, with placeholders if no recommendations yet */}
+            <div className="mt-8 relative">
+              <RecommendationCarousel 
+                vehicles={vehicles} 
+                onItemSelect={setSelectedItem}
+                showPlaceholders={!hasReceivedRecommendations}
+              />
+            </div>
           </div>
         </div>
 

@@ -82,7 +82,7 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
               {/* Price and Key Info */}
               <div className="glass-card rounded-xl p-4">
                 <div className="text-3xl font-bold text-green-400 mb-2">
-                  ${item.price ? item.price.toLocaleString() : 'Price N/A'}
+                  {item.price ? `$${item.price.toLocaleString()}` : 'Check with dealership'}
                 </div>
                 {item.mileage && (
                   <div className="text-slate-300 mb-2">
@@ -219,20 +219,35 @@ export default function ItemDetailModal({ item, onClose }: ItemDetailModalProps)
                 </div>
               )}
 
-              {/* Additional Information */}
-              <div className="pt-6 border-t border-slate-600/30">
-                <div className="glass-card rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-slate-100 mb-2">Item Information</h3>
-                  <p className="text-slate-300 text-sm">
-                    This item is available for viewing and test drives. Contact the dealer for more information about availability, financing options, and scheduling a test drive.
-                    {item.location && (
-                      <span className="block mt-2 text-slate-400">
-                        Dealership location: {item.location}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+                      {/* Additional Information */}
+                      <div className="pt-6 border-t border-slate-600/30">
+                        <div className="glass-card rounded-lg p-4">
+                          <h3 className="text-lg font-semibold text-slate-100 mb-2">Item Information</h3>
+                          <p className="text-slate-300 text-sm">
+                            This item is available for viewing and test drives. Contact the dealer for more information about availability, financing options, and scheduling a test drive.
+                            {item.location && (
+                              <span className="block mt-2 text-slate-400">
+                                Dealership location: {item.location}
+                              </span>
+                            )}
+                            {item.carfax_url && (
+                              <span className="block mt-3">
+                                <a 
+                                  href={item.carfax_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center space-x-2 text-blue-400 hover:text-blue-300 transition-colors duration-200"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  <span>View CarFax Report</span>
+                                </a>
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
             </div>
           </div>
         </div>

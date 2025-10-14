@@ -34,6 +34,7 @@ export interface Vehicle {
     phone: string;
     email: string;
   };
+  carfax_url?: string;
 }
 
 export interface VehicleFilters {

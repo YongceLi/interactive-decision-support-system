@@ -172,6 +172,7 @@ class IDSSApiService {
         phone: (retailListing.dealer as Record<string, unknown>).phone as string,
         email: (retailListing.dealer as Record<string, unknown>).email as string,
       } : undefined,
+      carfax_url: (retailListing.carfaxUrl as string) || undefined,
     };
   }
 }
