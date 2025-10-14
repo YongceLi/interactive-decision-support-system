@@ -1,8 +1,9 @@
 """
 Pydantic models for API requests and responses.
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 
 class ChatRequest(BaseModel):
@@ -38,3 +39,37 @@ class ResetResponse(BaseModel):
     """Response model for session reset."""
     session_id: str
     status: str
+
+
+class EventRequest(BaseModel):
+    """Request model for logging user interaction events."""
+    event_type: str
+    data: Dict[str, Any] = {}
+    timestamp: Optional[str] = None
+
+    @field_validator('data')
+    @classmethod
+    def validate_vehicle_event(cls, v: Dict[str, Any], info) -> Dict[str, Any]:
+        """Ensure vehicle-related events include VIN."""
+        event_type = info.data.get('event_type', '')
+        vehicle_event_types = ['vehicle_view', 'vehicle_click', 'photo_view']
+
+        if event_type in vehicle_event_types:
+            if 'vin' not in v or not v['vin']:
+                raise ValueError(f"{event_type} events must include 'vin' in data")
+
+        return v
+
+
+class EventResponse(BaseModel):
+    """Response model after logging an event."""
+    status: str
+    event_id: int
+    timestamp: str
+
+
+class EventsResponse(BaseModel):
+    """Response model for retrieving events."""
+    session_id: str
+    events: List[Dict[str, Any]]
+    total: int
