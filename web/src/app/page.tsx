@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
+import ItemDetailModal from '@/components/ItemDetailModal';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -30,6 +31,7 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Vehicle | null>(null);
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function Home() {
       const initialMessage: ChatMessage = {
         id: 'initial',
         role: 'assistant',
-        content: "Let's find what you're looking for! What kind of car are you thinking about?",
+        content: "Let's shop for your dream item. Tell me what you're looking for.",
         timestamp: new Date()
       };
       setChatMessages([initialMessage]);
@@ -126,15 +128,17 @@ export default function Home() {
                 key={message.id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[80%] p-4 rounded-2xl ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                      : 'glass-dark text-slate-100'
-                  }`}
-                >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                </div>
+                  <div
+                    className={`max-w-[80%] p-4 rounded-2xl ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                        : 'glass-dark text-slate-100'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{
+                      __html: message.content.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                    }} />
+                  </div>
               </div>
             ))}
             {isLoading && (
@@ -149,10 +153,13 @@ export default function Home() {
               </div>
             )}
 
-            {/* Floating Recommendation Cards */}
+            {/* Recommendation Cards */}
             {vehicles.length > 0 && (
               <div className="mt-8 relative">
-                <RecommendationCarousel vehicles={vehicles} />
+                <RecommendationCarousel 
+                  vehicles={vehicles} 
+                  onItemSelect={setSelectedItem}
+                />
               </div>
             )}
           </div>
@@ -169,6 +176,14 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Item Detail Modal */}
+      {selectedItem && (
+        <ItemDetailModal 
+          item={selectedItem}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </div>
   );
 }

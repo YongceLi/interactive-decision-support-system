@@ -5,6 +5,7 @@ import { Vehicle } from '@/types/vehicle';
 
 interface RecommendationCarouselProps {
   vehicles: Vehicle[];
+  onItemSelect?: (vehicle: Vehicle) => void;
 }
 
 interface ViewTimeData {
@@ -13,9 +14,21 @@ interface ViewTimeData {
   totalTime: number;
 }
 
-export default function RecommendationCarousel({ vehicles }: RecommendationCarouselProps) {
+type DisplayCard = {
+  position: number;
+  isCenter: boolean;
+  isPlaceholder: true;
+} | {
+  vehicle: Vehicle;
+  position: number;
+  isCenter: boolean;
+  isPlaceholder: false;
+};
+
+export default function RecommendationCarousel({ vehicles, onItemSelect }: RecommendationCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
   const [viewTimes, setViewTimes] = useState<Record<string, number>>({});
   const startTimeRef = useRef<number>(Date.now());
   const isIdleRef = useRef<boolean>(false);
@@ -88,33 +101,66 @@ export default function RecommendationCarousel({ vehicles }: RecommendationCarou
     if (vehicles.length === 0 || isAnimating) return;
     
     setIsAnimating(true);
+    setAnimationDirection('right');
     setCurrentIndex((prev) => (prev + 1) % vehicles.length);
     
-    setTimeout(() => setIsAnimating(false), 300);
+    setTimeout(() => {
+      setIsAnimating(false);
+      setAnimationDirection(null);
+    }, 500);
   };
 
   const prevVehicle = () => {
     if (vehicles.length === 0 || isAnimating) return;
     
     setIsAnimating(true);
+    setAnimationDirection('left');
     setCurrentIndex((prev) => (prev - 1 + vehicles.length) % vehicles.length);
     
-    setTimeout(() => setIsAnimating(false), 300);
+    setTimeout(() => {
+      setIsAnimating(false);
+      setAnimationDirection(null);
+    }, 500);
   };
 
-  if (vehicles.length === 0) {
-    return null; // Don't show anything when no vehicles
-  }
+  // Create placeholder cards if no vehicles
+  const showPlaceholder = vehicles.length === 0;
+  
+  const currentVehicle = !showPlaceholder ? vehicles[currentIndex] : null;
 
-  const currentVehicle = vehicles[currentIndex];
+  // Get the 3 cards to display (current, next, previous)
+  const getDisplayCards = (): DisplayCard[] => {
+    if (showPlaceholder) {
+      // Return 3 placeholder cards
+      return [
+        { position: -1, isCenter: false, isPlaceholder: true },
+        { position: 0, isCenter: true, isPlaceholder: true },
+        { position: 1, isCenter: false, isPlaceholder: true }
+      ];
+    }
+    
+    const cards: DisplayCard[] = [];
+    for (let i = -1; i <= 1; i++) {
+      const index = (currentIndex + i + vehicles.length) % vehicles.length;
+      cards.push({
+        vehicle: vehicles[index],
+        position: i,
+        isCenter: i === 0,
+        isPlaceholder: false
+      });
+    }
+    return cards;
+  };
+
+  const displayCards = getDisplayCards();
 
   return (
     <div className="relative w-full">
       {/* Header */}
       <div className="mb-4 text-center">
-        <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations</h3>
+        <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
         <p className="text-sm text-slate-400">
-          {vehicles.length} {vehicles.length === 1 ? 'option' : 'options'} found
+          {showPlaceholder ? 'Waiting for your preferences' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
         </p>
       </div>
 
@@ -123,76 +169,131 @@ export default function RecommendationCarousel({ vehicles }: RecommendationCarou
         {/* Left Arrow */}
         <button
           onClick={prevVehicle}
-          disabled={isAnimating || vehicles.length <= 1}
-          className="absolute left-0 z-10 w-12 h-12 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed -translate-x-6"
+          disabled={isAnimating || vehicles.length <= 1 || showPlaceholder}
+          className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed -translate-x-6"
         >
-          <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        {/* Vehicle Card */}
-        <div className={`transition-all duration-300 ${isAnimating ? 'opacity-50 scale-95' : 'opacity-100 scale-100'}`}>
-          <div className="glass-card rounded-2xl p-6 w-[500px] shadow-2xl">
-            {/* Vehicle Image */}
-            <div className="aspect-[4/3] bg-gradient-to-br from-slate-600 to-slate-700 rounded-xl mb-4 flex items-center justify-center overflow-hidden">
-              {currentVehicle.image_url ? (
-                <img
-                  src={currentVehicle.image_url}
-                  alt={`${currentVehicle.year} ${currentVehicle.make} ${currentVehicle.model}`}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-slate-400 text-6xl">🚗</div>
-              )}
-            </div>
+        {/* Three Item Cards */}
+        <div className="flex items-center justify-center space-x-4">
+          {displayCards.map((card, idx) => (
+            <div
+              key={card.isPlaceholder ? `placeholder-${idx}` : `${card.vehicle.id}-${idx}`}
+              className={`transition-all duration-500 ease-out ${
+                card.isCenter
+                  ? 'transform rotate-0 translate-x-0 scale-100 z-10'
+                  : card.position === -1
+                    ? 'transform rotate-2 translate-x-2 scale-95 opacity-70 z-0'
+                    : 'transform -rotate-2 -translate-x-2 scale-95 opacity-70 z-0'
+              } ${
+                isAnimating && card.isCenter
+                  ? animationDirection === 'right' 
+                    ? 'transform -rotate-8 -translate-x-4 scale-90 z-10' 
+                    : 'transform rotate-8 translate-x-4 scale-90 z-10'
+                  : ''
+              }`}
+            >
+              <div className="glass-card rounded-xl p-4 w-[300px] shadow-2xl">
+                {card.isPlaceholder ? (
+                  /* Placeholder Card Content */
+                  <>
+                    <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                      <div className="text-slate-400 text-4xl opacity-50">🚗</div>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-bold text-slate-400 mb-2 leading-tight">
+                        Tell us what you want
+                      </h4>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Price:</span>
+                          <span className="text-slate-500">---</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Mileage:</span>
+                          <span className="text-slate-500">---</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Location:</span>
+                          <span className="text-slate-500">---</span>
+                        </div>
+                      </div>
+                      <button 
+                        disabled
+                        className="w-full bg-slate-600 text-slate-400 py-2 rounded-lg text-xs font-medium cursor-not-allowed mt-3"
+                      >
+                        Get Recommendations
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Real Item Card Content */
+                  <>
+                    <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                      {card.vehicle?.image_url ? (
+                        <img
+                          src={card.vehicle.image_url}
+                          alt={`${card.vehicle.year} ${card.vehicle.make} ${card.vehicle.model}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-slate-400 text-4xl">🚗</div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-bold text-slate-100 mb-2 leading-tight">
+                        {card.vehicle?.year} {card.vehicle?.make} {card.vehicle?.model}
+                      </h4>
+                      
+                      <div className="space-y-1 text-xs">
+                        {card.vehicle?.price && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Price:</span>
+                            <span className="font-semibold text-green-400">
+                              ${card.vehicle.price.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {card.vehicle?.mileage && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Mileage:</span>
+                            <span className="text-slate-300">{card.vehicle.mileage.toLocaleString()} mi</span>
+                          </div>
+                        )}
+                        
+                        {card.vehicle?.location && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Location:</span>
+                            <span className="text-slate-300 text-right max-w-[140px] truncate">{card.vehicle.location}</span>
+                          </div>
+                        )}
+                      </div>
 
-            {/* Vehicle Info */}
-            <div className="space-y-3">
-              <h4 className="text-xl font-bold text-slate-100 mb-3">
-                {currentVehicle.year} {currentVehicle.make} {currentVehicle.model}
-              </h4>
-              
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {currentVehicle.price && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Price:</span>
-                    <span className="font-semibold text-green-400">
-                      ${currentVehicle.price.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-                
-                {currentVehicle.mileage && (
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Mileage:</span>
-                    <span className="text-slate-300">{currentVehicle.mileage.toLocaleString()} mi</span>
-                  </div>
-                )}
-                
-                {currentVehicle.location && (
-                  <div className="flex justify-between col-span-2">
-                    <span className="text-slate-400">Location:</span>
-                    <span className="text-slate-300">{currentVehicle.location}</span>
-                  </div>
+                      <button 
+                        onClick={() => card.vehicle && onItemSelect?.(card.vehicle)}
+                        className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
-
-              {/* Action Button */}
-              <button className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-xl font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-4">
-                View Details
-              </button>
             </div>
-          </div>
+          ))}
         </div>
 
         {/* Right Arrow */}
         <button
           onClick={nextVehicle}
-          disabled={isAnimating || vehicles.length <= 1}
-          className="absolute right-0 z-10 w-12 h-12 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed translate-x-6"
+          disabled={isAnimating || vehicles.length <= 1 || showPlaceholder}
+          className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed translate-x-6"
         >
-          <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -201,7 +302,7 @@ export default function RecommendationCarousel({ vehicles }: RecommendationCarou
       {/* Counter */}
       <div className="text-center mt-4">
         <span className="text-sm text-slate-400 font-medium">
-          {currentIndex + 1} of {vehicles.length}
+          {showPlaceholder ? '0 of 0' : `${currentIndex + 1} of ${vehicles.length}`}
         </span>
       </div>
     </div>

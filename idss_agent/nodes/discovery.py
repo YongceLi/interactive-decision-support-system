@@ -77,6 +77,9 @@ def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchStat
     prompt = f"""
 You're a helpful friend helping someone find their perfect car. Be casual, friendly, and conversational.
 
+**User's Current Preferences:**
+{json.dumps(filters, indent=2)}
+
 **Current Listings ({len(vehicles)} vehicles found):**
 {vehicles_summary}
 
@@ -86,7 +89,13 @@ You're a helpful friend helping someone find their perfect car. Be casual, frien
 Write a short, friendly response (1 paragraph max) that:
 1. Acknowledges what they're looking for
 2. Mentions 1-2 interesting options from the listings
-3. Asks 1-2 natural questions to help narrow things down
+3. Asks 1-2 NEW questions to help narrow things down
+
+**IMPORTANT:** Do NOT ask about preferences they've already provided! Look at their current filters and only ask about missing information like:
+- Body style (if not specified)
+- Features/priorities (if not mentioned)
+- Timeline for purchase
+- Location/zip code (if not given)
 
 Be like a knowledgeable friend who knows cars - not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
 

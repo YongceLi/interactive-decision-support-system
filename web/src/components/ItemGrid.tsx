@@ -3,40 +3,40 @@
 import { Vehicle } from '@/types/vehicle';
 import { useVehicleImages } from '@/hooks/useVehicleImages';
 
-interface CarGridProps {
+interface ItemGridProps {
   vehicles: Vehicle[];
-  onCarSelect: (car: Vehicle) => void;
+  onItemSelect: (item: Vehicle) => void;
 }
 
-export default function CarGrid({ vehicles, onCarSelect }: CarGridProps) {
+export default function ItemGrid({ vehicles, onItemSelect }: ItemGridProps) {
   return (
     <div className="h-full bg-stone-50">
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-stone-900 mb-2">
-          Recommended Cars
+          Recommended Items
         </h2>
         <p className="text-stone-600">
-          {vehicles.length} vehicles found based on your preferences
+          {vehicles.length} items found based on your preferences
         </p>
       </div>
 
       {vehicles.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-center text-stone-500">
-            <h3 className="text-lg font-medium mb-2">No vehicles found</h3>
+            <h3 className="text-lg font-medium mb-2">No items found</h3>
             <p className="text-sm">Try adjusting your search criteria or ask the agent for recommendations.</p>
             <p className="text-xs mt-2 text-stone-400">
-              Only showing vehicles with complete information matching your filters.
+              Only showing items with complete information matching your filters.
             </p>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {vehicles.map((vehicle, index) => (
-            <CarCard 
-              key={vehicle.id || `vehicle-${index}`} 
+            <ItemCard 
+              key={vehicle.id || `item-${index}`} 
               vehicle={vehicle} 
-              onCarSelect={onCarSelect} 
+              onItemSelect={onItemSelect} 
             />
           ))}
         </div>
@@ -45,18 +45,18 @@ export default function CarGrid({ vehicles, onCarSelect }: CarGridProps) {
   );
 }
 
-interface CarCardProps {
+interface ItemCardProps {
   vehicle: Vehicle;
-  onCarSelect: (car: Vehicle) => void;
+  onItemSelect: (item: Vehicle) => void;
 }
 
-function CarCard({ vehicle, onCarSelect }: CarCardProps) {
+function ItemCard({ vehicle, onItemSelect }: ItemCardProps) {
   const { images, loading, error } = useVehicleImages(vehicle.vin);
   const displayImage = images[0]?.url || vehicle.image_url;
 
   return (
     <div
-      onClick={() => onCarSelect(vehicle)}
+      onClick={() => onItemSelect(vehicle)}
       className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border border-stone-200 hover:border-stone-300 hover:scale-105 transform flex flex-col h-full"
     >
       <div className="aspect-video bg-gray-200 relative">
