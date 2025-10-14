@@ -39,7 +39,7 @@ export default function Home() {
       const initialMessage: ChatMessage = {
         id: 'initial',
         role: 'assistant',
-        content: "Let's shop for your dream item. Tell me what you're looking for.",
+        content: "Let's shop for your dream product. Tell me what you're looking for.",
         timestamp: new Date()
       };
       setChatMessages([initialMessage]);

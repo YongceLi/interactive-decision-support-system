@@ -190,9 +190,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect }: Recom
                     : 'transform -rotate-2 -translate-x-2 scale-95 opacity-70 z-0'
               } ${
                 isAnimating && card.isCenter
-                  ? animationDirection === 'right' 
-                    ? 'transform -rotate-8 -translate-x-4 scale-90 z-10' 
-                    : 'transform rotate-8 translate-x-4 scale-90 z-10'
+                  ? 'transform -rotate-8 -translate-x-4 scale-90 z-10'
                   : ''
               }`}
             >
