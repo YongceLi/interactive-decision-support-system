@@ -11,21 +11,24 @@ from idss_agent.state import VehicleSearchState
 from idss_agent.tools.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
 
 
-def has_photos(vehicle: Dict[str, Any]) -> bool:
+def fetch_and_attach_photos(vehicle: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Check if a vehicle has photos available.
+    Fetch photos for a vehicle and attach them to the vehicle data.
 
     Args:
         vehicle: Vehicle dictionary with VIN
 
     Returns:
-        True if vehicle has photos, False otherwise
+        Vehicle dictionary with photos attached (if available)
     """
     # Extract VIN from vehicle data
     vin = vehicle.get('vehicle', {}).get('vin') or vehicle.get('vin')
 
+    # Initialize photos field
+    vehicle['photos'] = None
+
     if not vin or len(vin) != 17:
-        return False
+        return vehicle
 
     try:
         # Call photo API
@@ -33,14 +36,20 @@ def has_photos(vehicle: Dict[str, Any]) -> bool:
         data = json.loads(result)
 
         # Check if photos exist
-        if "error" in data:
-            return False
-
-        retail_photos = data.get('data', {}).get('retail', [])
-        return len(retail_photos) > 0
+        if "error" not in data:
+            retail_photos = data.get('data', {}).get('retail', [])
+            if len(retail_photos) > 0:
+                # Store the photo data with the vehicle
+                vehicle['photos'] = {
+                    'retail': retail_photos,
+                    'data': data.get('data', {})
+                }
 
     except Exception:
-        return False
+        # If API call fails, photos remain None
+        pass
+
+    return vehicle
 
 
 def deduplicate_by_vin(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -71,27 +80,33 @@ def deduplicate_by_vin(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def filter_vehicles_by_photos(vehicles: List[Dict[str, Any]], target_count: int = 20) -> List[Dict[str, Any]]:
     """
-    Filter vehicles to prioritize those with photos.
+    Filter vehicles to prioritize those with photos, fetching and caching photo data.
 
     Strategy:
-    1. First, collect vehicles WITH photos (up to target_count)
-    2. If not enough, add vehicles WITHOUT photos to reach target_count
+    1. Check each vehicle one by one and fetch photos
+    2. Attach photo data to vehicle dictionary for caching
+    3. Prioritize vehicles WITH photos (up to target_count)
+    4. If not enough, add vehicles WITHOUT photos to reach target_count
 
     Args:
         vehicles: List of vehicle dictionaries
         target_count: Target number of vehicles (default: 20)
 
     Returns:
-        List of up to target_count vehicles, prioritizing those with photos
+        List of up to target_count vehicles with photo data cached, prioritizing those with photos
     """
     vehicles_with_photos = []
     vehicles_without_photos = []
 
     for vehicle in vehicles:
-        if has_photos(vehicle):
-            vehicles_with_photos.append(vehicle)
+        # Fetch photos and attach them to the vehicle
+        vehicle_with_photos = fetch_and_attach_photos(vehicle)
+
+        # Check if photos were successfully attached
+        if vehicle_with_photos.get('photos') is not None:
+            vehicles_with_photos.append(vehicle_with_photos)
         else:
-            vehicles_without_photos.append(vehicle)
+            vehicles_without_photos.append(vehicle_with_photos)
 
         # Early exit if we have enough vehicles with photos
         if len(vehicles_with_photos) >= target_count:
@@ -160,10 +175,10 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 
     # Extract the final response from agent
     final_message = result['messages'][-1].content
-
     # Parse the search results from the agent's tool calls
     # Look through messages for tool results
     vehicles = []
+    print(result['messages'])
     for msg in result['messages']:
         # Check if this is a tool message with search results
         if hasattr(msg, 'content') and isinstance(msg.content, str):
