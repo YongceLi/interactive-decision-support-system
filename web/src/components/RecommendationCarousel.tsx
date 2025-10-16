@@ -228,7 +228,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   </>
         ) : (
           /* Real Item Card Content */
-          <VehicleCard vehicle={card.vehicle} onItemSelect={onItemSelect} />
+          <VehicleCard 
+            vehicle={card.vehicle} 
+            onItemSelect={onItemSelect} 
+            index={(currentIndex + card.position + vehicles.length) % vehicles.length + 1}
+            isCenter={card.isCenter}
+          />
         )}
                       </div>
                     </div>
@@ -258,7 +263,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 }
 
 // VehicleCard component
-function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect?: (vehicle: Vehicle) => void }) {
+function VehicleCard({ vehicle, onItemSelect, index, isCenter }: { 
+  vehicle: Vehicle; 
+  onItemSelect?: (vehicle: Vehicle) => void;
+  index?: number;
+  isCenter?: boolean;
+}) {
   // Use Auto.dev image URL
   const primaryImage = vehicle.image_url;
   const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
@@ -302,6 +312,13 @@ function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect
         ) : (
           <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
             No Image Found
+          </div>
+        )}
+        
+        {/* Number indicator - show on all cards */}
+        {index && (
+          <div className="absolute bottom-0 right-0 w-8 h-8 glass-dark border border-slate-600/30 text-slate-200 rounded-lg flex items-center justify-center text-sm font-bold">
+            {index}
           </div>
         )}
       </div>
