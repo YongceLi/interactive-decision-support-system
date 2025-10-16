@@ -37,14 +37,14 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: #dc2626; /* red-600 */
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6); /* purple to blue gradient */
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
-  background: #b91c1c; /* red-700 */
+  background: linear-gradient(135deg, #7c3aed, #2563eb); /* darker purple to blue */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -52,7 +52,7 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: #dc2626; /* red-600 */
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6); /* purple to blue gradient */
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
+import FilterMenu from '@/components/FilterMenu';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -33,6 +34,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Vehicle | null>(null);
   const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
+  const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -119,13 +121,92 @@ export default function Home() {
     }
   };
 
+  const handleFilterChange = async (filters: Record<string, unknown>) => {
+    setCurrentFilters(filters);
+    
+    // Create a message to send to the agent with the filter preferences
+    const filterMessage = `Please find vehicles with these preferences: ${JSON.stringify(filters)}`;
+    
+    setIsLoading(true);
+
+    try {
+      // Send filter request to agent API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: filterMessage,
+          session_id: sessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      
+      // Update session ID
+      if (data.session_id) {
+        setSessionId(data.session_id);
+      }
+
+      // Update vehicles - convert API format to our format
+      if (data.vehicles && data.vehicles.length > 0) {
+        const convertedVehicles = data.vehicles.map((apiVehicle: Record<string, unknown>) => {
+          return idssApiService.convertVehicle(apiVehicle);
+        });
+        setVehicles(convertedVehicles);
+        setHasReceivedRecommendations(true);
+      }
+
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      
+      // Add error message only if there's an error
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `Sorry, I ran into an issue applying your filters. Please try again.`,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get only the last 3 turns (6 messages max: user-agent-user-agent-user-agent)
+  const getLastThreeTurns = () => {
+    const maxMessages = 6; // 3 turns = 6 messages max
+    return chatMessages.slice(-maxMessages);
+  };
+
+  const recentMessages = getLastThreeTurns();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
-        {/* Chat Messages with Floating Cards */}
-        <div className="flex-1 overflow-y-auto p-6 relative">
-          <div className="max-w-6xl mx-auto space-y-6 relative">
-            {chatMessages.map((message) => (
+        {/* Recommendations at the top */}
+        {hasReceivedRecommendations && (
+          <div className="flex-shrink-0 p-2 border-b border-slate-600/30">
+            <div className="max-w-6xl mx-auto">
+              <RecommendationCarousel 
+                vehicles={vehicles} 
+                onItemSelect={setSelectedItem}
+                showPlaceholders={false}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Chat Messages - Only last 3 turns */}
+        <div className="flex-1 overflow-y-auto p-10 relative min-h-0">
+          <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
+            {recentMessages.map((message) => (
               <div
                 key={message.id}
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -154,15 +235,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-
-            {/* Recommendation Cards - Always show, with placeholders if no recommendations yet */}
-            <div className="mt-8 relative">
-              <RecommendationCarousel 
-                vehicles={vehicles} 
-                onItemSelect={setSelectedItem}
-                showPlaceholders={!hasReceivedRecommendations}
-              />
-            </div>
           </div>
         </div>
 
@@ -177,6 +249,9 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Filter Menu */}
+      <FilterMenu onFilterChange={handleFilterChange} />
 
       {/* Item Detail Modal */}
       {selectedItem && (
