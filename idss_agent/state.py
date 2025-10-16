@@ -63,6 +63,7 @@ class VehicleSearchState(TypedDict):
     - Questions asked to avoid repetition
     - AI response for current turn
     - User interaction events for tracking engagement
+    - Exploration mode tracking and insights
     """
     # Core data
     explicit_filters: VehicleFilters
@@ -79,6 +80,12 @@ class VehicleSearchState(TypedDict):
     # User interaction tracking
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
 
+    # Exploration phase tracking
+    exploration_mode: Optional[str]  # "active", "complete", or None
+    exploration_questions_asked: List[str]  # Topics asked during exploration
+    exploration_insights: Dict[str, Any]  # Gathered insights from exploration (use cases, lifestyle, etc.)
+    readiness_score: int  # 0-100, confidence that we have enough info to recommend
+
     # Output
     ai_response: str
 
@@ -93,6 +100,10 @@ def create_initial_state() -> VehicleSearchState:
         questions_asked=[],
         previous_filters=VehicleFilters(),
         interaction_events=[],
+        exploration_mode="active",  # Start in exploration mode
+        exploration_questions_asked=[],
+        exploration_insights={},
+        readiness_score=0,
         ai_response=""
     )
 

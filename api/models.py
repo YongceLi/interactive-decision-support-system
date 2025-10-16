@@ -19,6 +19,8 @@ class ChatResponse(BaseModel):
     filters: Dict[str, Any]
     preferences: Dict[str, Any]
     session_id: str
+    exploration_mode: Optional[str] = None  # "active", "complete", or None
+    exploration_insights: Optional[Dict[str, Any]] = None
 
 
 class SessionResponse(BaseModel):
