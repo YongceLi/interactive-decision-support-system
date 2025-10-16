@@ -22,7 +22,10 @@ from api.models import (
     ChatResponse,
     SessionResponse,
     ResetRequest,
-    ResetResponse
+    ResetResponse,
+    EventRequest,
+    EventResponse,
+    EventsResponse
 )
 
 required_env_vars = ["OPENAI_API_KEY", "AUTODEV_API_KEY"]
@@ -175,6 +178,71 @@ async def list_sessions():
         "active_sessions": len(sessions),
         "session_ids": list(sessions.keys())
     }
+
+
+@app.post("/session/{session_id}/event", response_model=EventResponse)
+async def log_event(session_id: str, request: EventRequest):
+    """
+    Log a user interaction event.
+
+    Tracks user interactions with the UI such as:
+    - vehicle_view: User views vehicle details
+    - vehicle_click: User clicks on a vehicle
+    - photo_view: User views vehicle photos
+    - link_click: User clicks external links
+    - custom: Any other custom event
+
+    Vehicle-related events (vehicle_view, vehicle_click, photo_view) must include 'vin' in data.
+    """
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    state = sessions[session_id]
+
+    # Generate timestamp if not provided
+    timestamp = request.timestamp or datetime.now().isoformat()
+
+    # Create event record
+    event = {
+        "event_type": request.event_type,
+        "timestamp": timestamp,
+        "data": request.data
+    }
+
+    # Add to session state
+    state['interaction_events'].append(event)
+    event_id = len(state['interaction_events']) - 1
+
+    return EventResponse(
+        status="logged",
+        event_id=event_id,
+        timestamp=timestamp
+    )
+
+
+@app.get("/session/{session_id}/events", response_model=EventsResponse)
+async def get_events(session_id: str, event_type: Optional[str] = None):
+    """
+    Get all interaction events for a session.
+
+    Optional query parameter:
+    - event_type: Filter events by type (e.g., ?event_type=vehicle_view)
+    """
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    state = sessions[session_id]
+    events = state.get('interaction_events', [])
+
+    # Filter by event type if specified
+    if event_type:
+        events = [e for e in events if e.get('event_type') == event_type]
+
+    return EventsResponse(
+        session_id=session_id,
+        events=events,
+        total=len(events)
+    )
 
 
 if __name__ == "__main__":
