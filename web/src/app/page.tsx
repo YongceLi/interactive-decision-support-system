@@ -9,7 +9,7 @@ import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
 
-// Format agent response to remove quotes and convert dashes to bullet points
+// Format agent response to remove quotes and convert to proper markdown
 function formatAgentResponse(response: string): string {
   // Remove surrounding quotes if present
   let formatted = response.trim();
@@ -18,13 +18,47 @@ function formatAgentResponse(response: string): string {
     formatted = formatted.slice(1, -1);
   }
   
-  // Convert dashes to bullet points with proper indentation
-  formatted = formatted.replace(/^- /gm, '\n\t• ');
+  // Convert dashes and asterisks to proper bullet points (keep on same line)
+  formatted = formatted.replace(/^[\s]*[-*][\s]+/gm, '• ');
   
   // Clean up any double newlines
   formatted = formatted.replace(/\n\n+/g, '\n\n');
   
   return formatted.trim();
+}
+
+// Simple markdown parser for chat messages
+function parseMarkdown(text: string): string {
+  let html = text;
+  
+  // Remove exclamation marks before "photos"
+  html = html.replace(/!+\s*([Pp]hotos?)/g, '$1');
+  
+  // Convert bold text **text** or *text* to <strong>
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  
+  // Convert headings ### Heading to <h3>
+  html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-0 mt-0">$1</h3>');
+  html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-0 mt-0">$1</h2>');
+  html = html.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-0 mt-0">$1</h1>');
+  
+  // Convert links [text](url) to <a>
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // Convert bullet points • to proper list items
+  html = html.replace(/^• (.*$)/gm, '<li class="mb-2">$1</li>');
+  
+  // Wrap consecutive list items in <ul>
+  html = html.replace(/(<li class="mb-2">.*<\/li>(\s*<li class="mb-2">.*<\/li>)*)/g, '<ul class="list-none space-y-2 mb-3">$1</ul>');
+  
+  // Remove line breaks between list items
+  html = html.replace(/<\/li>\s*\n\s*<li/g, '</li><li');
+  
+  // Convert line breaks to <br> for non-list content
+  html = html.replace(/\n(?!<)/g, '<br>');
+  
+  return html;
 }
 
 export default function Home() {
@@ -209,10 +243,10 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View */}
         {hasReceivedRecommendations && (
-          <div className="flex-shrink-0 p-2 border-b border-slate-600/30">
-            <div className="max-w-6xl mx-auto">
+          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[28rem]">
+            <div className="max-w-6xl mx-auto h-full">
               {showDetails && selectedItem ? (
-                <div className="glass-dark rounded-xl p-3 relative max-h-96 overflow-y-auto">
+                <div className="glass-dark rounded-xl p-2 relative overflow-y-auto h-full">
                   {/* Back Button */}
                   <button
                     onClick={handleBackToRecommendations}
@@ -401,18 +435,20 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <RecommendationCarousel 
-                  vehicles={vehicles} 
-                  onItemSelect={handleItemSelect}
-                  showPlaceholders={false}
-                />
+                <div className="h-full">
+                  <RecommendationCarousel 
+                    vehicles={vehicles} 
+                    onItemSelect={handleItemSelect}
+                    showPlaceholders={false}
+                  />
+                </div>
               )}
             </div>
           </div>
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className="flex-1 overflow-y-auto p-10 relative min-h-0">
+        <div className="flex-1 overflow-y-auto p-12 relative min-h-0">
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
               <div
@@ -426,9 +462,10 @@ export default function Home() {
                         : 'glass-dark text-slate-100'
                     }`}
                   >
-                    <p className="text-sm leading-relaxed" dangerouslySetInnerHTML={{
-                      __html: message.content.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                    }} />
+                    <div 
+                      className="text-sm leading-relaxed chat-message prose prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
+                    />
                   </div>
               </div>
             ))}
@@ -447,7 +484,7 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className="border-t border-slate-600/30 glass-dark p-6">
+        <div className="border-t border-slate-600/30 glass-dark p-8">
           <div className="max-w-6xl mx-auto">
             <ChatBox
               messages={[]}

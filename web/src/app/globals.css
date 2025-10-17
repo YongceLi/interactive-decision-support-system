@@ -58,23 +58,30 @@ html {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive bullet point wrapping */
+/* Chat message styling */
 .chat-message {
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
 }
 
-.chat-message .bullet-point {
-  display: block;
-  margin-left: 0.5rem;
-  padding-left: 0.5rem;
-  text-indent: -0.5rem;
+.chat-message ul {
+  list-style: none;
+  padding-left: 0;
 }
 
-.chat-message .bullet-point::before {
-  content: "• ";
-  color: inherit;
+.chat-message li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem; /* 8px */
+}
+
+.chat-message li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #8b5cf6; /* purple-500 */
+  font-weight: bold;
 }
 
 /* Custom glassmorphism utilities */

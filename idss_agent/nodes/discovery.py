@@ -117,7 +117,7 @@ Write a short, friendly response (1 paragraph max) that:
 Generate your response:
 """
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
     response = llm.invoke(prompt)
 
     state['ai_response'] = response.content.strip()
