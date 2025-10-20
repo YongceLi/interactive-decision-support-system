@@ -1,48 +1,61 @@
 """
-Visualize the LangGraph workflow structure using LangGraph's built-in methods.
+Visualize the LangGraph workflow structures using LangGraph's built-in methods.
 
-This script uses LangGraph's get_graph() method to visualize the vehicle
-search agent workflow.
+This script generates PNG visualizations for both the interview and supervisor workflows.
 """
 import os
 import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from idss_agent import create_vehicle_agent
+from idss_agent.workflows.interview_workflow import get_interview_graph
+from idss_agent.workflows.supervisor_workflow import get_supervisor_graph
 
 
 if __name__ == "__main__":
-    print("Generating LangGraph workflow visualization...")
+    print("Generating LangGraph workflow visualizations...")
     print("=" * 70)
 
     try:
-        # Create the agent workflow
-        agent = create_vehicle_agent()
+        # Create interview workflow graph
+        print("Creating interview workflow graph...")
+        interview_graph = get_interview_graph()
+        interview_vis = interview_graph.get_graph()
+        interview_png = interview_vis.draw_mermaid_png()
 
-        # Use LangGraph's built-in get_graph() method
-        graph = agent.get_graph()
-
-        # Draw as Mermaid diagram
-        mermaid_png = graph.draw_mermaid_png()
-
-        # Save to file
-        output_file = "graph_visualization.png"
-        with open(output_file, "wb") as f:
-            f.write(mermaid_png)
-
-        print(f"✓ Graph visualization saved to: {output_file}")
+        # Save interview graph
+        interview_file = "interview_workflow.png"
+        with open(interview_file, "wb") as f:
+            f.write(interview_png)
+        print(f"✓ Interview workflow saved to: {interview_file}")
 
     except Exception as e:
-        print(f"Error generating diagram: {e}")
-        print("\nTrying alternative method (ASCII representation)...")
+        print(f"Error generating interview workflow diagram: {e}")
+        import traceback
+        traceback.print_exc()
 
-        try:
-            # Alternative: print ASCII representation
-            agent = create_vehicle_agent()
-            graph = agent.get_graph()
-            print(graph)
-        except Exception as e2:
-            print(f"Error: {e2}")
-            import traceback
-            traceback.print_exc()
+    try:
+        # Create supervisor workflow graph
+        print("\nCreating supervisor workflow graph...")
+        supervisor_graph = get_supervisor_graph()
+        supervisor_vis = supervisor_graph.get_graph()
+        supervisor_png = supervisor_vis.draw_mermaid_png()
+
+        # Save supervisor graph
+        supervisor_file = "supervisor_workflow.png"
+        with open(supervisor_file, "wb") as f:
+            f.write(supervisor_png)
+        print(f"✓ Supervisor workflow saved to: {supervisor_file}")
+
+    except Exception as e:
+        print(f"Error generating supervisor workflow diagram: {e}")
+        import traceback
+        traceback.print_exc()
+
+    print("\n" + "=" * 70)
+    print("✅ Visualization complete!")
+    print("\nGenerated files:")
+    print("  - interview_workflow.png: Interview phase workflow")
+    print("  - supervisor_workflow.png: Supervisor phase workflow")
+    print("\nNote: The main router (agent.py) switches between these two workflows")
+    print("      based on the 'interviewed' flag in the state.")
