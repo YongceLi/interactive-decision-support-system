@@ -3,7 +3,8 @@
 A conversational product decision support assistant built with LangGraph that helps users find and evaluate vehicles through natural dialogue.
 
 ## Architecture Overview
- ![Workflow Graph](graph_visualization.png)
+ ![Workflow Graph](supervisor_workflow.png)
+ ![Interview Workflow](interview_workflow.png)
 
 The agent uses a multi-node LangGraph workflow with two operating modes:
 - **Discovery Mode** (simple mode, simple LLM node): Helps users explore and refine their vehicle search, asking questions to get user's implicit preferences.

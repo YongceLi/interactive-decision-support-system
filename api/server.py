@@ -111,8 +111,7 @@ async def chat(request: ChatRequest):
             filters=updated_state.get('explicit_filters', {}),
             preferences=updated_state.get('implicit_preferences', {}),
             session_id=session_id,
-            exploration_mode=updated_state.get('exploration_mode'),
-            exploration_insights=updated_state.get('exploration_insights', {})
+            interviewed=updated_state.get('interviewed', False)
         )
 
     except Exception as e:

@@ -1,8 +1,10 @@
 """
 State schema for the vehicle search agent.
 """
-from typing import TypedDict, Optional, List, Dict, Any
+from typing import TypedDict, Optional, List, Dict, Any, Annotated
+from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langgraph.graph.message import add_messages
 
 
 class VehicleFilters(TypedDict, total=False):
@@ -51,26 +53,71 @@ class ImplicitPreferences(TypedDict, total=False):
     notes: Optional[str]  # Any other inferred information
 
 
+# Pydantic versions for LLM structured output (mirror TypedDict structure)
+
+class VehicleFiltersPydantic(BaseModel):
+    """Pydantic version of VehicleFilters for LLM structured output."""
+    # Vehicle specification filters
+    make: Optional[str] = Field(None, description="e.g., 'Toyota' or 'Ford,Chevrolet' (comma-separated)")
+    model: Optional[str] = Field(None, description="e.g., 'Camry' or 'F-150,Silverado'")
+    year: Optional[str] = Field(None, description="e.g., '2018' or '2018-2020' (range format)")
+    trim: Optional[str] = Field(None, description="e.g., 'XLT' or 'XLT,Lariat'")
+    body_style: Optional[str] = Field(None, description="e.g., 'sedan' or 'suv,truck'")
+    engine: Optional[str] = Field(None, description="e.g., '2.0L' or '2.0L,3.5L'")
+    transmission: Optional[str] = Field(None, description="e.g., 'automatic' or 'automatic,manual'")
+
+    # Color filters
+    exterior_color: Optional[str] = Field(None, description="e.g., 'white' or 'white,black,silver'")
+    interior_color: Optional[str] = Field(None, description="e.g., 'black' or 'black,beige,gray'")
+
+    # Physical attributes
+    doors: Optional[int] = Field(None, description="e.g., 2, 4")
+    seating_capacity: Optional[int] = Field(None, description="e.g., 5, 7, 8")
+
+    # Retail listing filters
+    price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
+    state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
+    miles: Optional[str] = Field(None, description="e.g., '0-50000' (range format)")
+
+    # Location filters
+    zip: Optional[str] = Field(None, description="5-digit ZIP code")
+    distance: Optional[int] = Field(None, description="Search radius in miles from ZIP")
+
+    # Additional features
+    features: Optional[List[str]] = Field(None, description="e.g., ['sunroof', 'leather seats', 'navigation']")
+
+
+class ImplicitPreferencesPydantic(BaseModel):
+    """Pydantic version of ImplicitPreferences for LLM structured output."""
+    priorities: Optional[List[str]] = Field(None, description="e.g., ['fuel_efficiency', 'safety', 'reliability', 'luxury']")
+    lifestyle: Optional[str] = Field(None, description="e.g., 'family-oriented', 'outdoorsy', 'urban commuter'")
+    budget_sensitivity: Optional[str] = Field(None, description="e.g., 'budget-conscious', 'moderate', 'luxury-focused'")
+    brand_affinity: Optional[List[str]] = Field(None, description="Brands user seems to prefer")
+    concerns: Optional[List[str]] = Field(None, description="e.g., ['maintenance costs', 'resale value', 'insurance']")
+    usage_patterns: Optional[str] = Field(None, description="e.g., 'daily commuter', 'weekend trips', 'family road trips'")
+    notes: Optional[str] = Field(None, description="Any other important context")
+
+
 class VehicleSearchState(TypedDict):
     """
     Complete state for the vehicle search agent.
 
     This state is updated throughout the conversation and maintains:
     - Explicit filters from user requests
-    - Conversation history using LangChain messages
+    - Conversation history using LangChain messages (with add_messages reducer)
     - Implicit preferences inferred from dialogue
     - Recommended vehicles (up to 20, updated each turn)
     - Questions asked to avoid repetition
     - AI response for current turn
     - User interaction events for tracking engagement
-    - Exploration mode tracking and insights
+    - Interview mode tracking and insights
     """
     # Core data
     explicit_filters: VehicleFilters
-    conversation_history: List[BaseMessage]
+    conversation_history: Annotated[List[BaseMessage], add_messages] 
     implicit_preferences: ImplicitPreferences
 
-    # Results (up to 20 vehicles, updated each turn)
+    # Results (up to MAX_RECOMMENDED_VEHICLES vehicles, updated each turn)
     recommended_vehicles: List[Dict[str, Any]]
 
     # Metadata
@@ -80,11 +127,9 @@ class VehicleSearchState(TypedDict):
     # User interaction tracking
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
 
-    # Exploration phase tracking
-    exploration_mode: Optional[str]  # "active", "complete", or None
-    exploration_questions_asked: List[str]  # Topics asked during exploration
-    exploration_insights: Dict[str, Any]  # Gathered insights from exploration (use cases, lifestyle, etc.)
-    readiness_score: int  # 0-100, confidence that we have enough info to recommend
+    # Interview phase tracking
+    interviewed: bool  # False = in interview workflow, True = in supervisor workflow
+    _interview_should_end: bool  # Internal flag for routing within interview workflow
 
     # Output
     ai_response: str
@@ -100,22 +145,24 @@ def create_initial_state() -> VehicleSearchState:
         questions_asked=[],
         previous_filters=VehicleFilters(),
         interaction_events=[],
-        exploration_mode="active",  # Start in exploration mode
-        exploration_questions_asked=[],
-        exploration_insights={},
-        readiness_score=0,
+        interviewed=False,  # Start in interview workflow
+        _interview_should_end=False,
         ai_response=""
     )
 
 
 def add_user_message(state: VehicleSearchState, content: str) -> VehicleSearchState:
-    """Add a user message to the conversation history."""
+    """
+    Add a user message to the conversation history.
+    """
     state["conversation_history"].append(HumanMessage(content=content))
     return state
 
 
 def add_ai_message(state: VehicleSearchState, content: str) -> VehicleSearchState:
-    """Add an AI message to the conversation history."""
+    """
+    Add an AI message to the conversation history.
+    """
     state["conversation_history"].append(AIMessage(content=content))
     return state
 

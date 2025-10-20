@@ -51,19 +51,19 @@ def search_vehicle_listings(
     # Vehicle filters
     vehicle_make: Optional[str] = None,
     vehicle_model: Optional[str] = None,
-    vehicle_year: Optional[str] = None,
+    vehicle_year: Optional[str] = "2022-2026",
     vehicle_trim: Optional[str] = None,
     vehicle_body_style: Optional[str] = None,
     vehicle_engine: Optional[str] = None,
     vehicle_transmission: Optional[str] = None,
     vehicle_exterior_color: Optional[str] = None,
     vehicle_interior_color: Optional[str] = None,
-    vehicle_doors: Optional[int] = None,
+    vehicle_doors: Optional[int] = 4,
     vehicle_squish_vin: Optional[str] = None,
     # Retail listing filters
     retail_price: Optional[str] = None,
     retail_state: Optional[str] = None,
-    retail_miles: Optional[str] = None,
+    retail_miles: Optional[str] = "0-50000",
     # Wholesale listing filters
     wholesale_buy_now_price: Optional[str] = None,
     wholesale_state: Optional[str] = None,
@@ -73,7 +73,7 @@ def search_vehicle_listings(
     distance: Optional[int] = None,
     # Pagination
     page: Optional[int] = 1,
-    limit: Optional[int] = 10,
+    limit: Optional[int] = 20,
 ) -> str:
     """Search for vehicle listings with comprehensive filtering options.
 
