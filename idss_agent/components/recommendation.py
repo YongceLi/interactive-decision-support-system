@@ -1,54 +1,50 @@
 """
 Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 """
+import concurrent.futures
+import math
 import json
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Tuple
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from idss_agent.state import VehicleSearchState
-from idss_agent.tools.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
+from idss_agent.components.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
+from idss_agent.logger import get_logger
 
 
-def fetch_and_attach_photos(vehicle: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Fetch photos for a vehicle and attach them to the vehicle data.
+logger = get_logger("components.recommendation")
 
-    Args:
-        vehicle: Vehicle dictionary with VIN
 
-    Returns:
-        Vehicle dictionary with photos attached (if available)
-    """
-    # Extract VIN from vehicle data
-    vin = vehicle.get('vehicle', {}).get('vin') or vehicle.get('vin')
-
-    # Initialize photos field
-    vehicle['photos'] = None
-
+def fetch_photos_for_vin(vin: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Fetch photos for a VIN and return the parsed payload if available."""
     if not vin or len(vin) != 17:
-        return vehicle
+        return None
 
     try:
-        # Call photo API
         result = get_vehicle_photos_by_vin.invoke({"vin": vin})
         data = json.loads(result)
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.debug("Photo fetch failed for VIN %s: %s", vin, exc)
+        return None
 
-        # Check if photos exist
-        if "error" not in data:
-            retail_photos = data.get('data', {}).get('retail', [])
-            if len(retail_photos) > 0:
-                # Store the photo data with the vehicle
-                vehicle['photos'] = {
-                    'retail': retail_photos,
-                    'data': data.get('data', {})
-                }
+    if "error" in data:
+        return None
 
-    except Exception:
-        # If API call fails, photos remain None
-        pass
+    retail_photos = data.get("data", {}).get("retail", [])
+    if not retail_photos:
+        return None
 
+    return {
+        "retail": retail_photos,
+        "data": data.get("data", {}),
+    }
+
+
+def attach_photo_payload(vehicle: Dict[str, Any], photo_payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """Attach a photo payload (if any) onto the vehicle dict."""
+    vehicle["photos"] = photo_payload
     return vehicle
 
 
@@ -78,48 +74,41 @@ def deduplicate_by_vin(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return list(seen_vins.values())
 
 
-def filter_vehicles_by_photos(vehicles: List[Dict[str, Any]], target_count: int = 20) -> List[Dict[str, Any]]:
-    """
-    Filter vehicles to prioritize those with photos, fetching and caching photo data.
+def enrich_vehicles_with_photos(vehicles: List[Dict[str, Any]], max_workers: int = 8) -> List[Dict[str, Any]]:
+    """Fetch photos for vehicles in parallel and attach them to the payload."""
+    if not vehicles:
+        return vehicles
 
-    Strategy:
-    1. Check each vehicle one by one and fetch photos
-    2. Attach photo data to vehicle dictionary for caching
-    3. Prioritize vehicles WITH photos (up to target_count)
-    4. If not enough, add vehicles WITHOUT photos to reach target_count
-
-    Args:
-        vehicles: List of vehicle dictionaries
-        target_count: Target number of vehicles (default: 20)
-
-    Returns:
-        List of up to target_count vehicles with photo data cached, prioritizing those with photos
-    """
-    vehicles_with_photos = []
-    vehicles_without_photos = []
-
-    for vehicle in vehicles:
-        # Fetch photos and attach them to the vehicle
-        vehicle_with_photos = fetch_and_attach_photos(vehicle)
-
-        # Check if photos were successfully attached
-        if vehicle_with_photos.get('photos') is not None:
-            vehicles_with_photos.append(vehicle_with_photos)
+    vin_to_index: List[Tuple[str, int]] = []
+    for idx, vehicle in enumerate(vehicles):
+        vin = vehicle.get("vehicle", {}).get("vin") or vehicle.get("vin")
+        if vin and len(vin) == 17:
+            vin_to_index.append((vin, idx))
         else:
-            vehicles_without_photos.append(vehicle_with_photos)
+            vehicles[idx]["photos"] = None
 
-        # Early exit if we have enough vehicles with photos
-        if len(vehicles_with_photos) >= target_count:
-            break
+    if not vin_to_index:
+        return vehicles
 
-    # Combine: prioritize vehicles with photos, then add those without if needed
-    result = vehicles_with_photos[:target_count]
+    worker_count = min(max(len(vin_to_index), 1), max_workers)
 
-    if len(result) < target_count:
-        remaining = target_count - len(result)
-        result.extend(vehicles_without_photos[:remaining])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+        future_to_vin = {
+            executor.submit(fetch_photos_for_vin, vin): (vin, idx)
+            for vin, idx in vin_to_index
+        }
 
-    return result
+        for future in concurrent.futures.as_completed(future_to_vin):
+            vin, idx = future_to_vin[future]
+            try:
+                photo_payload = future.result()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug("Error fetching photos for %s: %s", vin, exc)
+                photo_payload = None
+
+            vehicles[idx] = attach_photo_payload(vehicles[idx], photo_payload)
+
+    return vehicles
 
 
 def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
@@ -173,12 +162,9 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
     # Run the agent
     result = agent.invoke({"messages": [HumanMessage(content=recommendation_prompt)]})
 
-    # Extract the final response from agent
-    final_message = result['messages'][-1].content
     # Parse the search results from the agent's tool calls
     # Look through messages for tool results
     vehicles = []
-    print(result['messages'])
     for msg in result['messages']:
         # Check if this is a tool message with search results
         if hasattr(msg, 'content') and isinstance(msg.content, str):
@@ -203,16 +189,36 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
     # Deduplicate vehicles by VIN (keep lowest price for each)
     vehicles = deduplicate_by_vin(vehicles)
 
-    # Check if photo filtering is enabled via environment variable
-    require_photos = os.getenv('REQUIRE_PHOTOS_IN_RECOMMENDATIONS', 'false').lower() == 'true'
+    vehicles = vehicles[:50]
+    vehicles = enrich_vehicles_with_photos(vehicles)
 
-    if require_photos and vehicles:
-        # Filter vehicles to prioritize those with photos
-        filtered_vehicles = filter_vehicles_by_photos(vehicles, target_count=20)
-        state['recommended_vehicles'] = filtered_vehicles
-    else:
-        # Default behavior: just take first 20
-        state['recommended_vehicles'] = vehicles[:20]
+    def vehicle_sort_key(vehicle: Dict[str, Any]) -> Tuple[int, float, float, float]:
+        has_photos = 0 if vehicle.get("photos") else 1
+
+        miles_raw = vehicle.get("retailListing", {}).get("miles")
+        price_raw = vehicle.get("retailListing", {}).get("price")
+
+        try:
+            miles_value = float(miles_raw)
+        except (TypeError, ValueError):
+            miles_value = float("inf")
+
+        try:
+            price_value = float(price_raw)
+        except (TypeError, ValueError):
+            price_value = float("inf")
+
+        ratio = (
+            miles_value / price_value
+            if price_value not in (0, float("inf")) and not math.isnan(price_value)
+            else float("inf")
+        )
+
+        return (has_photos, ratio, miles_value, price_value)
+
+    vehicles.sort(key=vehicle_sort_key)
+
+    state['recommended_vehicles'] = vehicles[:20]
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()
