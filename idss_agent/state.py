@@ -131,6 +131,9 @@ class VehicleSearchState(TypedDict):
     interviewed: bool  # False = in interview workflow, True = in supervisor workflow
     _interview_should_end: bool  # Internal flag for routing within interview workflow
 
+    # Supervisor routing (internal)
+    _supervisor_decision: Dict[str, Any]  # Temporary storage for supervisor routing decision
+
     # Output
     ai_response: str
 
@@ -147,6 +150,7 @@ def create_initial_state() -> VehicleSearchState:
         interaction_events=[],
         interviewed=False,  # Start in interview workflow
         _interview_should_end=False,
+        _supervisor_decision={},  # Initialize empty supervisor decision
         ai_response=""
     )
 

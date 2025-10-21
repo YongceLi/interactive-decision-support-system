@@ -1,20 +1,20 @@
 """
-Analytical tool - answers specific questions about vehicles.
-
-Wraps the existing analytical node as a callable tool for the supervisor.
+Analytical agent - answers specific questions about vehicles using ReAct.
 """
-from typing import Dict, Any
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
 from idss_agent.components.vehicle_database import get_vehicle_database_tools
+from idss_agent.logger import get_logger
+
+logger = get_logger("components.analytical_tool")
 
 
-def analytical_tool(question: str, state: VehicleSearchState) -> str:
+def analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
     """
-    Tool that answers specific questions about vehicles using available data.
+    Agent that answers specific questions about vehicles using available data.
 
     This creates a ReAct agent with access to:
     - Vehicle details by VIN
@@ -23,12 +23,15 @@ def analytical_tool(question: str, state: VehicleSearchState) -> str:
     - Fuel economy database
 
     Args:
-        question: The specific question to answer
-        state: Current state with vehicle context
+        state: Current state with vehicle context and user question
 
     Returns:
-        String answer to the question
+        Updated state with ai_response
     """
+    # Get user question from conversation history
+    user_input = state.get("conversation_history", [])[-1].content if state.get("conversation_history") else ""
+    logger.info(f"Analytical query: {user_input}")
+
     # Get available tools
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
     db_tools = get_vehicle_database_tools(llm)
@@ -59,7 +62,7 @@ You are a vehicle information specialist. Answer the user's question using avail
 Context:
 {vehicle_context}
 
-User's question: {question}
+User's question: {user_input}
 
 Available tools:
 - get_vehicle_listing_by_vin: Get detailed vehicle information by VIN
@@ -71,7 +74,7 @@ Available tools:
 Instructions:
 1. If user references a vehicle by number (e.g., "#1"), use the VIN from the context above
 2. Use tools to gather information
-3. Provide a comprehensive, helpful answer
+3. Provide a concise, helpful answer
 4. Format your response clearly
 
 Answer the question.
@@ -84,10 +87,13 @@ Answer the question.
         messages = result.get("messages", [])
         if messages:
             final_message = messages[-1]
-            return final_message.content
+            state["ai_response"] = final_message.content
         else:
-            return "I couldn't find an answer to that question."
+            state["ai_response"] = "I couldn't find an answer to that question."
+            logger.warning("Analytical agent: No messages returned from ReAct agent")
 
     except Exception as e:
-        print(f"Error in analytical tool: {e}")
-        return f"I encountered an error while trying to answer that question: {str(e)}"
+        logger.error(f"Analytical agent error: {e}", exc_info=True)
+        state["ai_response"] = f"I encountered an error while trying to answer that question: {str(e)}"
+
+    return state
