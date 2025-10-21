@@ -8,6 +8,7 @@ import FilterMenu from '@/components/FilterMenu';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
+import { LoggingService } from '@/services/logging';
 import { useVerboseLoading } from '@/hooks/useVerboseLoading';
 
 // Format agent response to remove quotes and convert to proper markdown
@@ -72,6 +73,7 @@ export default function Home() {
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
   const [currentUserInput, setCurrentUserInput] = useState<string>('');
+  const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
   
   const { currentMessage } = useVerboseLoading(currentUserInput);
 
@@ -219,9 +221,19 @@ export default function Home() {
     }
   };
 
-  const handleItemSelect = (vehicle: Vehicle) => {
+  const handleItemSelect = async (vehicle: Vehicle) => {
     setSelectedItem(vehicle);
     setShowDetails(true);
+    setDetailViewStartTime(Date.now());
+    
+    // Log the vehicle view event
+    if (sessionId) {
+      await LoggingService.logVehicleView(sessionId, vehicle.id, vehicle.vin);
+    }
+  };
+
+  const handleItemSelectSync = (vehicle: Vehicle) => {
+    handleItemSelect(vehicle);
   };
 
   // Find the index of the selected vehicle
@@ -230,9 +242,21 @@ export default function Home() {
     return vehicles.findIndex(v => v.id === selectedItem.id) + 1;
   };
 
-  const handleBackToRecommendations = () => {
+  const handleBackToRecommendations = async () => {
+    // Log the duration spent viewing details
+    if (sessionId && selectedItem && detailViewStartTime) {
+      const duration = Date.now() - detailViewStartTime;
+      await LoggingService.logCustomEvent(sessionId, 'vehicle_detail_duration', {
+        vehicle_id: selectedItem.id,
+        vin: selectedItem.vin || 'unknown',
+        duration_ms: duration,
+        duration_seconds: Math.round(duration / 1000)
+      });
+    }
+    
     setShowDetails(false);
     setSelectedItem(null);
+    setDetailViewStartTime(null);
   };
 
   // Get only the last 3 turns (6 messages max: user-agent-user-agent-user-agent)
@@ -443,7 +467,7 @@ export default function Home() {
                 <div className="h-full">
                   <RecommendationCarousel 
                     vehicles={vehicles} 
-                    onItemSelect={handleItemSelect}
+                    onItemSelect={handleItemSelectSync}
                     showPlaceholders={false}
                   />
                 </div>
