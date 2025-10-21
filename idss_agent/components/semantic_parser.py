@@ -5,7 +5,10 @@ import json
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from idss_agent.logger import get_logger
 from idss_agent.state import VehicleSearchState, add_user_message, get_latest_user_message
+
+logger = get_logger("components.semantic_parser")
 
 
 # System prompt for the semantic parser
@@ -121,7 +124,7 @@ def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
     if not user_input:
         return state
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
     # Build conversation context from LangChain messages
     history_context = "\n".join([
@@ -185,8 +188,8 @@ New User Input: {user_input}
 
     except json.JSONDecodeError as e:
         # If parsing fails, log it but don't crash
-        print(f"Warning: Failed to parse LLM response as JSON: {e}")
-        print(f"Response content: {response.content}")
+        logger.warning(f"Failed to parse LLM response as JSON: {e}")
+        logger.debug(f"Response content: {response.content}")
 
     return state
 

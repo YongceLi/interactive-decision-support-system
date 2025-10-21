@@ -4,49 +4,22 @@ Discovery agent node - generates responses with listing summary and elicitation 
 import json
 from typing import List, Dict, Any
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.state import VehicleSearchState
 
 
-def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 10) -> str:
-    """
-    Format vehicle list for LLM consumption.
-
-    Args:
-        vehicles: List of vehicle dictionaries
-        limit: Maximum number of vehicles to format
-
-    Returns:
-        Formatted string with vehicle details
-    """
+def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
+    """Return raw JSON for the top vehicles, truncated to a safe length."""
     if not vehicles:
-        return "No vehicles in current list."
+        return "[]"
 
-    formatted = []
-    for i, vehicle in enumerate(vehicles[:limit], 1):
-        year = vehicle.get('year', 'N/A')
-        make = vehicle.get('make', 'N/A')
-        model = vehicle.get('model', 'N/A')
-        price = vehicle.get('price', vehicle.get('retailListing', {}).get('price', 'N/A'))
-        miles = vehicle.get('miles', vehicle.get('retailListing', {}).get('miles', 'N/A'))
-        location = vehicle.get('location', vehicle.get('retailListing', {}).get('city', 'N/A'))
+    limited = vehicles[:limit]
+    raw_json = json.dumps(limited, indent=2)
 
-        if isinstance(price, (int, float)):
-            price_str = f"${price:,}"
-        else:
-            price_str = str(price)
+    if len(raw_json) > max_chars:
+        raw_json = raw_json[: max_chars - 3] + "..."
 
-        if isinstance(miles, (int, float)):
-            miles_str = f"{miles:,} miles"
-        else:
-            miles_str = str(miles)
-
-        vehicle_line = f"{i}. {year} {make} {model} - {price_str} | {miles_str}"
-        if location != 'N/A':
-            vehicle_line += f" | {location}"
-
-        formatted.append(vehicle_line)
-
-    return "\n".join(formatted)
+    return raw_json
 
 
 def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchState:
@@ -71,23 +44,13 @@ def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchStat
     already_asked = state.get('questions_asked', [])
 
     # Format vehicles for LLM
-    vehicles_summary = format_vehicles_for_llm(vehicles, limit=10)
+    vehicles_summary = format_vehicles_for_llm(vehicles, limit=3)
 
     # Build comprehensive prompt
-    prompt = f"""
+    discovery_system_prompt = f"""
 You are a friendly, knowledgeable vehicle shopping assistant helping a user find their ideal car.
 
-**User's Current Filters:**
-{json.dumps(filters, indent=2)}
-
-**User's Preferences:**
-{json.dumps(implicit, indent=2)}
-
-**Current Listings ({len(vehicles)} vehicles found, showing top 10):**
-{vehicles_summary}
-
-**Topics Already Asked About:** {already_asked}
-(Avoid asking about these topics again)
+You will be given the user's preferences, and the current list of vehicles that match the user's filters.
 
 **Your Task:**
 Write a short, friendly response (1 paragraph max) that:
@@ -96,10 +59,9 @@ Write a short, friendly response (1 paragraph max) that:
    - Acknowledge their search or latest preference update
 
 2. **Listing summary & recommendation** (1 concise paragraph, 1-3 sentences)
-   - Mentions 1-2 interesting options from the listings
-   - Highlight key strengths/pros
-   - Give a brief, helpful recommendation if appropriate
-   - Be specific but concise
+   - Recommend ONLY the first specific vehicle in the listings
+   - Highlight key strengths/pros about why the vehicle is a good fit for the user's preferences
+   - Use itemized lists for clarity, be specific, and be concise
 
 3. **Elicitation questions** (1-2 questions)
    - Ask strategic questions to help narrow down their needs
@@ -113,12 +75,30 @@ Write a short, friendly response (1 paragraph max) that:
 - Reference actual vehicles from the listings
 - Keep the summary concise but helpful
 - Ask 1-2 questions, not more
+"""
+
+    prompt = f"""
+**User's Current Filters:**
+{json.dumps(filters, indent=2)}
+
+**User's Preferences:**
+{json.dumps(implicit, indent=2)}
+
+**Current Listings ({len(vehicles)} vehicles found, showing top 3 as JSON):**
+{vehicles_summary}
+
+**Topics Already Asked About:** {already_asked}
+(Avoid asking about these topics again)
 
 Generate your response:
 """
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-    response = llm.invoke(prompt)
+    messages = [
+        SystemMessage(content=discovery_system_prompt),
+        HumanMessage(content=prompt),
+    ]
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    response = llm.invoke(messages)
 
     state['ai_response'] = response.content.strip()
 
@@ -190,3 +170,23 @@ If no questions were asked, return an empty array: []
         print(f"Warning: Could not parse topics from response: {e}")
 
     return state
+
+
+def discovery_tool(state: VehicleSearchState) -> str:
+    """
+    Tool that shows overview of recommended vehicles.
+
+    This is a wrapper around discovery_response_generator that returns
+    a string result for the supervisor to use.
+
+    Args:
+        state: Current state with recommended vehicles
+
+    Returns:
+        String with vehicle overview
+    """
+    # Call existing discovery node
+    result_state = discovery_response_generator(state)
+
+    # Return the generated response
+    return result_state.get("ai_response", "No vehicles to show.")
