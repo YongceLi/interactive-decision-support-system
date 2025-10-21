@@ -4,7 +4,6 @@ Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 import concurrent.futures
 import math
 import json
-import os
 from typing import Dict, Any, List, Optional, Tuple
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
@@ -131,6 +130,11 @@ def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
 
+    # Normalize model name (remove hyphens/underscores) to match Auto.dev API format
+    if filters.get('model'):
+        filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
+        logger.info(f"Normalized model name: {filters['model']}")
+
     # Build prompt for recommendation agent
     recommendation_prompt = f"""
 You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles for the user.
@@ -175,19 +179,26 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
                 # Check if it's a list of vehicles or has a data field
                 if isinstance(data, list):
                     vehicles = data
+                    logger.info(f"Found {len(vehicles)} vehicles from search (list format)")
                     break
                 elif isinstance(data, dict):
                     if 'data' in data and isinstance(data['data'], list):
                         vehicles = data['data']
+                        logger.info(f"Found {len(vehicles)} vehicles from search (data field)")
                         break
                     elif 'vehicles' in data and isinstance(data['vehicles'], list):
                         vehicles = data['vehicles']
+                        logger.info(f"Found {len(vehicles)} vehicles from search (vehicles field)")
                         break
             except (json.JSONDecodeError, AttributeError):
                 continue
 
+    if not vehicles:
+        logger.warning("No vehicles found from search - filters may be too restrictive")
+
     # Deduplicate vehicles by VIN (keep lowest price for each)
     vehicles = deduplicate_by_vin(vehicles)
+    logger.info(f"After deduplication: {len(vehicles)} unique vehicles")
 
     vehicles = vehicles[:50]
     vehicles = enrich_vehicles_with_photos(vehicles)
@@ -219,48 +230,9 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
     vehicles.sort(key=vehicle_sort_key)
 
     state['recommended_vehicles'] = vehicles[:20]
+    logger.info(f"✓ Recommendation complete: {len(state['recommended_vehicles'])} vehicles in state")
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()
 
     return state
-
-
-def parse_vehicle_list(response_content: str) -> list[Dict[str, Any]]:
-    """
-    Parse vehicle list from agent response.
-
-    Expects JSON format from the agent.
-
-    Args:
-        response_content: Agent's response content
-
-    Returns:
-        List of vehicle dictionaries
-    """
-    try:
-        # Try to find JSON in the response
-        content = response_content.strip()
-
-        # Strip markdown if present
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-
-        # Parse JSON
-        vehicles = json.loads(content)
-
-        if isinstance(vehicles, list):
-            return vehicles[:20]  
-        elif isinstance(vehicles, dict) and 'vehicles' in vehicles:
-            return vehicles['vehicles'][:20]
-        else:
-            return []
-
-    except json.JSONDecodeError:
-        print(f"Warning: Could not parse vehicle list from response")
-        return []

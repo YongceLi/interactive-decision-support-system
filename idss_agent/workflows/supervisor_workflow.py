@@ -1,18 +1,140 @@
 """
-Supervisor workflow - orchestrates tools to answer user questions after interview.
+Supervisor workflow - orchestrates agents to answer user questions after interview.
 
 This workflow runs after the interview is complete (interviewed=True).
+
+Flow:
+    semantic_parser → check_filters → supervisor_decision → [discovery_agent OR analytical_agent] → END
 """
+import json
+from typing import Dict, Any
 from langgraph.graph import StateGraph, END
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.logger import get_logger
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.semantic_parser import semantic_parser_node
 from idss_agent.components.recommendation import update_recommendation_list
-from idss_agent.workflows.supervisor_agent import supervisor_decide_action, supervisor_generate_response
-from idss_agent.components.discovery import discovery_tool
-from idss_agent.components.analytical_tool import analytical_tool
+from idss_agent.components.discovery import discovery_agent
+from idss_agent.components.analytical import analytical_agent
 
 logger = get_logger("workflows.supervisor")
+
+
+# Supervisor decision prompt
+SUPERVISOR_DECISION_PROMPT = """
+You are a vehicle shopping assistant supervisor. Your job is to decide what action to take based on the user's message.
+
+Current context:
+- Vehicles available: {has_vehicles}
+- Vehicle count: {vehicle_count}
+- Filters: {filters_summary}
+- User's message: "{user_message}"
+
+You must always route the user's request to exactly ONE of these tools:
+- **discovery_tool**
+  - Use when the user wants to browse, see options, or get an overview of listings.
+  - Examples: "show me cars", "what do you have", "give me some recommendations", location adjustments, filter tweaks, general browsing requests.
+- **analytical_tool**
+  - Use when the user asks detailed questions about a specific vehicle, comparisons, specs, or needs deep data lookup.
+  - Examples: "tell me about #1", "compare #1 and #3", "what's the safety rating", "does it have heated seats?"
+
+Do not choose "none" or any other option. If the message is chit-chat or outside these instructions, prefer discovery_tool.
+
+Decide what to do:
+{{
+  "tool": "discovery_tool" | "analytical_tool",
+  "reasoning": "Brief explanation of why",
+  "params": {{
+    "question": "for analytical_tool only - the specific question to answer"
+  }}
+}}
+
+Output ONLY valid JSON.
+"""
+
+
+def summarize_state(state: VehicleSearchState) -> Dict[str, Any]:
+    """
+    Create a lightweight summary of state for supervisor decisions.
+
+    Args:
+        state: Full state
+
+    Returns:
+        Summarized state dict
+    """
+    filters = state.get("explicit_filters", {})
+    vehicles = state.get("recommended_vehicles", [])
+
+    # Create human-readable filter summary
+    filter_parts = []
+    if filters.get("make"):
+        filter_parts.append(filters["make"])
+    if filters.get("model"):
+        filter_parts.append(filters["model"])
+    if filters.get("body_style"):
+        filter_parts.append(filters["body_style"])
+    if filters.get("price"):
+        filter_parts.append(f"${filters['price']}")
+    if filters.get("state"):
+        filter_parts.append(f"in {filters['state']}")
+
+    filters_summary = ", ".join(filter_parts) if filter_parts else "no specific filters"
+
+    return {
+        "has_vehicles": len(vehicles) > 0,
+        "vehicle_count": len(vehicles),
+        "filters_summary": filters_summary
+    }
+
+
+def supervisor_decide_action(state: VehicleSearchState, user_input: str) -> Dict[str, Any]:
+    """
+    Supervisor decides what action to take (which tool to call).
+
+    This is a lightweight decision step using summarized state.
+
+    Args:
+        state: Current state
+        user_input: User's message
+
+    Returns:
+        Decision dict with tool and params
+    """
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+    summary = summarize_state(state)
+
+    prompt = SUPERVISOR_DECISION_PROMPT.format(
+        has_vehicles=summary["has_vehicles"],
+        vehicle_count=summary["vehicle_count"],
+        filters_summary=summary["filters_summary"],
+        user_message=user_input
+    )
+
+    response = llm.invoke([
+        SystemMessage(content=prompt),
+        HumanMessage(content="Decide what to do.")
+    ])
+
+    try:
+        content = response.content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.startswith("```"):
+            content = content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+        content = content.strip()
+
+        decision = json.loads(content)
+        return decision
+
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse supervisor decision: {e}")
+        # Fallback: default to discovery_tool if parsing fails
+        return {"tool": "discovery_tool", "reasoning": "Fallback", "params": {}}
 
 
 def filters_changed(state: VehicleSearchState) -> bool:
@@ -46,87 +168,57 @@ def supervisor_decision_node(state: VehicleSearchState) -> VehicleSearchState:
     user_input = state.get("conversation_history", [])[-1].content if state.get("conversation_history") else ""
     decision = supervisor_decide_action(state, user_input)
 
-    logger.info(f"Supervisor decision: tool={decision.get('tool')}, reasoning={decision.get('reasoning')}")
+    logger.info(f"Supervisor routing to: {decision.get('tool')} (reason: {decision.get('reasoning')})")
 
     # Store decision in state for routing
     state["_supervisor_decision"] = decision
     return state
 
 
-def route_to_tool(state: VehicleSearchState) -> str:
-    """Router to decide which tool to call based on supervisor decision."""
+def route_to_agent(state: VehicleSearchState) -> str:
+    """Router to decide which agent to call based on supervisor decision."""
     decision = state.get("_supervisor_decision", {})
-    tool = decision.get("tool", "none")
+    tool = decision.get("tool", "discovery_tool")
 
-    if tool == "discovery_tool":
-        return "discovery"
-    elif tool == "analytical_tool":
+    if tool == "analytical_tool":
         return "analytical"
     else:
-        return "response"
+        return "discovery"
 
 
-def call_discovery_tool(state: VehicleSearchState) -> VehicleSearchState:
-    """Node to call discovery tool."""
-    tool_result = discovery_tool(state)
-    state["_tool_result"] = tool_result
-    return state
-
-
-def call_analytical_tool(state: VehicleSearchState) -> VehicleSearchState:
-    """Node to call analytical tool."""
-    decision = state.get("_supervisor_decision", {})
-    user_input = state.get("conversation_history", [])[-1].content if state.get("conversation_history") else ""
-    question = decision.get("params", {}).get("question", user_input)
-
-    tool_result = analytical_tool(question, state)
-    state["_tool_result"] = tool_result
-    return state
-
-
-def generate_response_node(state: VehicleSearchState) -> VehicleSearchState:
-    """Node to generate final response."""
-    decision = state.get("_supervisor_decision", {})
-    user_input = state.get("conversation_history", [])[-1].content if state.get("conversation_history") else ""
-    tool_result = state.get("_tool_result")
-    chosen_tool = decision.get("tool", "none")
-
-    if chosen_tool in {"discovery_tool", "analytical_tool"}:
-        if isinstance(tool_result, str) and tool_result.strip():
-            response = tool_result.strip()
-        else:
-            response = "I wasn't able to retrieve the details just now. Could you try again?"
-    else:
-        response = supervisor_generate_response(
-            state=state,
-            user_input=user_input,
-            tool_used=chosen_tool,
-            tool_result=tool_result
-        )
-
-    state["ai_response"] = response
+def call_discovery_agent(state: VehicleSearchState) -> VehicleSearchState:
+    """Node to call discovery agent."""
+    state = discovery_agent(state)
 
     # Clean up temporary fields
     if "_supervisor_decision" in state:
         del state["_supervisor_decision"]
-    if "_tool_result" in state:
-        del state["_tool_result"]
+
+    return state
+
+
+def call_analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
+    """Node to call analytical agent."""
+    state = analytical_agent(state)
+
+    # Clean up temporary fields
+    if "_supervisor_decision" in state:
+        del state["_supervisor_decision"]
 
     return state
 
 
 # Create LangGraph StateGraph for supervisor workflow
 def create_supervisor_graph():
-    """Create the supervisor workflow graph."""
+    """Create the simplified supervisor workflow graph."""
     workflow = StateGraph(VehicleSearchState)
 
     # Add nodes
     workflow.add_node("semantic_parser", semantic_parser_node)
     workflow.add_node("check_filters", check_and_update_recommendations)
     workflow.add_node("supervisor_decision", supervisor_decision_node)
-    workflow.add_node("discovery", call_discovery_tool)
-    workflow.add_node("analytical", call_analytical_tool)
-    workflow.add_node("response", generate_response_node)
+    workflow.add_node("discovery", call_discovery_agent)
+    workflow.add_node("analytical", call_analytical_agent)
 
     # Add edges
     workflow.set_entry_point("semantic_parser")
@@ -135,17 +227,16 @@ def create_supervisor_graph():
 
     workflow.add_conditional_edges(
         "supervisor_decision",
-        route_to_tool,
+        route_to_agent,
         {
             "discovery": "discovery",
-            "analytical": "analytical",
-            "response": "response"
+            "analytical": "analytical"
         }
     )
 
-    workflow.add_edge("discovery", "response")
-    workflow.add_edge("analytical", "response")
-    workflow.add_edge("response", END)
+    # Both agents route directly to END
+    workflow.add_edge("discovery", END)
+    workflow.add_edge("analytical", END)
 
     return workflow.compile()
 
@@ -165,19 +256,19 @@ def run_supervisor_workflow(user_input: str, state: VehicleSearchState) -> Vehic
     """
     Main supervisor workflow entry point.
 
-    Flow:
-    1. Semantic parsing (this message only)
+    Simplified Flow:
+    1. Semantic parsing (extract filters from user message)
     2. Update recommendations if filters changed
-    3. Supervisor decides which tool to call
-    4. Call tool (if any)
-    5. Supervisor generates response
+    3. Supervisor routes to discovery or analytical agent
+    4. Agent writes response directly to ai_response
+    5. End
 
     Args:
         user_input: User's message
         state: Current state
 
     Returns:
-        Updated state with response
+        Updated state with ai_response
     """
     graph = get_supervisor_graph()
     result = graph.invoke(state)

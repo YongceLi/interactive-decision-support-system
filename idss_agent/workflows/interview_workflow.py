@@ -6,7 +6,7 @@ This workflow runs until the interview is complete (threshold reached or user re
 import os
 import json
 import re
-from typing import Dict, Any
+from typing import Any
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -228,7 +228,7 @@ YOUR TASK:
 1. Use the tavily_search tool to research the best vehicle matching these criteria
 2. Search for current expert recommendations based on their priorities, lifestyle, and requirements
 3. Analyze the search results carefully
-4. Recommend ONE specific vehicle (single make and model)
+4. Recommend ONE specific vehicle (single make and model, be very specific, do NOT contain hyphens)
 5. Output your final recommendation as JSON
 
 Think step by step:
