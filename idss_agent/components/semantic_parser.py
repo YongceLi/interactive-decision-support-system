@@ -8,7 +8,7 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from idss_agent.logger import get_logger
 from idss_agent.state import VehicleSearchState, add_user_message, get_latest_user_message
 
-logger = get_logger("nodes.semantic_parser")
+logger = get_logger("components.semantic_parser")
 
 
 # System prompt for the semantic parser

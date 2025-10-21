@@ -154,7 +154,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
   const displayCards = getDisplayCards();
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full h-full flex flex-col">
       {/* Header */}
               <div className="mb-4 text-center">
                 <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
@@ -164,12 +164,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
               </div>
 
       {/* Carousel Container */}
-      <div className="relative flex items-center justify-center">
+      <div className="relative flex items-center justify-center flex-1 overflow-hidden">
         {/* Left Arrow */}
         <button
           onClick={prevVehicle}
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
-          className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed -translate-x-6"
+          className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -193,7 +193,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   : ''
               }`}
             >
-              <div className="glass-card rounded-xl p-4 w-[300px] shadow-2xl">
+              <div className="glass-card rounded-xl p-4 w-[250px] h-full max-h-[300px] shadow-2xl flex flex-col overflow-hidden">
                 {card.isPlaceholder ? (
                   /* Placeholder Card Content */
                   <>
@@ -228,7 +228,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   </>
         ) : (
           /* Real Item Card Content */
-          <VehicleCard vehicle={card.vehicle} onItemSelect={onItemSelect} />
+          <VehicleCard 
+            vehicle={card.vehicle} 
+            onItemSelect={onItemSelect} 
+            index={(currentIndex + card.position + vehicles.length) % vehicles.length + 1}
+            isCenter={card.isCenter}
+          />
         )}
                       </div>
                     </div>
@@ -239,7 +244,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
         <button
           onClick={nextVehicle}
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
-          className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed translate-x-6"
+          className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -258,7 +263,12 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 }
 
 // VehicleCard component
-function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect?: (vehicle: Vehicle) => void }) {
+function VehicleCard({ vehicle, onItemSelect, index, isCenter }: { 
+  vehicle: Vehicle; 
+  onItemSelect?: (vehicle: Vehicle) => void;
+  index?: number;
+  isCenter?: boolean;
+}) {
   // Use Auto.dev image URL
   const primaryImage = vehicle.image_url;
   const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
@@ -302,6 +312,13 @@ function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect
         ) : (
           <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
             No Image Found
+          </div>
+        )}
+        
+        {/* Number indicator - show on all cards */}
+        {index && (
+          <div className="absolute bottom-0 right-0 w-8 h-8 glass-dark border border-slate-600/30 text-slate-200 rounded-lg flex items-center justify-center text-sm font-bold">
+            {index}
           </div>
         )}
       </div>
