@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:full": "cd .. && ./start_dev.sh"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

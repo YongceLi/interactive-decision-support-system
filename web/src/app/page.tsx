@@ -8,6 +8,8 @@ import FilterMenu from '@/components/FilterMenu';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
+import { LoggingService } from '@/services/logging';
+import { useVerboseLoading } from '@/hooks/useVerboseLoading';
 
 // Format agent response to remove quotes and convert to proper markdown
 function formatAgentResponse(response: string): string {
@@ -70,6 +72,10 @@ export default function Home() {
   const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
+  const [currentUserInput, setCurrentUserInput] = useState<string>('');
+  const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
+  
+  const { currentMessage } = useVerboseLoading(currentUserInput);
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -77,7 +83,7 @@ export default function Home() {
       const initialMessage: ChatMessage = {
         id: 'initial',
         role: 'assistant',
-        content: "Let's shop for your dream product. Tell me what you're looking for.",
+        content: "Welcome to your personal shopping assistant! Let's find your ideal match. What are you looking for?",
         timestamp: new Date()
       };
       setChatMessages([initialMessage]);
@@ -93,7 +99,7 @@ export default function Home() {
       timestamp: new Date()
     };
     setChatMessages(prev => [...prev, userMessage]);
-    
+    setCurrentUserInput(message); // Set for contextual loading
     setIsLoading(true);
 
     try {
@@ -153,6 +159,7 @@ export default function Home() {
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setCurrentUserInput(''); // Clear the user input
     }
   };
 
@@ -214,9 +221,19 @@ export default function Home() {
     }
   };
 
-  const handleItemSelect = (vehicle: Vehicle) => {
+  const handleItemSelect = async (vehicle: Vehicle) => {
     setSelectedItem(vehicle);
     setShowDetails(true);
+    setDetailViewStartTime(Date.now());
+    
+    // Log the vehicle view event
+    if (sessionId) {
+      await LoggingService.logVehicleView(sessionId, vehicle.id, vehicle.vin);
+    }
+  };
+
+  const handleItemSelectSync = (vehicle: Vehicle) => {
+    handleItemSelect(vehicle);
   };
 
   // Find the index of the selected vehicle
@@ -225,9 +242,21 @@ export default function Home() {
     return vehicles.findIndex(v => v.id === selectedItem.id) + 1;
   };
 
-  const handleBackToRecommendations = () => {
+  const handleBackToRecommendations = async () => {
+    // Log the duration spent viewing details
+    if (sessionId && selectedItem && detailViewStartTime) {
+      const duration = Date.now() - detailViewStartTime;
+      await LoggingService.logCustomEvent(sessionId, 'vehicle_detail_duration', {
+        vehicle_id: selectedItem.id,
+        vin: selectedItem.vin || 'unknown',
+        duration_ms: duration,
+        duration_seconds: Math.round(duration / 1000)
+      });
+    }
+    
     setShowDetails(false);
     setSelectedItem(null);
+    setDetailViewStartTime(null);
   };
 
   // Get only the last 3 turns (6 messages max: user-agent-user-agent-user-agent)
@@ -438,7 +467,7 @@ export default function Home() {
                 <div className="h-full">
                   <RecommendationCarousel 
                     vehicles={vehicles} 
-                    onItemSelect={handleItemSelect}
+                    onItemSelect={handleItemSelectSync}
                     showPlaceholders={false}
                   />
                 </div>
@@ -472,10 +501,15 @@ export default function Home() {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="glass-dark p-4 rounded-2xl">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm text-slate-300/80 backdrop-blur-sm relative overflow-hidden">
+                      <span className="loading-ripple">{currentMessage}</span>
+                    </span>
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
                   </div>
                 </div>
               </div>
