@@ -24,7 +24,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 
-from adapter import ApiClient
+from user_sim_car.adapter import ApiClient
 import json
 
 

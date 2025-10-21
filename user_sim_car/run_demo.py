@@ -10,7 +10,7 @@ from pprint import pprint
 
 from langchain_openai import ChatOpenAI  # swap to your provider as desired
 
-from graph import GraphRunner
+from user_sim_car.graph import GraphRunner
 from dotenv import load_dotenv
 
 # --- Configuration ---
