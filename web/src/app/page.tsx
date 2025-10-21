@@ -8,6 +8,7 @@ import FilterMenu from '@/components/FilterMenu';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
+import { useVerboseLoading } from '@/hooks/useVerboseLoading';
 
 // Format agent response to remove quotes and convert to proper markdown
 function formatAgentResponse(response: string): string {
@@ -70,6 +71,9 @@ export default function Home() {
   const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
+  const [currentUserInput, setCurrentUserInput] = useState<string>('');
+  
+  const { currentMessage } = useVerboseLoading(currentUserInput);
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -77,7 +81,7 @@ export default function Home() {
       const initialMessage: ChatMessage = {
         id: 'initial',
         role: 'assistant',
-        content: "Let's shop for your dream product. Tell me what you're looking for.",
+        content: "Welcome to your personal shopping assistant! Let's find your ideal match. What are you looking for?",
         timestamp: new Date()
       };
       setChatMessages([initialMessage]);
@@ -93,7 +97,7 @@ export default function Home() {
       timestamp: new Date()
     };
     setChatMessages(prev => [...prev, userMessage]);
-    
+    setCurrentUserInput(message); // Set for contextual loading
     setIsLoading(true);
 
     try {
@@ -153,6 +157,7 @@ export default function Home() {
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      setCurrentUserInput(''); // Clear the user input
     }
   };
 
@@ -472,10 +477,15 @@ export default function Home() {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="glass-dark p-4 rounded-2xl">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm text-slate-300/80 backdrop-blur-sm relative overflow-hidden">
+                      <span className="loading-ripple">{currentMessage}</span>
+                    </span>
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
                   </div>
                 </div>
               </div>
