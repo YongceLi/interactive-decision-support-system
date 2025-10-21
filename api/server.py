@@ -107,10 +107,11 @@ async def chat(request: ChatRequest):
         # Prepare response
         return ChatResponse(
             response=updated_state.get('ai_response', ''),
-            vehicles=updated_state.get('recommended_vehicles', [])[:20], 
+            vehicles=updated_state.get('recommended_vehicles', [])[:20],
             filters=updated_state.get('explicit_filters', {}),
             preferences=updated_state.get('implicit_preferences', {}),
-            session_id=session_id
+            session_id=session_id,
+            interviewed=updated_state.get('interviewed', False)
         )
 
     except Exception as e:

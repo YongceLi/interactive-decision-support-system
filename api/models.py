@@ -19,6 +19,7 @@ class ChatResponse(BaseModel):
     filters: Dict[str, Any]
     preferences: Dict[str, Any]
     session_id: str
+    interviewed: bool = False  # False = in interview, True = in supervisor mode
 
 
 class SessionResponse(BaseModel):

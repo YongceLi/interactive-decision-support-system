@@ -23,7 +23,9 @@ def print_state(state):
     print("📊 Current Search State:")
     print(format_state_summary(state))
     print(f"\n🚗 Recommendations: {len(state['recommended_vehicles'])} vehicles")
-    print(f"❓ Questions Asked: {state['questions_asked']}")
+    print(f"📋 Interview Status: {'Completed ✓' if state.get('interviewed', False) else 'In Progress...'}")
+    if not state.get('interviewed', False):
+        print(f"❓ Interview Questions Asked: {len(state.get('interview_questions_asked', []))}")
 
 
 def print_vehicle_listings(vehicles, limit=10):
