@@ -29,7 +29,7 @@ def discovery_agent(state: VehicleSearchState) -> VehicleSearchState:
     This agent:
     1. Acknowledges user preferences
     2. Uses bullet points to recommend the first vehicle about how it matches the user's preferences
-    3. Asks 2-3 strategic elicitation questions
+    3. Asks 1-2 strategic elicitation questions
 
     Args:
         state: Current vehicle search state

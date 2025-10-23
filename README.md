@@ -2,26 +2,38 @@
 
 A conversational product decision support assistant built with LangGraph that helps users find and evaluate vehicles through natural dialogue.
 
+## 📐 Complete System Architecture
+
+**🎨 [View Complete Visual System Architecture →](IDSS_workflow.png)**
+
 ## Architecture Overview
- ![Workflow Graph](supervisor_workflow.png)
- ![Interview Workflow](interview_workflow.png)
 
-The agent uses a multi-node LangGraph workflow with two operating modes:
-- **Discovery Mode** (simple mode, simple LLM node): Helps users explore and refine their vehicle search, asking questions to get user's implicit preferences.
-- **Analytical Mode** (complex mode, ReAct agent with SQL database, api tools, etc.): Answers specific questions about vehicles using tools. E.g. compare two vehicles, list features of a vehicle, etc.
-
-The workflow intelligently skips recommendation updates when filters haven't changed, reducing API calls and improving response time.
+The agent uses an **intent-based routing architecture** that classifies user intent on every message and routes to the appropriate mode:
 
 ## State Variables
 
 ```python
 VehicleSearchState = {
+    # Core data
     "explicit_filters": VehicleFilters,           # Extracted search criteria
-    "conversation_history": List[BaseMessage],    # Full chat history
+    "conversation_history": List[BaseMessage],    # Full chat history (with prompt caching)
     "implicit_preferences": ImplicitPreferences,  # Inferred preferences
     "recommended_vehicles": List[Dict],           # Top 20 matches
-    "questions_asked": List[str],                 # Topics already discussed
+
+    # Intent-based routing (NEW)
+    "current_intent": str,                        # Latest intent (buying/browsing/research/general)
+    "current_mode": str,                          # Current mode (buying/discovery/analytical/general)
+    "intent_history": List[IntentRecord],         # All intent classifications
+    "mode_switch_count": int,                     # Number of mode switches
+
+    # Tracking
     "previous_filters": VehicleFilters,           # Previous filters for change detection
+    "interviewed": bool,                          # Interview completion status
+
+    # Note: Discovery agent determines what to ask by checking missing filters/preferences
+    # rather than tracking abstract question topics
+
+    # Output
     "ai_response": str                            # Latest response
 }
 ```
@@ -36,39 +48,62 @@ VehicleSearchState = {
 **ImplicitPreferences** (inferred):
 - priorities, lifestyle, budget_sensitivity, concerns, brand_affinity
 
-## Node Descriptions
+## Component Descriptions
 
-### 1. Semantic Parser
-- extract structured data from user's natural language input
+### 1. Intent Classifier (`intent_classifier.py`)
+- Classifies user intent on every message using GPT-4o-mini
+- Returns intent, confidence score, and reasoning
+- Uses full conversation history with prompt caching for efficiency
+- Intents: buying, browsing, research, general
+
+### 2. Mode Handlers
+
+#### Buying Mode (`modes/buying_mode.py`)
+- Routes to interview workflow if not interviewed
+- Updates recommendations if already interviewed
+- Preserves interview state across mode switches
+
+#### Discovery Mode (`modes/discovery_mode.py`)
+- Semantic parser extracts filters
+- Updates recommendations when filters change
+- Discovery agent shows vehicles and asks elicitation questions
+- No interview required
+
+#### Analytical Mode (`modes/analytical_mode.py`)
+- Semantic parser extracts vehicle mentions
+- Conditionally updates recommendations (only if vehicle filters detected)
+- ReAct agent with tools answers data-driven questions
+
+#### General Mode (`modes/general_mode.py`)
+- Simple conversational responses
+- Handles greetings, thanks, meta questions
+- Uses last 3 messages for context
+
+### 3. Semantic Parser (`semantic_parser.py`)
+- Extracts structured filters from natural language
 - Merges new filters with existing state
 - Updates implicit preferences throughout conversation
+- Handles ranges, multiple values, and complex queries
 
-### 2. Should Update Recommendations (Router)
-- Checks if filters changed or if this is the first search
-- Routes to "update" or "skip" to avoid unnecessary API calls
+### 4. Discovery Agent (`discovery.py`)
+- Generates friendly vehicle summaries
+- Highlights top vehicle with bullet points
+- Intelligently asks 1-2 strategic questions based on missing filters/preferences
+- Questions focus on what's unknown in the current state (budget, location, usage, priorities)
+- Self-correcting: always asks about missing information, never redundant
 
-### 3. Update Recommendations
-- ReAct agent with API tools and SQL database
-- Updates the recommended list only when filters change or no vehicles exist yet
-- Stores current filters as previous_filters for next comparison
-
-### 4. Mode Router
-- **Discovery**: When user update filters and preferences, or ask simple questions, the discovery agent will describe the current recommendation list and ask follow-up questions to extract more user preferences.
-- **Analytical**: When user ask more complex questions that needs tool use / query database. E.g. compare the pros and cons of two vehicles.
-
-### 5. Discovery Responder
-- Displays top 10 vehicles with details
-- Summarizes listings with recommendations
-- Asks 2-3 elicitation questions
-- Tracks questions to avoid repetition
-
-### 6. Analytical Responder
+### 5. Analytical Agent (`analytical.py`)
 - ReAct agent with multiple tools:
-  - `get_vehicle_listing`: Detailed listing of vehicles given filters.
   - `get_vehicle_listing_by_vin`: Detailed listing by VIN
   - `get_vehicle_photos_by_vin`: Photos by VIN
-  - SQL tools: `sql_db_query`, `sql_db_schema`, `sql_db_list_tables`
+  - `sql_db_query`, `sql_db_schema`, `sql_db_list_tables`: Database queries
 - Can query safety_data (NHTSA ratings) and feature_data (EPA fuel economy) databases
+
+### 6. Recommendation Engine (`recommendation.py`)
+- Searches Auto.dev API for matching vehicles
+- Deduplicates by VIN (keeps lowest price)
+- Fetches photos in parallel (up to 8 workers)
+- Returns up to 20 vehicles
 
 ## Tools & Data Sources
 

@@ -1,10 +1,11 @@
 """
 State schema for the vehicle search agent.
 """
-from typing import TypedDict, Optional, List, Dict, Any, Annotated
+from typing import TypedDict, Optional, List, Dict, Any, Annotated, Literal
 from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph.message import add_messages
+from datetime import datetime
 
 
 class VehicleFilters(TypedDict, total=False):
@@ -98,6 +99,28 @@ class ImplicitPreferencesPydantic(BaseModel):
     notes: Optional[str] = Field(None, description="Any other important context")
 
 
+# Intent tracking for new architecture
+class IntentRecord(BaseModel):
+    """Record of an intent classification."""
+    intent: Literal["buying", "browsing", "research", "general"] = Field(
+        description="Classified user intent"
+    )
+    confidence: float = Field(
+        description="Confidence score between 0 and 1",
+        ge=0.0,
+        le=1.0
+    )
+    reasoning: str = Field(
+        description="Brief explanation of classification"
+    )
+    timestamp: str = Field(
+        description="ISO timestamp of classification"
+    )
+    message_index: int = Field(
+        description="Index of message in conversation that triggered this classification"
+    )
+
+
 class VehicleSearchState(TypedDict):
     """
     Complete state for the vehicle search agent.
@@ -128,11 +151,14 @@ class VehicleSearchState(TypedDict):
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
 
     # Interview phase tracking
-    interviewed: bool  # False = in interview workflow, True = in supervisor workflow
+    interviewed: bool  # False = in interview workflow, True = interview complete
     _interview_should_end: bool  # Internal flag for routing within interview workflow
 
-    # Supervisor routing (internal)
-    _supervisor_decision: Dict[str, Any]  # Temporary storage for supervisor routing decision
+    # Intent-based routing (NEW)
+    current_intent: str  # Latest classified intent (buying/browsing/research/general)
+    current_mode: str  # Current operational mode (buying/discovery/analytical/general)
+    intent_history: List[Dict[str, Any]]  # All intent classifications (as dicts for TypedDict compatibility)
+    mode_switch_count: int  # Track how many times mode has changed
 
     # Output
     ai_response: str
@@ -150,7 +176,10 @@ def create_initial_state() -> VehicleSearchState:
         interaction_events=[],
         interviewed=False,  # Start in interview workflow
         _interview_should_end=False,
-        _supervisor_decision={},  # Initialize empty supervisor decision
+        current_intent="general",  # Initial intent
+        current_mode="general",  # Initial mode
+        intent_history=[],  # Empty intent history
+        mode_switch_count=0,  # No mode switches yet
         ai_response=""
     )
 
