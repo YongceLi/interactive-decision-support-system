@@ -14,7 +14,26 @@ logger = get_logger("components.semantic_parser")
 SEMANTIC_PARSER_PROMPT = """
 You are a semantic parser for a vehicle search assistant. Your job is to extract structured information from the ENTIRE conversation.
 
-**IMPORTANT**: Analyze the COMPLETE conversation history and generate a FULL, COMPLETE set of filters that represents the user's CURRENT search intent. If the user changes their mind, REPLACE old preferences with new ones.
+**INSTRUCTION**: First, check if the LATEST user message contains NEW vehicle search criteria or filter modifications.
+
+- **If YES (new filters)**: Extract and return COMPLETE filters representing current search intent
+- **If NO (follow-up question)**: Return EMPTY filters `{"has_new_filters": false, "explicit_filters": {}, "implicit_preferences": {}}` to indicate NO CHANGE
+
+**Examples of NO NEW FILTERS (return empty {}):**
+- "Tell me more about this vehicle"
+- "Can you show me photos?"
+- "What's the mileage on that one?"
+- "Compare #1 and #2"
+- "What's the safety rating?"
+- "How much is it?"
+- General questions about already-shown vehicles
+
+**Examples of NEW FILTERS (extract and return):**
+- "Show me SUVs under $30k"
+- "I want a red one instead"
+- "Change to Honda"
+- "Under 50k miles please"
+- "In California"
 
 Given the conversation history, extract:
 
@@ -23,6 +42,7 @@ Given the conversation history, extract:
 
 Output Format (JSON):
 {
+  "has_new_filters": true,  // or false if latest message is just a follow-up question
   "explicit_filters": {
     "make": "Toyota",  // or "Toyota,Honda" for multiple
     "model": "Camry",  // or "Camry,Accord" for multiple, don't include trim level.
@@ -68,6 +88,7 @@ Example 1 - Initial search:
 User: "I'm looking for a reliable sedan under $25k"
 Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {"body_style": "sedan", "price": "0-25000"},
   "implicit_preferences": {"priorities": ["reliability"], "budget_sensitivity": "moderate"}
 }
@@ -76,6 +97,7 @@ Example 2 - Multiple options:
 User: "Show me Toyota Camrys or Honda Accords from 2018-2020 in white or silver"
 Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {
     "make": "Toyota,Honda",
     "model": "Camry,Accord",
@@ -95,6 +117,7 @@ Conversation:
   User: "Actually, I want Toyotas instead"
 Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {
     "make": "Toyota"
   },
@@ -110,6 +133,7 @@ Conversation:
   User: "Under $25k please"
 Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {
     "make": "Toyota",
     "model": "Camry",
@@ -119,6 +143,18 @@ Output:
     "brand_affinity": ["Toyota"],
     "budget_sensitivity": "budget-conscious"
   }
+}
+
+Example 5 - Follow-up question (NO new filters):
+Conversation:
+  User: "Show me SUVs under $40k"
+  Assistant: "Here are some great options! #1: 2025 Acura TLX..."
+  User: "Can you tell me more about this vehicle?"
+Output:
+{
+  "has_new_filters": false,
+  "explicit_filters": {},
+  "implicit_preferences": {}
 }
 
 Now parse the conversation and output ONLY valid JSON, no other text.
@@ -187,12 +223,22 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
 
         parsed_data = json.loads(content)
 
+        # Check if there are new filters
+        has_new_filters = parsed_data.get("has_new_filters", True)  # Default to True for backward compatibility
+
+        if not has_new_filters:
+            # User is asking a follow-up question, not providing new filters
+            logger.info("No new filters detected - user asking follow-up question, keeping existing filters")
+            return state
+
         # REPLACE explicit filters entirely (not merge!)
         new_filters = parsed_data.get("explicit_filters", {})
 
         # Log the change for debugging
         if new_filters != current_filters:
             logger.info(f"Filters changed: {current_filters} → {new_filters}")
+        else:
+            logger.info("New filters extracted (same as current)")
 
         state["explicit_filters"] = new_filters  # REPLACE, not merge!
 

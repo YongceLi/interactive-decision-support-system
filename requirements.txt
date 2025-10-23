@@ -5,7 +5,9 @@ langchain-core>=0.3.0
 langchain-openai>=0.2.0  # For OpenAI models
 langchain-anthropic>=0.2.0  # For Anthropic models (optional)
 langchain-community>=0.3.0  # For SQL database tools
-langchain-tavily>=0.1.0  # For Tavily web search
+
+# Database
+sqlalchemy>=2.0.0  # For SQL database operations
 
 # API and HTTP
 requests>=2.31.0
