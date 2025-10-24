@@ -53,10 +53,14 @@ function parseMarkdown(text: string): string {
   html = html.replace(/^• (.*$)/gm, '<li class="mb-2">$1</li>');
   
   // Wrap consecutive list items in <ul>
-  html = html.replace(/(<li class="mb-2">.*<\/li>(\s*<li class="mb-2">.*<\/li>)*)/g, '<ul class="list-none space-y-2 mb-2">$1</ul>');
+  html = html.replace(/(<li class="mb-2">.*<\/li>(\s*<li class="mb-2">.*<\/li>)*)/g, '<ul class="list-none space-y-2">$1</ul>');
   
   // Remove line breaks between list items
   html = html.replace(/<\/li>\s*\n\s*<li/g, '</li><li');
+  
+  // Wrap the first non-list, non-empty line in a paragraph with margin-bottom
+  // This targets the first line that doesn't start with '<' (i.e., not an HTML tag)
+  html = html.replace(/^([^\n<].*?)\n/, '<p class="mb-2">$1</p>\n');
   
   // Convert line breaks to <br> for non-list content
   html = html.replace(/\n(?!<)/g, '<br>');
