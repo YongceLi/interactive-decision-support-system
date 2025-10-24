@@ -7,6 +7,7 @@ Decision 2 - Conditional recommendations:
 - If query contains vehicle filters: Update recommendations
 - If pure analytical question: Just answer, no recommendations
 """
+from typing import Optional, Callable
 from idss_agent.state import VehicleSearchState, VehicleFilters
 from idss_agent.components.semantic_parser import semantic_parser_node
 from idss_agent.components.analytical import analytical_agent
@@ -39,7 +40,10 @@ def has_vehicle_filters(filters: VehicleFilters) -> bool:
     ])
 
 
-def run_analytical_mode(state: VehicleSearchState) -> VehicleSearchState:
+def run_analytical_mode(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Analytical mode handler - answer questions with data.
 
@@ -52,6 +56,7 @@ def run_analytical_mode(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response (± recommended_vehicles)
@@ -59,7 +64,7 @@ def run_analytical_mode(state: VehicleSearchState) -> VehicleSearchState:
     logger.info("Analytical mode: Answering analytical question")
 
     # 1. Parse any filters/entities from question
-    state = semantic_parser_node(state)
+    state = semantic_parser_node(state, progress_callback)
 
     # 2. Decision 2: Conditionally update recommendations
     # If filters detected (e.g., "safest SUV"), update recommendations
@@ -73,12 +78,12 @@ def run_analytical_mode(state: VehicleSearchState) -> VehicleSearchState:
     if filters_detected:
         # Question includes vehicle criteria → Show vehicles
         logger.info("Analytical mode: Vehicle filters detected, updating recommendations")
-        state = update_recommendation_list(state)
+        state = update_recommendation_list(state, progress_callback)
         state["previous_filters"] = state["explicit_filters"].copy()
     else:
         logger.info("Analytical mode: No vehicle filters, skipping recommendations")
 
     # 3. Use analytical agent to answer question
-    state = analytical_agent(state)
+    state = analytical_agent(state, progress_callback)
 
     return state

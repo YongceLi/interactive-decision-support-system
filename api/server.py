@@ -13,6 +13,10 @@ from typing import Dict, Optional, List, Any
 import uuid
 from datetime import datetime
 from dotenv import load_dotenv
+import asyncio
+import concurrent.futures
+import json
+from sse_starlette.sse import EventSourceResponse
 
 load_dotenv()
 
@@ -119,6 +123,105 @@ async def chat(request: ChatRequest):
         error_detail = f"Error processing message: {str(e)}\n{traceback.format_exc()}"
         print(error_detail)  # Print to console for debugging
         raise HTTPException(status_code=500, detail=f"Error processing message: {str(e)}")
+
+
+@app.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """
+    Streaming conversation endpoint with Server-Sent Events.
+
+    Streams progress updates in real-time, then sends final response.
+
+    Events:
+    - progress: Progress updates during execution
+    - complete: Final response with vehicles and session data
+    - error: Error information if something goes wrong
+    """
+    async def event_generator():
+        try:
+            # Get or create session
+            session_id, state = get_or_create_session(request.session_id)
+
+            # Create progress queue for async communication
+            progress_queue = asyncio.Queue()
+
+            # Get the event loop in the async context (before threading)
+            loop = asyncio.get_running_loop()
+
+            def progress_callback(update: dict):
+                """Thread-safe callback to send progress updates."""
+                try:
+                    # Use the loop from outer scope
+                    asyncio.run_coroutine_threadsafe(
+                        progress_queue.put(update),
+                        loop
+                    )
+                except Exception as e:
+                    print(f"Error in progress_callback: {e}")
+
+            # Run agent in thread pool to avoid blocking event loop
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                # Submit agent execution to thread pool
+                future = executor.submit(run_agent, request.message, state, progress_callback)
+
+                # Stream progress updates while agent is running
+                while not future.done():
+                    try:
+                        # Wait for progress update with timeout
+                        update = await asyncio.wait_for(progress_queue.get(), timeout=0.1)
+                        yield {
+                            "event": "progress",
+                            "data": json.dumps(update)
+                        }
+                    except asyncio.TimeoutError:
+                        # No update available, continue waiting
+                        continue
+
+                # Drain any remaining progress updates
+                while not progress_queue.empty():
+                    try:
+                        update = progress_queue.get_nowait()
+                        yield {
+                            "event": "progress",
+                            "data": json.dumps(update)
+                        }
+                    except asyncio.QueueEmpty:
+                        break
+
+                # Get final result from agent
+                updated_state = future.result()
+
+            # Update session storage
+            sessions[session_id] = updated_state
+
+            # Send final response
+            yield {
+                "event": "complete",
+                "data": json.dumps({
+                    "response": updated_state.get('ai_response', ''),
+                    "vehicles": updated_state.get('recommended_vehicles', [])[:20],
+                    "filters": updated_state.get('explicit_filters', {}),
+                    "preferences": updated_state.get('implicit_preferences', {}),
+                    "session_id": session_id,
+                    "interviewed": updated_state.get('interviewed', False)
+                })
+            }
+
+        except Exception as e:
+            import traceback
+            error_detail = f"Error processing message: {str(e)}\n{traceback.format_exc()}"
+            print(error_detail)  # Print to console for debugging
+
+            # Send error event
+            yield {
+                "event": "error",
+                "data": json.dumps({
+                    "error": str(e),
+                    "detail": error_detail
+                })
+            }
+
+    return EventSourceResponse(event_generator())
 
 
 @app.get("/session/{session_id}", response_model=SessionResponse)

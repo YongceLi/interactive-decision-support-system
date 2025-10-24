@@ -2,6 +2,7 @@
 Semantic parser node for extracting vehicle search criteria from user input.
 """
 import json
+from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.logger import get_logger
@@ -161,7 +162,10 @@ Now parse the conversation and output ONLY valid JSON, no other text.
 """
 
 
-def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
+def semantic_parser_node(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Semantic parser node that extracts vehicle preferences from the ENTIRE conversation.
 
@@ -173,6 +177,7 @@ def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with parsed filters and preferences
@@ -182,6 +187,14 @@ def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
 
     if not user_input:
         return state
+
+    # Emit progress: Starting semantic parsing
+    if progress_callback:
+        progress_callback({
+            "step_id": "semantic_parsing",
+            "description": "Analyzing your message for search criteria",
+            "status": "in_progress"
+        })
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
@@ -229,6 +242,15 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
         if not has_new_filters:
             # User is asking a follow-up question, not providing new filters
             logger.info("No new filters detected - user asking follow-up question, keeping existing filters")
+
+            # Emit progress: Semantic parsing complete (no changes)
+            if progress_callback:
+                progress_callback({
+                    "step_id": "semantic_parsing",
+                    "description": "No new search criteria detected",
+                    "status": "completed"
+                })
+
             return state
 
         # REPLACE explicit filters entirely (not merge!)
@@ -250,6 +272,14 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
         # If parsing fails, log it but don't crash
         logger.warning(f"Failed to parse LLM response as JSON: {e}")
         logger.debug(f"Response content: {response.content}")
+
+    # Emit progress: Semantic parsing complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "semantic_parsing",
+            "description": "Search criteria extracted",
+            "status": "completed"
+        })
 
     return state
 

@@ -5,6 +5,7 @@ Decision 1 - Option C (Hybrid):
 - If not interviewed: Run interview workflow
 - If interviewed: Update recommendations with new filters
 """
+from typing import Optional, Callable
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.semantic_parser import semantic_parser_node
 from idss_agent.components.discovery import discovery_agent
@@ -14,7 +15,10 @@ from idss_agent.logger import get_logger
 logger = get_logger("modes.buying")
 
 
-def run_buying_mode(state: VehicleSearchState) -> VehicleSearchState:
+def run_buying_mode(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Buying mode handler.
 
@@ -24,6 +28,7 @@ def run_buying_mode(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response
@@ -40,7 +45,7 @@ def run_buying_mode(state: VehicleSearchState) -> VehicleSearchState:
         logger.info("Buying mode: Interview complete, updating recommendations")
 
         # 1. Parse any new filters from latest message
-        state = semantic_parser_node(state)
+        state = semantic_parser_node(state, progress_callback)
 
         # 2. Check if filters changed
         filters_changed = state["explicit_filters"] != state.get("previous_filters", {})
@@ -48,15 +53,15 @@ def run_buying_mode(state: VehicleSearchState) -> VehicleSearchState:
         if filters_changed:
             # Filters changed - update recommendations
             logger.info("Buying mode: Filters changed, updating recommendations")
-            state = update_recommendation_list(state)
+            state = update_recommendation_list(state, progress_callback)
             state["previous_filters"] = state["explicit_filters"].copy()
 
             # Use discovery agent to present new options
-            state = discovery_agent(state)
+            state = discovery_agent(state, progress_callback)
 
         else:
             # No filter change - generate conversational response
             logger.info("Buying mode: No filter change, continuing conversation")
-            state = discovery_agent(state)
+            state = discovery_agent(state, progress_callback)
 
         return state

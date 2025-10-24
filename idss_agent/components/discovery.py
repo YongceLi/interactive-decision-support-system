@@ -2,7 +2,7 @@
 Discovery agent - generates responses with listing summary and elicitation questions.
 """
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.state import VehicleSearchState
@@ -22,7 +22,10 @@ def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_
     return raw_json
 
 
-def discovery_agent(state: VehicleSearchState) -> VehicleSearchState:
+def discovery_agent(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Discovery agent - generates vehicle overview and elicitation questions.
 
@@ -33,10 +36,19 @@ def discovery_agent(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response
     """
+
+    # Emit progress: Starting response generation
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Presenting vehicles",
+            "status": "in_progress"
+        })
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
@@ -107,6 +119,22 @@ Generate your response:
 
     # Extract and track which topics were asked about
     state = extract_questions_asked(state, response.content)
+
+    # Emit progress: Response complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Response ready",
+            "status": "completed"
+        })
+
+    # Mark as complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "complete",
+            "description": "Complete",
+            "status": "completed"
+        })
 
     return state
 
