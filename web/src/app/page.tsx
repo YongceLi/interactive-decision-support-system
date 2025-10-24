@@ -53,13 +53,20 @@ function parseMarkdown(text: string): string {
   html = html.replace(/^• (.*$)/gm, '<li class="mb-2">$1</li>');
   
   // Wrap consecutive list items in <ul>
-  html = html.replace(/(<li class="mb-2">.*<\/li>(\s*<li class="mb-2">.*<\/li>)*)/g, '<ul class="list-none space-y-2 mb-3">$1</ul>');
+  html = html.replace(/(<li class="mb-2">.*<\/li>(\s*<li class="mb-2">.*<\/li>)*)/g, '<ul class="list-none space-y-2 mb-2">$1</ul>');
   
   // Remove line breaks between list items
   html = html.replace(/<\/li>\s*\n\s*<li/g, '</li><li');
   
   // Convert line breaks to <br> for non-list content
   html = html.replace(/\n(?!<)/g, '<br>');
+  
+  // Remove extra <br> tags immediately before <ul> tags (to remove blank lines before bullet lists)
+  html = html.replace(/(<br>)+<ul/g, '<ul');
+  
+  // Remove extra <br> tags immediately after </ul> tags (to remove blank lines after bullet lists)
+  // Handle cases with whitespace and multiple <br> tags
+  html = html.replace(/<\/ul>\s*(<br>)+/g, '</ul>');
   
   return html;
 }
