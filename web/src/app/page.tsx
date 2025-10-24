@@ -340,7 +340,7 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View */}
         {hasReceivedRecommendations && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[28rem]">
+          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[22rem]">
             <div className="max-w-6xl mx-auto h-full">
               {showDetails && selectedItem ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-y-auto h-full">

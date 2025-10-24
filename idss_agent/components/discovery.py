@@ -112,7 +112,7 @@ Generate your response:
         SystemMessage(content=discovery_system_prompt),
         HumanMessage(content=prompt),
     ]
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
     response = llm.invoke(messages)
 
     state['ai_response'] = response.content.strip()

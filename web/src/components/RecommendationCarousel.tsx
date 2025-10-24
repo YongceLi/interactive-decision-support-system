@@ -155,14 +155,6 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 
   return (
     <div className="relative w-full h-full flex flex-col">
-      {/* Header */}
-              <div className="mb-4 text-center">
-                <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
-                <p className="text-sm text-slate-400">
-                  {showPlaceholders ? 'Start a conversation to see recommendations' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
-                </p>
-              </div>
-
       {/* Carousel Container */}
       <div className="relative flex items-center justify-center flex-1 overflow-hidden">
         {/* Left Arrow */}

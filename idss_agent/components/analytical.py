@@ -137,7 +137,7 @@ def analytical_agent(
     logger.info(f"Analytical query: {user_input[:100]}... (with {len(recent_history)} messages of context)")
 
     # Get available tools
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     db_tools = get_vehicle_database_tools(llm)
     tools = [
         get_vehicle_listing_by_vin,

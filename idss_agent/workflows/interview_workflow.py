@@ -148,7 +148,7 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
         return state
 
     # Create LLM with structured output
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
     structured_llm = llm.with_structured_output(InterviewResponse)
 
     messages = [SystemMessage(content=INTERVIEW_SYSTEM_PROMPT)]
@@ -213,7 +213,7 @@ def make_initial_recommendation(state: VehicleSearchState) -> VehicleSearchState
     ])
 
     # Create LLM with structured output
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     structured_llm = llm.with_structured_output(ExtractionResult)
 
     extraction_system_prompt = f"""
