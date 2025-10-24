@@ -2,6 +2,7 @@
 Analytical agent - answers specific questions about vehicles using ReAct.
 """
 import os
+from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
@@ -96,7 +97,10 @@ Think step-by-step:
 """
 
 
-def analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
+def analytical_agent(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Agent that answers specific questions about vehicles using available data.
 
@@ -112,6 +116,7 @@ def analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current state with vehicle context and user question
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response
@@ -188,9 +193,25 @@ def analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
     # Create analytical agent
     agent = create_react_agent(llm, tools)
 
+    # Emit progress: Starting analysis
+    if progress_callback:
+        progress_callback({
+            "step_id": "executing_tools",
+            "description": "Analyzing data",
+            "status": "in_progress"
+        })
+
     try:
         # Invoke with system message (cached) + context + history
         result = agent.invoke({"messages": messages})
+
+        # Emit progress: Synthesizing answer
+        if progress_callback:
+            progress_callback({
+                "step_id": "generating_response",
+                "description": "Synthesizing answer",
+                "status": "in_progress"
+            })
 
         # Extract final response
         messages = result.get("messages", [])
@@ -210,6 +231,22 @@ def analytical_agent(state: VehicleSearchState) -> VehicleSearchState:
         else:
             state["ai_response"] = response_content
             logger.info(f"Analytical agent: Response generated ({len(response_content)} chars)")
+
+        # Emit progress: Answer ready
+        if progress_callback:
+            progress_callback({
+                "step_id": "generating_response",
+                "description": "Answer ready",
+                "status": "completed"
+            })
+
+        # Mark as complete
+        if progress_callback:
+            progress_callback({
+                "step_id": "complete",
+                "description": "Complete",
+                "status": "completed"
+            })
 
     except Exception as e:
         logger.error(f"Analytical agent error: {e}", exc_info=True)

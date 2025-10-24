@@ -4,7 +4,7 @@ Interview workflow - asks questions to understand user needs before making recom
 This workflow runs until the interview is complete (threshold reached or user requests vehicles).
 """
 import os
-from typing import Any
+from typing import Any, Optional, Callable
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -119,12 +119,32 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     Returns:
         Updated state with AI response and should_end flag
     """
+    # Get progress callback from state if available
+    progress_callback = state.get("_progress_callback")
+
+    # Emit progress: Starting interview
+    if progress_callback:
+        progress_callback({
+            "step_id": "interview_questions",
+            "description": "Conducting interview",
+            "status": "in_progress"
+        })
+
     user_input = get_latest_user_message(state)
 
     if not user_input:
         # First turn - greeting
         state["ai_response"] = "Hi there! Welcome. What brings you in today? Are you looking to replace a current vehicle or is this your first car?"
         state["_interview_should_end"] = False
+
+        # Emit progress: Interview question ready
+        if progress_callback:
+            progress_callback({
+                "step_id": "interview_questions",
+                "description": "Interview question ready",
+                "status": "completed"
+            })
+
         return state
 
     # Create LLM with structured output
@@ -147,6 +167,14 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
         # Normal conversation - set the response
         state["ai_response"] = response.response
 
+    # Emit progress: Interview question ready
+    if progress_callback:
+        progress_callback({
+            "step_id": "interview_questions",
+            "description": "Interview question ready",
+            "status": "completed"
+        })
+
     return state
 
 
@@ -165,6 +193,17 @@ def make_initial_recommendation(state: VehicleSearchState) -> VehicleSearchState
         Updated state with interviewed=True and initial recommendations
     """
     logger.info("Interview complete! Extracting preferences and searching for available vehicles...")
+
+    # Get progress callback from state if available
+    progress_callback = state.get("_progress_callback")
+
+    # Emit progress: Starting extraction
+    if progress_callback:
+        progress_callback({
+            "step_id": "extracting_preferences",
+            "description": "Extracting your preferences",
+            "status": "in_progress"
+        })
 
     # Step 1: Extract filters/preferences using structured output
     # Get entire interview conversation
@@ -215,11 +254,19 @@ CONVERSATION:
     logger.info(f"Extracted filters: {state['explicit_filters']}")
     logger.info(f"Extracted preferences: {state['implicit_preferences']}")
 
+    # Emit progress: Extraction complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "extracting_preferences",
+            "description": "Preferences extracted",
+            "status": "completed"
+        })
+
     # Step 2: Search for actual available vehicles using Auto.dev API
-    state = update_recommendation_list(state)
+    state = update_recommendation_list(state, progress_callback)
 
     # Step 3: Use discovery agent to present vehicles conversationally
-    state = discovery_agent(state)
+    state = discovery_agent(state, progress_callback)
 
     # Step 4: Mark interview complete
     state["interviewed"] = True
@@ -238,13 +285,20 @@ def decide_next_step(state: VehicleSearchState) -> str:
     return END
 
 
+# Create wrapper for semantic_parser_node that extracts callback from state
+def semantic_parser_wrapper(state: VehicleSearchState) -> VehicleSearchState:
+    """Wrapper to pass progress_callback from state to semantic_parser_node."""
+    progress_callback = state.get("_progress_callback")
+    return semantic_parser_node(state, progress_callback)
+
+
 # Create LangGraph StateGraph for interview workflow
 def create_interview_graph():
     """Create the interview workflow graph."""
     workflow = StateGraph(VehicleSearchState)
 
-    # Add nodes
-    workflow.add_node("semantic_parser", semantic_parser_node)
+    # Add nodes (using wrapper for semantic_parser to pass callback)
+    workflow.add_node("semantic_parser", semantic_parser_wrapper)
     workflow.add_node("interview", interview_node)
     workflow.add_node("make_recommendation", make_initial_recommendation)
 
@@ -275,17 +329,32 @@ def get_interview_graph():
     return _interview_graph
 
 
-def run_interview_workflow(user_input: str, state: VehicleSearchState) -> VehicleSearchState:
+def run_interview_workflow(
+    user_input: str,
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Main interview workflow entry point.
 
     Args:
         user_input: User's message
         state: Current state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state
     """
+    # Store progress callback in state for nodes to access
+    # (LangGraph nodes only receive state parameter)
+    if progress_callback:
+        state["_progress_callback"] = progress_callback
+
     graph = get_interview_graph()
     result = graph.invoke(state)
+
+    # Clean up progress callback from state
+    if "_progress_callback" in result:
+        del result["_progress_callback"]
+
     return result

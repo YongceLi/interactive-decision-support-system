@@ -121,6 +121,23 @@ class IntentRecord(BaseModel):
     )
 
 
+# Progress tracking for execution visibility
+class ProgressStep(TypedDict):
+    """A single step in the execution progress."""
+    step_id: str  # Unique identifier: "intent_classification", "semantic_parsing", etc.
+    description: str  # Human-readable description: "Classifying user intent..."
+    status: Literal["pending", "in_progress", "completed", "failed"]  # Current status
+    timestamp: float  # Unix timestamp when step started/completed
+
+
+class ExecutionProgress(TypedDict):
+    """Tracks execution progress for streaming to UI."""
+    current_step_index: int  # 0-based index of current step
+    total_steps: int  # Total number of steps for this mode
+    steps: List[ProgressStep]  # All steps with their statuses
+    mode: str  # Current mode: "buying", "discovery", "analytical", "general"
+
+
 class VehicleSearchState(TypedDict):
     """
     Complete state for the vehicle search agent.
@@ -160,6 +177,9 @@ class VehicleSearchState(TypedDict):
     intent_history: List[Dict[str, Any]]  # All intent classifications (as dicts for TypedDict compatibility)
     mode_switch_count: int  # Track how many times mode has changed
 
+    # Progress tracking for UI streaming
+    execution_progress: ExecutionProgress  # Current execution progress for progress bar
+
     # Output
     ai_response: str
 
@@ -180,6 +200,12 @@ def create_initial_state() -> VehicleSearchState:
         current_mode="general",  # Initial mode
         intent_history=[],  # Empty intent history
         mode_switch_count=0,  # No mode switches yet
+        execution_progress=ExecutionProgress(
+            current_step_index=0,
+            total_steps=0,
+            steps=[],
+            mode="general"
+        ),  # Initialize empty progress
         ai_response=""
     )
 

@@ -4,7 +4,7 @@ Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 import concurrent.futures
 import math
 import json
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
@@ -110,7 +110,10 @@ def enrich_vehicles_with_photos(vehicles: List[Dict[str, Any]], max_workers: int
     return vehicles
 
 
-def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
+def update_recommendation_list(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Use a ReAct agent to build a recommendation list of up to 20 vehicles.
 
@@ -122,10 +125,19 @@ def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with recommended_vehicles populated
     """
+
+    # Emit progress: Starting search
+    if progress_callback:
+        progress_callback({
+            "step_id": "updating_recommendations",
+            "description": "Searching for vehicles",
+            "status": "in_progress"
+        })
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
@@ -234,5 +246,13 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()
+
+    # Emit progress: Search complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "updating_recommendations",
+            "description": f"Found {len(state['recommended_vehicles'])} vehicles",
+            "status": "completed"
+        })
 
     return state

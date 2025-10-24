@@ -3,6 +3,7 @@ General mode - Handle greetings, meta questions, off-topic conversations.
 
 Triggered by "general" intent - greetings, thanks, system questions, unclear queries.
 """
+from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage
 from idss_agent.state import VehicleSearchState
@@ -11,7 +12,10 @@ from idss_agent.logger import get_logger
 logger = get_logger("modes.general")
 
 
-def run_general_mode(state: VehicleSearchState) -> VehicleSearchState:
+def run_general_mode(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     General mode handler - simple conversational responses.
 
@@ -25,11 +29,20 @@ def run_general_mode(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response (no vehicles)
     """
     logger.info("General mode: Handling general conversation")
+
+    # Emit progress: Generating response
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Preparing response",
+            "status": "in_progress"
+        })
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
 
@@ -66,5 +79,21 @@ Your main capabilities:
 
     # Add AI response to conversation history
     state["conversation_history"].append(AIMessage(content=response.content))
+
+    # Emit progress: Response complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Response ready",
+            "status": "completed"
+        })
+
+    # Mark as complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "complete",
+            "description": "Complete",
+            "status": "completed"
+        })
 
     return state
