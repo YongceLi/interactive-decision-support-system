@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
 import FilterMenu from '@/components/FilterMenu';
+import DemoPanel from '@/components/DemoPanel';
 import FavoritesPage from '@/components/FavoritesPage';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
@@ -87,6 +88,7 @@ export default function Home() {
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<Vehicle[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -381,6 +383,22 @@ export default function Home() {
 
   const recentMessages = getLastThreeTurns();
 
+  const demoSummary = useMemo(() => {
+    if (!chatMessages.length) {
+      return '';
+    }
+    const window = chatMessages.slice(-8);
+    return window
+      .map(message => `${message.role === 'assistant' ? 'Assistant' : 'User'}: ${message.content}`)
+      .join(' ');
+  }, [chatMessages]);
+
+  const recentMessagesForDemo = useMemo(
+    () =>
+      recentMessages.map(message => ({ role: message.role, content: message.content })),
+    [recentMessages]
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
@@ -657,6 +675,19 @@ export default function Home() {
 
       {/* Filter Menu */}
       <FilterMenu onFilterChange={handleFilterChange} />
+
+      <DemoPanel
+        enabled={demoMode}
+        onToggle={() => setDemoMode(prev => !prev)}
+        summary={demoSummary}
+        recentMessages={recentMessagesForDemo}
+        filters={currentFilters}
+        favoritesCount={favorites.length}
+        vehicles={vehicles}
+        selectedVehicle={selectedItem}
+        showDetails={showDetails}
+        showFavorites={showFavorites}
+      />
 
       {/* Favorites Button */}
       <button
