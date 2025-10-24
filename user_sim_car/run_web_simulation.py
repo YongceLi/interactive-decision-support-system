@@ -49,6 +49,14 @@ def collect_persona(args: argparse.Namespace) -> str:
     return DEFAULT_PERSONA
 
 
+def emit_event(event_type: str, payload: Dict[str, Any]) -> None:
+    """Write a JSONL event to stdout so the UI can stream updates."""
+    event = {"type": event_type, "data": payload}
+    sys.stdout.write(json.dumps(event))
+    sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
 def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Filter the final state into JSON-serializable primitives."""
     snapshots = payload.get("demo_snapshots") or []
@@ -87,6 +95,7 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         "rl_scores": payload.get("rl_scores"),
         "rl_thresholds": payload.get("rl_thresholds"),
         "rl_rationale": payload.get("rl_rationale"),
+        "discount_factor": payload.get("discount_factor"),
         "last_judge": judge,
         "persona": {
             "family": persona.get("family"),
@@ -106,10 +115,36 @@ def main() -> None:
     persona = collect_persona(args)
 
     model = ChatOpenAI(model=args.model, temperature=args.temperature)
+
+    def handle_event(event_type: str, payload: Dict[str, Any]) -> None:
+        data: Dict[str, Any] = {}
+        if event_type == "turn":
+            data = {
+                "step": payload.get("step"),
+                "user_text": payload.get("user_text", ""),
+                "assistant_text": payload.get("assistant_text", ""),
+                "actions": payload.get("actions", []),
+                "summary": payload.get("summary", ""),
+                "scores": payload.get("scores"),
+                "judge": payload.get("judge"),
+                "rationale": payload.get("rationale"),
+            }
+        elif event_type == "rl_init":
+            data = {
+                "thresholds": payload.get("thresholds"),
+                "scores": payload.get("scores"),
+                "discount": payload.get("discount"),
+                "notes": payload.get("notes"),
+            }
+        else:
+            data = payload
+        emit_event(event_type, data)
+
     runner = GraphRunner(
         chat_model=model,
         base_url=os.getenv("CARREC_BASE_URL", "http://localhost:8000"),
         verbose=False,
+        event_callback=handle_event,
     )
 
     final_state = runner.run_session(
@@ -128,7 +163,7 @@ def main() -> None:
         "model": args.model,
     }
     payload.update(sanitize_for_json(final_state))
-    json.dump(payload, sys.stdout)
+    emit_event("complete", payload)
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -593,11 +593,18 @@ def list_available_actions(ui: UIState) -> List[str]:
 
 
 class GraphRunner:
-    def __init__(self, chat_model: BaseChatModel, base_url: Optional[str] = None, verbose: bool = True):
+    def __init__(
+        self,
+        chat_model: BaseChatModel,
+        base_url: Optional[str] = None,
+        verbose: bool = True,
+        event_callback: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+    ):
         self.model = chat_model
         self.api = ApiClient(base_url=base_url or os.getenv("CARREC_BASE_URL", "http://localhost:8000"))
         self.memory = MemorySaver()
         self.verbose = verbose
+        self.event_callback = event_callback
 
         self.family_agent = PersonaAgent("Family background (size, location, preferences)", chat_model)
         self.writing_agent = PersonaAgent("Writing style (grammar, spelling, consistency)", chat_model)
@@ -666,6 +673,14 @@ class GraphRunner:
                     print(f"Initial returns: {scores}")
                     if init_notes:
                         print(f"Notes: {init_notes}")
+                if self.event_callback:
+                    payload: Dict[str, Any] = {
+                        "thresholds": dict(thresholds or {}),
+                        "scores": dict(scores or {}),
+                        "discount": discount,
+                        "notes": init_notes,
+                    }
+                    self.event_callback("rl_init", payload)
             summary = state.get("conversation_summary", "")
             ui_desc = describe_ui_state(state["ui"], state.get("vehicles", []))
             available_actions = list_available_actions(state["ui"])
@@ -836,6 +851,8 @@ class GraphRunner:
                     "rationale": rationale,
                 }
                 updates["demo_snapshots"] = state.get("demo_snapshots", []) + [snapshot]
+                if self.event_callback:
+                    self.event_callback("turn", snapshot)
             return updates
 
         def n_check_stop(state: SimState):

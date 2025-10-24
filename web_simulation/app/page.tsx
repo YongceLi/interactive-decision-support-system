@@ -35,11 +35,37 @@ interface SimulationResponse {
   rl_scores?: Thresholds;
   rl_thresholds?: Thresholds;
   rl_rationale?: string;
+  discount_factor?: number;
   last_judge?: JudgePayload | null;
   persona?: PersonaFacets;
   goal?: Record<string, unknown>;
   demo_snapshots?: SimulationTurn[];
 }
+
+type StreamTurnEvent = {
+  step?: number;
+  user_text: string;
+  assistant_text: string;
+  actions?: Array<Record<string, unknown>>;
+  summary?: string;
+  scores?: Thresholds;
+  judge?: JudgePayload | null;
+  rationale?: string | null;
+};
+
+type StreamEvent =
+  | { type: 'turn'; data: StreamTurnEvent }
+  | {
+      type: 'rl_init';
+      data: {
+        thresholds?: Thresholds;
+        scores?: Thresholds;
+        discount?: number;
+        notes?: string;
+      };
+    }
+  | { type: 'complete'; data: SimulationResponse }
+  | { type: 'error'; data?: { message?: string } };
 
 const DEFAULT_PERSONA = `Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute;
 budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos;
@@ -51,10 +77,21 @@ export default function Page() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SimulationResponse | null>(null);
+  const [turns, setTurns] = useState<SimulationTurn[]>([]);
+  const [rlInfo, setRlInfo] = useState<{
+    thresholds?: Thresholds;
+    scores?: Thresholds;
+    discount?: number;
+    notes?: string;
+  } | null>(null);
 
   const handleRun = async () => {
     setIsRunning(true);
     setError(null);
+    setResult(null);
+    setTurns([]);
+    setRlInfo(null);
+
     try {
       const response = await fetch('/api/simulate', {
         method: 'POST',
@@ -64,13 +101,98 @@ export default function Page() {
         body: JSON.stringify({ persona, maxSteps }),
       });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Failed to run simulation');
+      if (!response.ok || !response.body) {
+        let message = 'Failed to run simulation';
+        try {
+          const payload = await response.json();
+          message = payload?.error || message;
+        } catch (parseError) {
+          // Ignore JSON parsing failures and use fallback message
+        }
+        throw new Error(message);
       }
 
-      const data = (await response.json()) as SimulationResponse;
-      setResult(data);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const processLine = (line: string) => {
+        if (!line) {
+          return;
+        }
+        try {
+          const event = JSON.parse(line) as StreamEvent;
+          switch (event.type) {
+            case 'turn':
+              setTurns((prev) => {
+                const nextTurn: SimulationTurn = {
+                  step: event.data.step ?? prev.length + 1,
+                  user_text: event.data.user_text,
+                  assistant_text: event.data.assistant_text,
+                  actions: event.data.actions ?? [],
+                  summary: event.data.summary ?? '',
+                  scores: event.data.scores,
+                  judge: event.data.judge ?? null,
+                  rationale: event.data.rationale ?? null,
+                };
+                return [...prev, nextTurn];
+              });
+              if (event.data.scores) {
+                setRlInfo((prev) => ({
+                  ...(prev ?? {}),
+                  scores: event.data.scores,
+                }));
+              }
+              break;
+            case 'rl_init':
+              setRlInfo({
+                thresholds: event.data.thresholds,
+                scores: event.data.scores,
+                discount: event.data.discount,
+                notes: event.data.notes,
+              });
+              break;
+            case 'complete':
+              setResult(event.data);
+              if (event.data.demo_snapshots?.length) {
+                setTurns(event.data.demo_snapshots);
+              }
+              setRlInfo((prev) => ({
+                ...(prev ?? {}),
+                thresholds: event.data.rl_thresholds ?? prev?.thresholds,
+                scores: event.data.rl_scores ?? prev?.scores,
+                discount: event.data.discount_factor ?? prev?.discount,
+                notes: event.data.rl_rationale ?? prev?.notes,
+              }));
+              break;
+            case 'error':
+              setError(event.data?.message ?? 'Simulation error');
+              break;
+            default:
+              break;
+          }
+        } catch (parseError) {
+          console.warn('Failed to parse simulation event', parseError, line);
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n');
+        buffer = parts.pop() ?? '';
+        for (const part of parts) {
+          processLine(part.trim());
+        }
+      }
+
+      const trailing = buffer.trim();
+      if (trailing) {
+        processLine(trailing);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
@@ -79,11 +201,24 @@ export default function Page() {
     }
   };
 
+  const latestJudge = useMemo(() => {
+    if (result?.last_judge) {
+      return result.last_judge;
+    }
+    for (let index = turns.length - 1; index >= 0; index -= 1) {
+      const judge = turns[index]?.judge;
+      if (judge) {
+        return judge;
+      }
+    }
+    return null;
+  }, [result?.last_judge, turns]);
+
   const judgeSummary = useMemo(() => {
-    if (!result?.last_judge) {
+    if (!latestJudge) {
       return null;
     }
-    const { score, feedback } = result.last_judge;
+    const { score, feedback } = latestJudge;
     if (typeof score !== 'number' && !feedback) {
       return null;
     }
@@ -91,7 +226,7 @@ export default function Page() {
       score: typeof score === 'number' ? `${(score * 100).toFixed(0)}% alignment` : undefined,
       feedback: feedback || '',
     };
-  }, [result?.last_judge]);
+  }, [latestJudge]);
 
   const personaFacets = useMemo(() => {
     const facets = result?.persona;
@@ -107,8 +242,17 @@ export default function Page() {
   }, [result?.persona]);
 
   const snapshots: SimulationTurn[] = useMemo(() => {
+    if (turns.length) {
+      return turns;
+    }
     return result?.demo_snapshots ?? [];
-  }, [result?.demo_snapshots]);
+  }, [turns, result?.demo_snapshots]);
+
+  const stopReason = result?.stop_reason ?? (turns.length ? (isRunning ? 'Running…' : 'In progress') : 'Pending');
+  const stepsUsed = result?.step ?? turns.length;
+  const rlThresholds = rlInfo?.thresholds ?? result?.rl_thresholds ?? undefined;
+  const rlScores = rlInfo?.scores ?? result?.rl_scores ?? undefined;
+  const rlNotes = rlInfo?.notes ?? result?.rl_rationale ?? undefined;
 
   return (
     <main className="flex flex-col gap-10 px-6 py-10 lg:px-12">
@@ -176,94 +320,87 @@ export default function Page() {
             </p>
           ) : null}
 
-          {result ? (
-            <dl className="space-y-3 text-sm text-slate-300">
+          <dl className="space-y-3 text-sm text-slate-300">
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Stop reason</dt>
+              <dd className="mt-1 text-slate-100">{stopReason}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Steps used</dt>
+              <dd className="mt-1 text-slate-100">{stepsUsed}</dd>
+            </div>
+            {judgeSummary ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Stop reason</dt>
-                <dd className="mt-1 text-slate-100">{result.stop_reason ?? 'Pending'}</dd>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Judge feedback</dt>
+                <dd className="mt-1 text-slate-100">
+                  {judgeSummary.score ? `${judgeSummary.score} · ` : ''}
+                  {judgeSummary.feedback}
+                </dd>
               </div>
+            ) : null}
+            {personaFacets.length ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Steps used</dt>
-                <dd className="mt-1 text-slate-100">{result.step ?? 0}</dd>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Persona facets</dt>
+                <dd className="mt-1 space-y-1">
+                  {personaFacets.map(({ label, value }) => (
+                    <p key={label} className="text-slate-200">
+                      <span className="font-semibold text-slate-100">{label}: </span>
+                      {value}
+                    </p>
+                  ))}
+                </dd>
               </div>
-              {judgeSummary ? (
-                <div>
-                  <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Judge feedback</dt>
-                  <dd className="mt-1 text-slate-100">
-                    {judgeSummary.score ? `${judgeSummary.score} · ` : ''}
-                    {judgeSummary.feedback}
-                  </dd>
-                </div>
-              ) : null}
-              {personaFacets.length ? (
-                <div>
-                  <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Persona facets</dt>
-                  <dd className="mt-1 space-y-1">
-                    {personaFacets.map(({ label, value }) => (
-                      <p key={label} className="text-slate-200">
-                        <span className="font-semibold text-slate-100">{label}: </span>
-                        {value}
-                      </p>
-                    ))}
-                  </dd>
-                </div>
-              ) : null}
-              {result.rl_scores ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Positive score</dt>
-                    <dd className="mt-1 text-lg font-semibold text-emerald-300">
-                      {typeof result.rl_scores.positive === 'number'
-                        ? result.rl_scores.positive.toFixed(2)
-                        : '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Negative score</dt>
-                    <dd className="mt-1 text-lg font-semibold text-rose-300">
-                      {typeof result.rl_scores.negative === 'number'
-                        ? result.rl_scores.negative.toFixed(2)
-                        : '—'}
-                    </dd>
-                  </div>
-                </div>
-              ) : null}
-              {result.rl_rationale ? (
-                <div>
-                  <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL rationale</dt>
-                  <dd className="mt-1 whitespace-pre-line text-slate-200/80">{result.rl_rationale}</dd>
-                </div>
-              ) : null}
-            </dl>
-          ) : null}
+            ) : null}
+            {rlThresholds ? (
+              <div>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL thresholds</dt>
+                <dd className="mt-1 text-slate-100 space-y-1">
+                  <div>Positive: {rlThresholds.positive?.toFixed(2) ?? '—'}</div>
+                  <div>Negative: {rlThresholds.negative?.toFixed(2) ?? '—'}</div>
+                </dd>
+              </div>
+            ) : null}
+            {rlScores ? (
+              <div>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current RL scores</dt>
+                <dd className="mt-1 text-slate-100 space-y-1">
+                  <div>Positive: {rlScores.positive?.toFixed(2) ?? '—'}</div>
+                  <div>Negative: {rlScores.negative?.toFixed(2) ?? '—'}</div>
+                </dd>
+              </div>
+            ) : null}
+            {rlNotes ? (
+              <div>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL notes</dt>
+                <dd className="mt-1 whitespace-pre-line text-slate-200/80">{rlNotes}</dd>
+              </div>
+            ) : null}
+          </dl>
         </aside>
 
         <div className="space-y-8">
           {result ? (
-            <section className="space-y-4">
-              <div className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 shadow-xl">
-                <h2 className="text-lg font-semibold text-slate-100">Conversation summary</h2>
-                <p className="mt-2 text-sm text-slate-300/90">
-                  {result.conversation_summary ?? 'Summary not available yet.'}
-                </p>
-                {result.summary_notes ? (
-                  <p className="mt-3 text-xs text-slate-400">Latest delta: {result.summary_notes}</p>
-                ) : null}
-              </div>
+            <section className="rounded-2xl border border-slate-700/60 bg-slate-900/50 p-6 shadow-xl">
+              <h2 className="text-lg font-semibold text-slate-100">Conversation summary</h2>
+              <p className="mt-2 text-sm text-slate-300/90">
+                {result.conversation_summary ?? 'Summary not available yet.'}
+              </p>
+              {result.summary_notes ? (
+                <p className="mt-3 text-xs text-slate-400">Latest delta: {result.summary_notes}</p>
+              ) : null}
+            </section>
+          ) : null}
 
-              <div className="space-y-5">
-                {snapshots.length ? (
-                  snapshots.map((turn) => <SimulationTurnCard key={turn.step} turn={turn} />)
-                ) : (
-                  <p className="text-sm text-slate-400">Run the simulator to populate the timeline.</p>
-                )}
-              </div>
-            </section>
-          ) : (
-            <section className="rounded-2xl border border-dashed border-slate-700/70 bg-slate-900/30 p-10 text-center text-sm text-slate-400">
-              Launch a simulation to review the automatically generated conversation.
-            </section>
-          )}
+          <section className="space-y-5 rounded-2xl border border-slate-700/60 bg-slate-900/40 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-slate-100">Turn-by-turn timeline</h2>
+            {snapshots.length ? (
+              snapshots.map((turn, index) => (
+                <SimulationTurnCard key={turn.step ?? index} turn={turn} />
+              ))
+            ) : (
+              <p className="text-sm text-slate-400">Run the simulator to populate the timeline.</p>
+            )}
+          </section>
         </div>
       </section>
     </main>
