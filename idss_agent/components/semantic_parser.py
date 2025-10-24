@@ -196,7 +196,7 @@ def semantic_parser_node(
             "status": "in_progress"
         })
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
     # Build COMPLETE conversation context from ALL LangChain messages
     history_context = "\n".join([

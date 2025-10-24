@@ -7,6 +7,8 @@ interface RecommendationCarouselProps {
   vehicles: Vehicle[];
   onItemSelect?: (vehicle: Vehicle) => void;
   showPlaceholders?: boolean;
+  onToggleFavorite?: (vehicle: Vehicle) => void;
+  isFavorite?: (vehicleId: string) => boolean;
 }
 
 interface ViewTimeData {
@@ -26,7 +28,7 @@ type DisplayCard = {
   isPlaceholder: false;
 };
 
-export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false }: RecommendationCarouselProps) {
+export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false, onToggleFavorite, isFavorite }: RecommendationCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
@@ -155,14 +157,6 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 
   return (
     <div className="relative w-full h-full flex flex-col">
-      {/* Header */}
-              <div className="mb-4 text-center">
-                <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
-                <p className="text-sm text-slate-400">
-                  {showPlaceholders ? 'Start a conversation to see recommendations' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
-                </p>
-              </div>
-
       {/* Carousel Container */}
       <div className="relative flex items-center justify-center flex-1 overflow-hidden">
         {/* Left Arrow */}
@@ -233,6 +227,8 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
             onItemSelect={onItemSelect} 
             index={(currentIndex + card.position + vehicles.length) % vehicles.length + 1}
             isCenter={card.isCenter}
+            onToggleFavorite={onToggleFavorite}
+            isFavorite={isFavorite}
           />
         )}
                       </div>
@@ -263,18 +259,20 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 }
 
 // VehicleCard component
-function VehicleCard({ vehicle, onItemSelect, index, isCenter }: { 
+function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite, isFavorite }: { 
   vehicle: Vehicle; 
   onItemSelect?: (vehicle: Vehicle) => void;
   index?: number;
   isCenter?: boolean;
+  onToggleFavorite?: (vehicle: Vehicle) => void;
+  isFavorite?: (vehicleId: string) => boolean;
 }) {
   // Use Auto.dev image URL
   const primaryImage = vehicle.image_url;
   const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
 
   return (
-    <>
+      <>
       <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
         {hasValidImage ? (
           <>
@@ -313,6 +311,26 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter }: {
           <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
             No Image Found
           </div>
+        )}
+        
+        {/* Heart button */}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(vehicle);
+            }}
+            className="absolute top-2 left-2 w-8 h-8 glass-dark border border-slate-600/30 rounded-full flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 z-20"
+          >
+            <svg 
+              className={`w-5 h-5 transition-all duration-200 ${isFavorite && isFavorite(vehicle.id) ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
         )}
         
         {/* Number indicator - show on all cards */}
