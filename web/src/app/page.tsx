@@ -5,6 +5,7 @@ import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
 import FilterMenu from '@/components/FilterMenu';
+import FavoritesPage from '@/components/FavoritesPage';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -73,8 +74,42 @@ export default function Home() {
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
+  const [favorites, setFavorites] = useState<Vehicle[]>([]);
+  const [showFavorites, setShowFavorites] = useState(false);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
+
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('favorites');
+    if (savedFavorites) {
+      try {
+        setFavorites(JSON.parse(savedFavorites));
+      } catch (e) {
+        console.error('Error loading favorites:', e);
+      }
+    }
+  }, []);
+
+  // Save favorites to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  const toggleFavorite = (vehicle: Vehicle) => {
+    setFavorites(prev => {
+      const isFavorite = prev.some(v => v.id === vehicle.id);
+      if (isFavorite) {
+        return prev.filter(v => v.id !== vehicle.id);
+      } else {
+        return [...prev, vehicle];
+      }
+    });
+  };
+
+  const isFavorite = (vehicleId: string) => {
+    return favorites.some(v => v.id === vehicleId);
+  };
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -338,11 +373,21 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
-        {/* Recommendations at the top or Details View */}
-        {hasReceivedRecommendations && (
+        {/* Recommendations at the top or Details View or Favorites */}
+        {(hasReceivedRecommendations || showFavorites) && (
           <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[22rem]">
             <div className="max-w-6xl mx-auto h-full">
-              {showDetails && selectedItem ? (
+              {showFavorites ? (
+                <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
+                  <FavoritesPage
+                    favorites={favorites}
+                    onToggleFavorite={toggleFavorite}
+                    isFavorite={isFavorite}
+                    onItemSelect={handleItemSelectSync}
+                    onClose={() => setShowFavorites(false)}
+                  />
+                </div>
+              ) : showDetails && selectedItem ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-y-auto h-full">
                   {/* Back Button */}
                   <button
@@ -537,6 +582,8 @@ export default function Home() {
                     vehicles={vehicles} 
                     onItemSelect={handleItemSelectSync}
                     showPlaceholders={false}
+                    onToggleFavorite={toggleFavorite}
+                    isFavorite={isFavorite}
                   />
                 </div>
               )}
@@ -599,6 +646,28 @@ export default function Home() {
 
       {/* Filter Menu */}
       <FilterMenu onFilterChange={handleFilterChange} />
+
+      {/* Favorites Button */}
+      <button
+        onClick={() => setShowFavorites(true)}
+        className="fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50"
+        title="View Favorites"
+      >
+        <svg 
+          className={`w-6 h-6 ${favorites.length > 0 ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}
+          fill="none" 
+          stroke="currentColor" 
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+        {favorites.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+            {favorites.length}
+          </span>
+        )}
+      </button>
+
     </div>
   );
 }
