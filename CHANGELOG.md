@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.0] - 2025-10-24
+## 2025-10-24
 
 ### Added
 
@@ -43,6 +43,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `scripts/demo.py` to display quick replies and suggested follow-ups
 - Updated `notebooks/test_api.ipynb` to showcase interactive elements
 
+#### Configurations
+- Added configuration and prompt templates in `idss_agent/config.py` and `config/` folder
+
 ### Changed
 
 #### Agent Architecture Change
@@ -56,3 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Response Format
 - All agent responses now consistently include interactive elements
+
+#### Dependencies
+- Added `PyYAML>=6.0.0` for YAML configuration parsing
+- Added `Jinja2>=3.1.0` for prompt template rendering
+

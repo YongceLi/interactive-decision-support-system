@@ -107,22 +107,22 @@ class AgentResponse(BaseModel):
     Analytical mode generates this separately after ReAct agent completes.
     """
     ai_response: str = Field(
-        description="The main conversational response to the user"
+        description="The main conversational response to the user (keep concise, 2-4 sentences)",
+        max_length=800
     )
     quick_replies: Optional[List[str]] = Field(
         default=None,
         description=(
-            "Short answer options (1-3 words each) for direct questions in ai_response. "
+            "Short answer options (2-5 words each) for direct questions in ai_response. "
             "Provide 2-4 options. Only include if ai_response asks a direct question. "
-            "Examples: ['Under $20k', '$20k-$30k', '$30k+'], ['Yes', 'No', 'Maybe'], "
-            "['Sedan', 'SUV', 'Truck']"
-        )
+            "Examples: ['Under $20k', '$20k-$30k'], ['Yes', 'No'], ['Sedan', 'SUV']"
+        ),
+        max_length=4
     )
     suggested_followups: List[str] = Field(
         description=(
             "Suggested next queries (short phrases, 3-5 options) to help users continue conversation. "
-            "Examples: ['Show me hybrids', 'What about safety?', 'Compare top 3'], "
-            "['Tell me more', 'Show similar vehicles', 'Check financing options']"
+            "Examples: ['Show me hybrids', 'What about safety?', 'Compare top 3']"
         ),
         min_length=3,
         max_length=5

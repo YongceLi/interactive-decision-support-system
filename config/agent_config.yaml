@@ -1,0 +1,98 @@
+# IDSS Agent Configuration
+
+# Product-specific terminology
+terminology:
+  product_name: "vehicle"           # Singular form: "vehicle", "property", "product"
+  product_plural: "vehicles"        # Plural form: "vehicles", "properties", "products"
+  product_role: "car salesperson"   # Agent role: "car salesperson", "real estate agent", "sales assistant"
+  identifier_name: "VIN"            # Unique identifier: "VIN", "MLS#", "SKU"
+  search_action: "searching for available vehicles"  # Action description
+  recommendation_action: "recommending vehicles"     # Recommendation description
+
+# LLM Models for each component
+models:
+  intent_classifier:
+    name: "gpt-4o-mini"
+    temperature: 0
+    max_tokens: 
+
+  semantic_parser:
+    name: "gpt-4o-mini"
+    temperature: 0
+    max_tokens: 
+
+  interview:
+    name: "gpt-4o-mini"
+    temperature: 0.7
+    max_tokens: 
+
+  interview_extraction:
+    name: "gpt-4o-mini"
+    temperature: 0
+    max_tokens: 
+
+  discovery:
+    name: "gpt-4o"
+    temperature: 0.7
+    max_tokens: 
+
+  discovery_extraction:
+    name: "gpt-4o-mini"
+    temperature: 0
+    max_tokens: 
+
+  analytical:
+    name: "gpt-4o"
+    temperature: 0
+    max_tokens: 
+
+  analytical_postprocess:
+    name: "gpt-4o-mini"
+    temperature: 0.7
+    max_tokens: 
+
+  general:
+    name: "gpt-4o-mini"
+    temperature: 0.7
+    max_tokens: 
+
+# System limits and constraints
+limits:
+  max_recommended_items: 20          # Maximum items in recommendation list
+  max_conversation_history: 10       # Maximum messages to keep in context (interview mode)
+  max_interview_questions: 8         # Maximum interview turns before forcing recommendation
+  max_vehicle_summary_chars: 4000    # Maximum characters for vehicle JSON summary
+  top_vehicles_to_show: 3            # Number of top vehicles to include in prompts
+
+# Interactive elements configuration
+interactive:
+  quick_replies:
+    min_options: 0
+    max_options: 4
+    max_words_per_option: 5
+
+  suggested_followups:
+    min_options: 0
+    max_options: 5
+    max_words_per_phrase: 8
+
+# Feature flags
+features:
+  enable_streaming: true             # Enable SSE streaming for progress updates
+  require_photos: true              # Require photos in vehicle listings
+  
+# API Configuration (Auto.dev specific - modify for other data sources)
+api:
+  base_url: "https://auto.dev/api"
+  endpoints:
+    search: "/listings"
+  default_params:
+    page_size: 20
+    sort_by: "price"
+    sort_order: "asc"
+  timeout: 30
+
+# Logging configuration
+logging:
+  level: "INFO"                      # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

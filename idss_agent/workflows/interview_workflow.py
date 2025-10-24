@@ -10,6 +10,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
 from idss_agent.logger import get_logger
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
 from idss_agent.state import (
     VehicleSearchState,
     get_latest_user_message,
@@ -26,20 +28,25 @@ logger = get_logger("workflows.interview")
 # Structured output schema for interview mode
 class InterviewResponse(BaseModel):
     """Structured response from interview agent with should_end flag."""
-    ai_response: str = Field(description="Your conversational response to the user")
+    ai_response: str = Field(
+        description="Your conversational response to the user (2-3 sentences max)",
+        max_length=500
+    )
     quick_replies: Optional[list[str]] = Field(
         default=None,
         description=(
-            "Short answer options (less than 5 words each) for questions in your response. "
-            "Provide less than 5 options if you ask a direct question. "
-            "Examples: ['Under $20k', '$20k-$30k', '$30k+'], ['Sedan', 'SUV', 'Truck'], ['Yes', 'No'], ..."
-        )
+            "Short answer options (2-5 words each) for questions in your response. "
+            "Provide 2-4 options if you ask a direct question. "
+            "Examples: ['Under $20k', '$20k-$30k'], ['Sedan', 'SUV', 'Truck']"
+        ),
+        max_length=4
     )
     suggested_followups: list[str] = Field(
         description=(
-            "Suggested next queries (short phrases, less than 5 options) to help users continue. "
-            "Examples: ['Show me vehicles now', 'I want a safe car', 'I want a sporty car']"
+            "Suggested next queries (short phrases, 3-5 options) to help users continue. "
+            "Examples: ['Show me vehicles now', 'I want a safe car', 'My budget is $30k']"
         ),
+        min_length=3,
         max_length=5
     )
     should_end: bool = Field(description="True if interview mode should end, false to continue")
@@ -58,49 +65,6 @@ class ExtractionResult(BaseModel):
     )
 
 
-# System prompt for interviewer
-INTERVIEW_SYSTEM_PROMPT = """
-You are a friendly, knowledgeable, human-like car salesperson.
-
-Your job is to have a natural conversation to understand the customer's situation, needs, and preferences before making any vehicle recommendations.
-
-Follow these principles:
-- Be warm, empathetic, and conversational.
-- Ask one or two questions at a time—never a long survey.
-- Adapt your questions based on the user's previous answers.
-- Use intuitive, lifestyle-oriented questions (not just specs).
-- Discover necessary information and practical needs (zipcode, new/used, budget, size, usage).
-- Discover emotional drivers (status, fun, safety, efficiency).
-- DO NOT repeat questions already answered.
-
-Conversational stages to cover:
-1. Warm welcome / motivation: Why now? What's happening in their life?
-2. Practical constraints: Location(zipcode), budget range, new vs used, body type preferences.
-3. Use case & lifestyle: Daily driving? Family? Travel? Commute? Hobbies?
-4. Emotional priorities: Safety, efficiency, performance, style, comfort.
-5. Context: Location, climate, parking, EV charging, brand feelings.
-
-Your task for each turn:
-1. Respond naturally and empathetically to the user's message.
-2. Ask 1-2 thoughtful follow-up questions that move the conversation forward.
-3. If a stage has already been covered, move to the next relevant stage.
-4. Review the conversation history to avoid repeating questions.
-
-When to end the interview (set should_end=true):
-- User explicitly asks to see vehicles ("show me", "let's see", "what do you have", "recommendations", etc.)
-- You have enough information to make good recommendations
-- User seems impatient or ready to move forward
-
-Think like a real human salesperson who builds trust before suggesting options.
-
-Output format:
-- ai_response: Your conversational response to the user (IMPORTANT: If setting should_end=true, leave this EMPTY - the system will generate the vehicle recommendation)
-- quick_replies: If you ask a direct question, provide less than 5 short answer options (less than 5 words each) that the USER can click to answer. Leave null if no direct question.
-- suggested_followups: Provide less than 5 short phrases that represent what the USER might want to say or ask next. These are the user's potential responses/queries, NOT your follow-up questions. Examples of what the USER might say: "I need a family car", "Show me options now", "My budget is $30k", "I want good gas mileage", ...
-- should_end: true if interview should end, false to continue
-"""
-
-
 def should_end_interview(state: VehicleSearchState) -> bool:
     """
     Check if interview should end based on LLM's decision or max turns.
@@ -113,8 +77,9 @@ def should_end_interview(state: VehicleSearchState) -> bool:
     if state.get("_interview_should_end", False):
         return True
 
-    # Safety limit - max turns
-    max_questions = int(os.getenv("MAX_EXPLORATION_QUESTIONS", "8"))
+    # Safety limit - max turns from config
+    config = get_config()
+    max_questions = config.limits.get('max_interview_questions', 8)
     conversation = state.get("conversation_history", [])
     turn_count = len([msg for msg in conversation if msg.__class__.__name__ == 'HumanMessage'])
 
@@ -172,12 +137,29 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
 
         return state
 
-    # Create LLM with structured output
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('interview')
+    max_history = config.limits.get('max_conversation_history', 10)
+
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 1000)
+    )
     structured_llm = llm.with_structured_output(InterviewResponse)
 
-    messages = [SystemMessage(content=INTERVIEW_SYSTEM_PROMPT)]
-    messages.extend(state["conversation_history"])
+    # Load system prompt from template
+    system_prompt = render_prompt('interview_system.j2')
+    messages = [SystemMessage(content=system_prompt)]
+
+    # Limit conversation history to prevent context explosion
+    conversation_history = state["conversation_history"]
+    if len(conversation_history) > max_history:
+        conversation_history = conversation_history[-max_history:]
+
+    messages.extend(conversation_history)
 
     # Get structured response
     response: InterviewResponse = structured_llm.invoke(messages)
@@ -241,30 +223,20 @@ def make_initial_recommendation(state: VehicleSearchState) -> VehicleSearchState
         for msg in state.get("conversation_history", [])
     ])
 
-    # Create LLM with structured output
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('interview_extraction')
+
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 2000)
+    )
     structured_llm = llm.with_structured_output(ExtractionResult)
 
-    extraction_system_prompt = f"""
-Analyze this car dealership conversation and extract comprehensive vehicle search criteria.
-
-Extract ALL explicit filters and implicit preferences from this conversation.
-
-Explicit filters are clear, stated requirements:
-- Make, model, year, price range, mileage, body style, transmission, colors, features, location, etc.
-- Use comma-separated for multiple options: "Toyota,Honda"
-- Use ranges for year/price/miles: "2018-2020", "20000-30000"
-
-Implicit preferences are inferred needs and priorities:
-- priorities: List of what matters most (safety, fuel efficiency, reliability, performance, etc.)
-- lifestyle: Family-oriented, outdoorsy, urban commuter, etc.
-- budget_sensitivity: budget-conscious, moderate, luxury-focused
-- usage_patterns: Daily commute, weekend trips, family road trips, etc.
-- concerns: List of concerns (maintenance costs, resale value, insurance, etc.)
-- notes: Any other important context
-
-Be comprehensive - extract EVERYTHING mentioned or clearly implied.
-"""
+    # Load extraction prompt from template
+    extraction_system_prompt = render_prompt('interview_extraction.j2')
 
     extraction_prompt = f"""
 CONVERSATION:

@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
 from idss_agent.components.vehicle_database import get_vehicle_database_tools
@@ -44,23 +46,28 @@ def generate_interactive_elements(ai_response: str, user_question: str) -> Inter
     Returns:
         InteractiveElements with quick_replies and suggested_followups
     """
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('analytical_postprocess')
+
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 800)
+    )
     structured_llm = llm.with_structured_output(InteractiveElements)
 
-    prompt = f"""Based on this analytical Q&A, generate interactive elements to help the user continue:
+    # Load prompt template
+    template_prompt = render_prompt('analytical.j2')
+
+    # Build full prompt
+    prompt = f"""{template_prompt}
 
 User Question: {user_question}
 
 AI Response: {ai_response}
 
-Generate:
-1. quick_replies: Only if the AI response asks a direct question that the USER can answer. Provide less than 5 short answer options that the USER can click. Otherwise leave null.
-2. suggested_followups: less than 5 short phrases representing what the USER might want to say or ask next. These are the user's potential next queries, NOT follow-up questions from the assistant.
-
-Examples of what the USER might say next:
-- If discussing safety: ["Compare safety ratings", "Show safest alternatives", "What about crash tests?", "Show me this vehicle"]
-- If discussing price: ["Show cheaper options", "Check financing", "Compare similar prices", "What's the total cost?"]
-- ...
+Generate the interactive elements now.
 """
 
     result: InteractiveElements = structured_llm.invoke([HumanMessage(content=prompt)])
@@ -174,11 +181,14 @@ def analytical_agent(
     Returns:
         Updated state with ai_response
     """
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('analytical')
+    max_history = config.limits.get('max_conversation_history', 10)
+
     # Get conversation history for analytical context
-    # Use last N messages (default 10 = 5 exchanges) to capture multi-turn analytical conversations
-    max_history_messages = int(os.getenv("ANALYTICAL_HISTORY_MESSAGES", "10"))
     conversation_history = state.get("conversation_history", [])
-    recent_history = conversation_history[-max_history_messages:] if len(conversation_history) > max_history_messages else conversation_history
+    recent_history = conversation_history[-max_history:] if len(conversation_history) > max_history else conversation_history
 
     if not recent_history:
         logger.warning("Analytical agent: No conversation history found")
@@ -189,8 +199,14 @@ def analytical_agent(
     user_input = recent_history[-1].content if recent_history else ""
     logger.info(f"Analytical query: {user_input[:100]}... (with {len(recent_history)} messages of context)")
 
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 4000)
+    )
+
     # Get available tools
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     db_tools = get_vehicle_database_tools(llm)
     tools = [
         get_vehicle_listing_by_vin,
