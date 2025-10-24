@@ -814,6 +814,8 @@ class GraphRunner:
                 "rl_rationale": rationale,
                 "stop_result": stop_result,
             }
+            if self.verbose and rationale:
+                print(f"RL rationale: {rationale}")
             self.api.log_event("post_turn_metrics", {
                 "summary_excerpt": summary[:200],
                 "scores": new_scores,
@@ -831,6 +833,7 @@ class GraphRunner:
                     "summary": summary,
                     "scores": new_scores,
                     "judge": state.get("last_judge"),
+                    "rationale": rationale,
                 }
                 updates["demo_snapshots"] = state.get("demo_snapshots", []) + [snapshot]
             return updates

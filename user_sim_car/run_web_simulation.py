@@ -63,6 +63,7 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "summary": snap.get("summary", ""),
                 "scores": snap.get("scores", {}),
                 "judge": snap.get("judge"),
+                "rationale": snap.get("rationale"),
             }
         )
 

@@ -58,6 +58,7 @@ Thumbs.db
 # Project specific
 graph_visualization.png
 sessions/
+web_simulation/latest-run.json
 
 # testing files
 testing*

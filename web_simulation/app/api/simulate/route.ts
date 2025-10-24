@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'node:child_process';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 export const runtime = 'nodejs';
 
+const repoRoot = path.resolve(process.cwd(), '..');
+
 async function executeSimulation(persona: string, maxSteps: number) {
-  const repoRoot = path.resolve(process.cwd(), '..');
   const scriptPath = path.resolve(repoRoot, 'user_sim_car', 'run_web_simulation.py');
 
   return new Promise<string>((resolve, reject) => {
@@ -65,6 +67,13 @@ export async function POST(request: NextRequest) {
     const output = await executeSimulation(resolvedPersona, resolvedSteps);
 
     const parsed = JSON.parse(output);
+
+    const latestPath = path.resolve(repoRoot, 'web_simulation', 'latest-run.json');
+    try {
+      await fs.writeFile(latestPath, JSON.stringify(parsed, null, 2), 'utf8');
+    } catch (fileError) {
+      console.warn('Failed to persist latest-run.json', fileError);
+    }
     return NextResponse.json(parsed);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

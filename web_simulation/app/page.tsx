@@ -228,6 +228,12 @@ export default function Page() {
                   </div>
                 </div>
               ) : null}
+              {result.rl_rationale ? (
+                <div>
+                  <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL rationale</dt>
+                  <dd className="mt-1 whitespace-pre-line text-slate-200/80">{result.rl_rationale}</dd>
+                </div>
+              ) : null}
             </dl>
           ) : null}
         </aside>

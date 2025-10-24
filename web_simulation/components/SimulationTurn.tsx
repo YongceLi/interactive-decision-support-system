@@ -6,6 +6,7 @@ export interface SimulationTurn {
   summary: string;
   scores?: { positive?: number; negative?: number };
   judge?: { score?: number; passes?: boolean; feedback?: string; reminder?: string } | null;
+  rationale?: string | null;
 }
 
 function formatAction(action: Record<string, unknown>, index: number) {
@@ -65,6 +66,13 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Summary Slice</h3>
           <p className="mt-1 text-slate-200/90">{turn.summary}</p>
         </section>
+
+        {turn.rationale ? (
+          <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
+            <div className="font-semibold uppercase tracking-wide text-slate-300/80">RL Rationale</div>
+            <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
+          </section>
+        ) : null}
 
         <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
