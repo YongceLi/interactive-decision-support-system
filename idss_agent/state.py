@@ -99,6 +99,36 @@ class ImplicitPreferencesPydantic(BaseModel):
     notes: Optional[str] = Field(None, description="Any other important context")
 
 
+class AgentResponse(BaseModel):
+    """
+    Unified response schema for agent modes using structured output.
+
+    Used by: interview, discovery, and general modes.
+    Analytical mode generates this separately after ReAct agent completes.
+    """
+    ai_response: str = Field(
+        description="The main conversational response to the user (keep concise, 2-4 sentences)",
+        max_length=800
+    )
+    quick_replies: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Short answer options (2-5 words each) for direct questions in ai_response. "
+            "Provide 2-4 options. Only include if ai_response asks a direct question. "
+            "Examples: ['Under $20k', '$20k-$30k'], ['Yes', 'No'], ['Sedan', 'SUV']"
+        ),
+        max_length=4
+    )
+    suggested_followups: List[str] = Field(
+        description=(
+            "Suggested next queries (short phrases, 3-5 options) to help users continue conversation. "
+            "Examples: ['Show me hybrids', 'What about safety?', 'Compare top 3']"
+        ),
+        min_length=3,
+        max_length=5
+    )
+
+
 # Intent tracking for new architecture
 class IntentRecord(BaseModel):
     """Record of an intent classification."""
@@ -182,6 +212,8 @@ class VehicleSearchState(TypedDict):
 
     # Output
     ai_response: str
+    quick_replies: Optional[List[str]]  # Short answer options (1-3 words, 2-4 options) for direct questions
+    suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
 
 
 def create_initial_state() -> VehicleSearchState:
@@ -206,7 +238,9 @@ def create_initial_state() -> VehicleSearchState:
             steps=[],
             mode="general"
         ),  # Initialize empty progress
-        ai_response=""
+        ai_response="",
+        quick_replies=None,
+        suggested_followups=[]
     )
 
 

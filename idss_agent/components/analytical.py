@@ -3,15 +3,75 @@ Analytical agent - answers specific questions about vehicles using ReAct.
 """
 import os
 from typing import Optional, Callable
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
 from idss_agent.components.vehicle_database import get_vehicle_database_tools
 from idss_agent.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
+
+
+class InteractiveElements(BaseModel):
+    """Quick replies and suggestions for analytical responses."""
+    quick_replies: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "Short answer options (less than 5 words each) if the response asks a direct question. "
+            "Provide less than 5 options. Leave null if no direct question asked. "
+        )
+    )
+    suggested_followups: list[str] = Field(
+        description=(
+            "Suggested next user inputs (short phrases, less than 5 options) to help users continue exploration. "
+            "Should be contextually relevant to the analytical response and ask for new information."
+        ),
+        max_length=5
+    )
+
+
+def generate_interactive_elements(ai_response: str, user_question: str) -> InteractiveElements:
+    """
+    Generate quick replies and suggested followups for an analytical response.
+
+    Args:
+        ai_response: The analytical agent's response
+        user_question: The user's original question
+
+    Returns:
+        InteractiveElements with quick_replies and suggested_followups
+    """
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('analytical_postprocess')
+
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 800)
+    )
+    structured_llm = llm.with_structured_output(InteractiveElements)
+
+    # Load prompt template
+    template_prompt = render_prompt('analytical.j2')
+
+    # Build full prompt
+    prompt = f"""{template_prompt}
+
+User Question: {user_question}
+
+AI Response: {ai_response}
+
+Generate the interactive elements now.
+"""
+
+    result: InteractiveElements = structured_llm.invoke([HumanMessage(content=prompt)])
+    return result
 
 
 # System prompt for analytical agent (cached for efficiency)
@@ -121,11 +181,14 @@ def analytical_agent(
     Returns:
         Updated state with ai_response
     """
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('analytical')
+    max_history = config.limits.get('max_conversation_history', 10)
+
     # Get conversation history for analytical context
-    # Use last N messages (default 10 = 5 exchanges) to capture multi-turn analytical conversations
-    max_history_messages = int(os.getenv("ANALYTICAL_HISTORY_MESSAGES", "10"))
     conversation_history = state.get("conversation_history", [])
-    recent_history = conversation_history[-max_history_messages:] if len(conversation_history) > max_history_messages else conversation_history
+    recent_history = conversation_history[-max_history:] if len(conversation_history) > max_history else conversation_history
 
     if not recent_history:
         logger.warning("Analytical agent: No conversation history found")
@@ -136,8 +199,14 @@ def analytical_agent(
     user_input = recent_history[-1].content if recent_history else ""
     logger.info(f"Analytical query: {user_input[:100]}... (with {len(recent_history)} messages of context)")
 
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 4000)
+    )
+
     # Get available tools
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     db_tools = get_vehicle_database_tools(llm)
     tools = [
         get_vehicle_listing_by_vin,
@@ -228,9 +297,27 @@ def analytical_agent(
         if not response_content or len(response_content.strip()) == 0:
             logger.warning("Analytical agent: Empty response from agent")
             state["ai_response"] = "I couldn't find enough information to answer that question. Could you provide more details?"
+            state["quick_replies"] = None
+            state["suggested_followups"] = []
         else:
             state["ai_response"] = response_content
             logger.info(f"Analytical agent: Response generated ({len(response_content)} chars)")
+
+            # Generate interactive elements (quick replies + suggestions)
+            try:
+                interactive = generate_interactive_elements(response_content, user_input)
+                state["quick_replies"] = interactive.quick_replies
+                state["suggested_followups"] = interactive.suggested_followups
+            except Exception as e:
+                logger.warning(f"Failed to generate interactive elements: {e}")
+                # Fallback to sensible defaults
+                state["quick_replies"] = None
+                state["suggested_followups"] = [
+                    "Compare with alternatives",
+                    "Show me similar vehicles",
+                    "What about other features?",
+                    "Check pricing options"
+                ]
 
         # Emit progress: Answer ready
         if progress_callback:
@@ -261,5 +348,9 @@ def analytical_agent(
             state["ai_response"] = "I couldn't find that vehicle. Please check the VIN or vehicle number and try again."
         else:
             state["ai_response"] = "I encountered an error while researching your question. Please try rephrasing it or ask something else."
+
+        # Set empty interactive elements on error
+        state["quick_replies"] = None
+        state["suggested_followups"] = []
 
     return state
