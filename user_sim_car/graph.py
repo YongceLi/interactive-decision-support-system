@@ -151,8 +151,8 @@ class SummaryAgent:
         sys_prompt = (
             "You maintain a rolling summary for a simulated car shopper interacting with an AI assistant. "
             "Blend new information from the latest turn with the prior summary. Capture evolving goals, constraints, emotional tone, "
-            "and notable UI actions (filters, favorites, detail views). Keep the summary under 180 words. Return JSON: "
-            "{\"summary\": <string>, \"notes\": <string describing what changed>}."
+            "and notable UI actions (filters, favorites, detail views). Keep the summary under 180 words. Notes should mention any significant changes or observations. "
+            "Return JSON only: {{\"summary\": <string>, \"notes\": <string>}}"
         )
         vehicles_brief = []
         for v in (vehicles or [])[:3]:
@@ -207,8 +207,8 @@ class JudgeAgent:
     ) -> Dict[str, Any]:
         sys_prompt = (
             "You are an alignment judge ensuring the simulated user's response stays true to their persona facets and shopping goal. "
-            "Score alignment in [0,1]. Provide constructive feedback and, when misaligned, a short reminder of the persona/goal. "
-            "Return JSON: {\"score\": <float>, \"passes\": <bool>, \"feedback\": <string>, \"reminder\": <string>}."
+            "Score alignment values range from 0 to 1. Provide constructive feedback and, when misaligned, a short reminder of the persona/goal. "
+            "Return JSON only: {{\"score\": <float>, \"passes\": <bool>, \"feedback\": <string>, \"reminder\": <string>}}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
@@ -252,9 +252,13 @@ class UserAgent:
 
     def derive_rl_model(self, persona: PersonaDict) -> Tuple[RLThresholds, RLScores, float, str]:
         sys_prompt = (
-            "Calibrate a two-channel stop model for a simulated car shopper. "
-            "Provide JSON with fields {\"thresholds\": {\"positive\": [0,1], \"negative\": [0,1]}, \"initial_returns\": {...}, \"discount\": [0.5,0.99], \"notes\": <string>}. "
+            "Calibrate a two-channel stop model for a simulated car shopper based on their persona facets. "
             "Positive channel represents satisfaction momentum; negative represents frustration."
+            "Thresholds set stopping points for each channel, where higher means harder to stop."
+            "Initial returns reflect starting satisfaction/frustration levels. The initial values are usually on the very low side, only varying slightly by persona."
+            "Discount factor governs how fast a person likely to change their mood over time. The closer to 1, the more persistent the mood."
+            "Positive, negative values range from 0 to 1, discount from 0.9 to 0.99."
+            "Return JSON only: {{\"thresholds\": {{\"positive\": <float>, \"negative\": <float>}}, \"initial_returns\": {{\"positive\": <float>, \"negative\": <float>}}, \"discount\": <float>, \"notes\": <string>}}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
@@ -299,8 +303,10 @@ class UserAgent:
     ) -> Tuple[RLScores, str]:
         sys_prompt = (
             "Act as an RL critic for a simulated shopper. Based on the latest assistant reply, user tone, UI actions, and running summary, "
-            "output JSON {\"deltas\": {\"positive\": [-0.5,0.5], \"negative\": [-0.5,0.5]}, \"rationale\": <string>}. "
-            "Positive delta boosts satisfaction, negative delta boosts frustration. Consider utility of visible vehicles too."
+            "Positive delta boosts satisfaction, negative delta boosts frustration. The higher the delta, the stronger the effect. "
+            "Consider utility of visible vehicles too."
+            "Positive, negative deltas range from -0.1 to +0.1."
+            "Return JSON only: {{\"deltas\": {{\"positive\": <float>, \"negative\": <float>}}, \"rationale\": <string>}}"
         )
         vehicles_brief = []
         for v in (visible_vehicles or [])[:3]:
@@ -366,8 +372,8 @@ class UserAgent:
             "UI state, and last assistant message. When there is no actionable UI element, articulate needs explicitly. Always keep text under 120 words."
         )
         instructions = (
-            "Return JSON {\"user_text\": <string>, \"actions\": <list>, \"notes\": <string>}. \n"
             "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, SCROLL, STARE, STOP)."
+            "Return JSON only: {{\"user_text\": <string>, \"actions\": <list>, \"notes\": <string>}}"
         )
         reminder_msg = reminder or ""
         prompt = ChatPromptTemplate.from_messages([

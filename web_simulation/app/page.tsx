@@ -115,7 +115,7 @@ export default function Page() {
       <header className="max-w-5xl space-y-4">
         <p className="text-sm uppercase tracking-[0.3em] text-slate-400">User Simulation Demo</p>
         <h1 className="text-4xl font-semibold tracking-tight text-slate-50 sm:text-5xl">
-          Observe the autonomous car-shopper persona in action
+          Autonomous car-shopper persona in action
         </h1>
         <p className="text-lg text-slate-300">
           Configure the persona seed and maximum conversation length, then watch the user agent collaborate with the

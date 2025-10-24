@@ -43,13 +43,13 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
 
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-300">Assistant</h3>
-          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.assistant_text}</p>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
+          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
-          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-300">Assistant</h3>
+          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.assistant_text}</p>
         </section>
 
         <section>
