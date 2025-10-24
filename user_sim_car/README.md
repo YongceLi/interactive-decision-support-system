@@ -95,5 +95,14 @@ python user_sim_car/run_demo.py --demo
 
 Use `--persona "..."` to supply a custom seed persona or `--max-steps` to shorten/extend the session.
 
+**JSON feed (for `web_simulation`)**
+```bash
+python user_sim_car/run_web_simulation.py --max-steps 8 > latest-run.json
+```
+
+The script mirrors the CLI runner but always enables demo snapshots and emits a
+single JSON document suitable for UI playback. `stdin` can be used to stream a
+persona instead of the `--persona` flag.
+
 **Notebook**
 Open `demo_user_sim_car.ipynb` in Jupyter and run the cells.
