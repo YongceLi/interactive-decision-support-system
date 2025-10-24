@@ -155,6 +155,20 @@ def interactive_demo():
             # Display agent response
             print(f"\n🤖 Agent: {current_state['ai_response']}")
 
+            # Display quick replies if available
+            quick_replies = current_state.get('quick_replies')
+            if quick_replies:
+                print("\n💬 Quick Replies:")
+                for i, reply in enumerate(quick_replies, 1):
+                    print(f"   [{i}] {reply}")
+
+            # Display suggested follow-ups if available
+            suggested_followups = current_state.get('suggested_followups', [])
+            if suggested_followups:
+                print("\n💡 Suggested Follow-ups:")
+                for i, followup in enumerate(suggested_followups, 1):
+                    print(f"   [{i}] {followup}")
+
             # Display vehicle listings
             if current_state['recommended_vehicles']:
                 print_vehicle_listings(current_state['recommended_vehicles'], limit=10)

@@ -14,7 +14,8 @@ from idss_agent.state import (
     VehicleSearchState,
     get_latest_user_message,
     VehicleFiltersPydantic,
-    ImplicitPreferencesPydantic
+    ImplicitPreferencesPydantic,
+    AgentResponse
 )
 from idss_agent.components.semantic_parser import semantic_parser_node
 from idss_agent.components.recommendation import update_recommendation_list
@@ -24,8 +25,23 @@ logger = get_logger("workflows.interview")
 
 # Structured output schema for interview mode
 class InterviewResponse(BaseModel):
-    """Structured response from interview agent."""
-    response: str = Field(description="Your conversational response to the user")
+    """Structured response from interview agent with should_end flag."""
+    ai_response: str = Field(description="Your conversational response to the user")
+    quick_replies: Optional[list[str]] = Field(
+        default=None,
+        description=(
+            "Short answer options (less than 5 words each) for questions in your response. "
+            "Provide less than 5 options if you ask a direct question. "
+            "Examples: ['Under $20k', '$20k-$30k', '$30k+'], ['Sedan', 'SUV', 'Truck'], ['Yes', 'No'], ..."
+        )
+    )
+    suggested_followups: list[str] = Field(
+        description=(
+            "Suggested next queries (short phrases, less than 5 options) to help users continue. "
+            "Examples: ['Show me vehicles now', 'I want a safe car', 'I want a sporty car']"
+        ),
+        max_length=5
+    )
     should_end: bool = Field(description="True if interview mode should end, false to continue")
 
 
@@ -78,7 +94,9 @@ When to end the interview (set should_end=true):
 Think like a real human salesperson who builds trust before suggesting options.
 
 Output format:
-- response: Your conversational response to the user (IMPORTANT: If setting should_end=true, leave response EMPTY - the system will generate the vehicle recommendation)
+- ai_response: Your conversational response to the user (IMPORTANT: If setting should_end=true, leave this EMPTY - the system will generate the vehicle recommendation)
+- quick_replies: If you ask a direct question, provide less than 5 short answer options (less than 5 words each) that the USER can click to answer. Leave null if no direct question.
+- suggested_followups: Provide less than 5 short phrases that represent what the USER might want to say or ask next. These are the user's potential responses/queries, NOT your follow-up questions. Examples of what the USER might say: "I need a family car", "Show me options now", "My budget is $30k", "I want good gas mileage", ...
 - should_end: true if interview should end, false to continue
 """
 
@@ -135,6 +153,13 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     if not user_input:
         # First turn - greeting
         state["ai_response"] = "Hi there! Welcome. What brings you in today? Are you looking to replace a current vehicle or is this your first car?"
+        state["quick_replies"] = ["Replacing current", "First car", "Just browsing"]
+        state["suggested_followups"] = [
+            "Show me vehicles now",
+            "Tell me about financing",
+            "What's your best deal?",
+            "I need help deciding"
+        ]
         state["_interview_should_end"] = False
 
         # Emit progress: Interview question ready
@@ -163,9 +188,13 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     if response.should_end:
         logger.info("LLM decided to end interview")
         state["ai_response"] = ""
+        state["quick_replies"] = None
+        state["suggested_followups"] = []
     else:
-        # Normal conversation - set the response
-        state["ai_response"] = response.response
+        # Normal conversation - set the response and interactive elements
+        state["ai_response"] = response.ai_response
+        state["quick_replies"] = response.quick_replies
+        state["suggested_followups"] = response.suggested_followups
 
     # Emit progress: Interview question ready
     if progress_callback:

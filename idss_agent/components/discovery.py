@@ -3,9 +3,10 @@ Discovery agent - generates responses with listing summary and elicitation quest
 """
 import json
 from typing import List, Dict, Any, Optional, Callable
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.state import VehicleSearchState
+from idss_agent.state import VehicleSearchState, AgentResponse
 
 
 def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
@@ -85,11 +86,15 @@ Write a short, friendly response (1 paragraph max) that:
    - Avoid topics already asked about
 
 **Important:**
-- Be like a knowledgeable friend who knows cars 
+- Be like a knowledgeable friend who knows cars
 - not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
 - Reference actual vehicles from the listings
 - Keep the summary concise but helpful
 - Ask 1-2 questions, not more
+
+**Additionally generate:**
+- quick_replies: If you ask direct questions, provide 2-4 short answer options (1-3 words each). Leave null if no direct questions.
+- suggested_followups: Provide 3-5 short phrases (conversation starters) for the user to explore. Examples: "Show me hybrids", "What about safety ratings?", "Compare top 3", "See cheaper options"
 """
 
     prompt = f"""
@@ -112,13 +117,16 @@ Generate your response:
         SystemMessage(content=discovery_system_prompt),
         HumanMessage(content=prompt),
     ]
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-    response = llm.invoke(messages)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    structured_llm = llm.with_structured_output(AgentResponse)
+    response: AgentResponse = structured_llm.invoke(messages)
 
-    state['ai_response'] = response.content.strip()
+    state['ai_response'] = response.ai_response
+    state['quick_replies'] = response.quick_replies
+    state['suggested_followups'] = response.suggested_followups
 
     # Extract and track which topics were asked about
-    state = extract_questions_asked(state, response.content)
+    state = extract_questions_asked(state, response.ai_response)
 
     # Emit progress: Response complete
     if progress_callback:

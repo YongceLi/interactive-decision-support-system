@@ -5,8 +5,8 @@ Triggered by "general" intent - greetings, thanks, system questions, unclear que
 """
 from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage
-from idss_agent.state import VehicleSearchState
+from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+from idss_agent.state import VehicleSearchState, AgentResponse
 from idss_agent.logger import get_logger
 
 logger = get_logger("modes.general")
@@ -45,6 +45,7 @@ def run_general_mode(
         })
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    structured_llm = llm.with_structured_output(AgentResponse)
 
     system_prompt = """You are a friendly vehicle shopping assistant.
 
@@ -62,23 +63,26 @@ Your main capabilities:
 1. Help users find and buy vehicles (interview process, recommendations)
 2. Browse and explore vehicles casually
 3. Compare vehicles and analyze safety/MPG/features data
-4. Answer questions about cars and automotive topics"""
+4. Answer questions about cars and automotive topics
+
+Additionally generate:
+- quick_replies: Short answer options (less than 5 words, less than 5 options) that the USER can click to answer if you ask a direct question. Leave null otherwise.
+- suggested_followups: less than 5 short phrases representing what the USER might want to say or ask next. These are the user's potential next inputs to guide them into productive modes. Examples of what the USER might say: "Find me a vehicle", "Browse popular SUVs", "Compare sedan safety", "Show me trucks", "I want an sedan", ...
+"""
 
     # Use last 3 messages for context
     recent = state["conversation_history"][-3:] if len(state["conversation_history"]) > 3 else state["conversation_history"]
 
-    messages = [{"role": "system", "content": system_prompt}]
-    for msg in recent:
-        messages.append({
-            "role": "user" if msg.type == "human" else "assistant",
-            "content": msg.content
-        })
+    messages = [SystemMessage(content=system_prompt)]
+    messages.extend(recent)
 
-    response = llm.invoke(messages)
-    state["ai_response"] = response.content
+    response: AgentResponse = structured_llm.invoke(messages)
+    state["ai_response"] = response.ai_response
+    state["quick_replies"] = response.quick_replies
+    state["suggested_followups"] = response.suggested_followups
 
     # Add AI response to conversation history
-    state["conversation_history"].append(AIMessage(content=response.content))
+    state["conversation_history"].append(AIMessage(content=response.ai_response))
 
     # Emit progress: Response complete
     if progress_callback:
