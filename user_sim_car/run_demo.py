@@ -55,6 +55,7 @@ def main() -> None:
     print("Steps:", final_state.get("step"))
     print("Final scores:", final_state.get("rl_scores"))
     print("Final thresholds:", final_state.get("rl_thresholds"))
+    print("Final RL rationale:", final_state.get("rl_rationale"))
     print("Judge summary:", final_state.get("last_judge"))
     print("Conversation summary (truncated):", (final_state.get("conversation_summary") or "")[:400])
 
@@ -62,6 +63,8 @@ def main() -> None:
         print("\n=== Demo snapshots ===")
         for snap in final_state.get("demo_snapshots", []):
             print(f"Step {snap['step']}: alignment={snap.get('judge', {}).get('score')} scores={snap['scores']}")
+            if snap.get("rationale"):
+                print(f"  Rationale: {snap['rationale']}")
             print("  User:", snap["user_text"])
             print("  Assistant:", snap["assistant_text"][:140])
             print("  Actions:", snap["actions"])
