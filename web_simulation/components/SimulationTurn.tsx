@@ -69,7 +69,7 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
 
         {turn.rationale ? (
           <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
-            <div className="font-semibold uppercase tracking-wide text-slate-300/80">RL Rationale</div>
+            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Rescoring Rationale</div>
             <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
           </section>
         ) : null}

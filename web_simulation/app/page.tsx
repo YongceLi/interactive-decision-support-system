@@ -258,14 +258,6 @@ export default function Page() {
     <main className="flex flex-col gap-10 px-6 py-10 lg:px-12">
       <header className="max-w-5xl space-y-4">
         <p className="text-sm uppercase tracking-[0.3em] text-slate-400">User Simulation Demo</p>
-        <h1 className="text-4xl font-semibold tracking-tight text-slate-50 sm:text-5xl">
-          Autonomous car-shopper persona in action
-        </h1>
-        <p className="text-lg text-slate-300">
-          Configure the persona seed and maximum conversation length, then watch the user agent collaborate with the
-          assistant, the summary keeper, and the alignment judge. The UI has no manual chat input—every turn is produced
-          by the simulator.
-        </p>
       </header>
 
       <section className="grid gap-8 lg:grid-cols-[minmax(320px,380px)_1fr] lg:items-start">
