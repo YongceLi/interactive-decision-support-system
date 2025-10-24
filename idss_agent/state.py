@@ -1,10 +1,11 @@
 """
 State schema for the vehicle search agent.
 """
-from typing import TypedDict, Optional, List, Dict, Any, Annotated
+from typing import TypedDict, Optional, List, Dict, Any, Annotated, Literal
 from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph.message import add_messages
+from datetime import datetime
 
 
 class VehicleFilters(TypedDict, total=False):
@@ -98,6 +99,45 @@ class ImplicitPreferencesPydantic(BaseModel):
     notes: Optional[str] = Field(None, description="Any other important context")
 
 
+# Intent tracking for new architecture
+class IntentRecord(BaseModel):
+    """Record of an intent classification."""
+    intent: Literal["buying", "browsing", "research", "general"] = Field(
+        description="Classified user intent"
+    )
+    confidence: float = Field(
+        description="Confidence score between 0 and 1",
+        ge=0.0,
+        le=1.0
+    )
+    reasoning: str = Field(
+        description="Brief explanation of classification"
+    )
+    timestamp: str = Field(
+        description="ISO timestamp of classification"
+    )
+    message_index: int = Field(
+        description="Index of message in conversation that triggered this classification"
+    )
+
+
+# Progress tracking for execution visibility
+class ProgressStep(TypedDict):
+    """A single step in the execution progress."""
+    step_id: str  # Unique identifier: "intent_classification", "semantic_parsing", etc.
+    description: str  # Human-readable description: "Classifying user intent..."
+    status: Literal["pending", "in_progress", "completed", "failed"]  # Current status
+    timestamp: float  # Unix timestamp when step started/completed
+
+
+class ExecutionProgress(TypedDict):
+    """Tracks execution progress for streaming to UI."""
+    current_step_index: int  # 0-based index of current step
+    total_steps: int  # Total number of steps for this mode
+    steps: List[ProgressStep]  # All steps with their statuses
+    mode: str  # Current mode: "buying", "discovery", "analytical", "general"
+
+
 class VehicleSearchState(TypedDict):
     """
     Complete state for the vehicle search agent.
@@ -128,8 +168,17 @@ class VehicleSearchState(TypedDict):
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
 
     # Interview phase tracking
-    interviewed: bool  # False = in interview workflow, True = in supervisor workflow
+    interviewed: bool  # False = in interview workflow, True = interview complete
     _interview_should_end: bool  # Internal flag for routing within interview workflow
+
+    # Intent-based routing (NEW)
+    current_intent: str  # Latest classified intent (buying/browsing/research/general)
+    current_mode: str  # Current operational mode (buying/discovery/analytical/general)
+    intent_history: List[Dict[str, Any]]  # All intent classifications (as dicts for TypedDict compatibility)
+    mode_switch_count: int  # Track how many times mode has changed
+
+    # Progress tracking for UI streaming
+    execution_progress: ExecutionProgress  # Current execution progress for progress bar
 
     # Output
     ai_response: str
@@ -147,6 +196,16 @@ def create_initial_state() -> VehicleSearchState:
         interaction_events=[],
         interviewed=False,  # Start in interview workflow
         _interview_should_end=False,
+        current_intent="general",  # Initial intent
+        current_mode="general",  # Initial mode
+        intent_history=[],  # Empty intent history
+        mode_switch_count=0,  # No mode switches yet
+        execution_progress=ExecutionProgress(
+            current_step_index=0,
+            total_steps=0,
+            steps=[],
+            mode="general"
+        ),  # Initialize empty progress
         ai_response=""
     )
 

@@ -4,8 +4,7 @@ Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 import concurrent.futures
 import math
 import json
-import os
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
@@ -111,7 +110,10 @@ def enrich_vehicles_with_photos(vehicles: List[Dict[str, Any]], max_workers: int
     return vehicles
 
 
-def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
+def update_recommendation_list(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
     Use a ReAct agent to build a recommendation list of up to 20 vehicles.
 
@@ -123,13 +125,27 @@ def update_recommendation_list(state: VehicleSearchState) -> VehicleSearchState:
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with recommended_vehicles populated
     """
 
+    # Emit progress: Starting search
+    if progress_callback:
+        progress_callback({
+            "step_id": "updating_recommendations",
+            "description": "Searching for vehicles",
+            "status": "in_progress"
+        })
+
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
+
+    # Normalize model name (remove hyphens/underscores) to match Auto.dev API format
+    if filters.get('model'):
+        filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
+        logger.info(f"Normalized model name: {filters['model']}")
 
     # Build prompt for recommendation agent
     recommendation_prompt = f"""
@@ -156,7 +172,7 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 
     # Create ReAct agent with search tool
     tools = [search_vehicle_listings]
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     agent = create_react_agent(llm, tools)
 
     # Run the agent
@@ -175,19 +191,26 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
                 # Check if it's a list of vehicles or has a data field
                 if isinstance(data, list):
                     vehicles = data
+                    logger.info(f"Found {len(vehicles)} vehicles from search (list format)")
                     break
                 elif isinstance(data, dict):
                     if 'data' in data and isinstance(data['data'], list):
                         vehicles = data['data']
+                        logger.info(f"Found {len(vehicles)} vehicles from search (data field)")
                         break
                     elif 'vehicles' in data and isinstance(data['vehicles'], list):
                         vehicles = data['vehicles']
+                        logger.info(f"Found {len(vehicles)} vehicles from search (vehicles field)")
                         break
             except (json.JSONDecodeError, AttributeError):
                 continue
 
+    if not vehicles:
+        logger.warning("No vehicles found from search - filters may be too restrictive")
+
     # Deduplicate vehicles by VIN (keep lowest price for each)
     vehicles = deduplicate_by_vin(vehicles)
+    logger.info(f"After deduplication: {len(vehicles)} unique vehicles")
 
     vehicles = vehicles[:50]
     vehicles = enrich_vehicles_with_photos(vehicles)
@@ -219,48 +242,17 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
     vehicles.sort(key=vehicle_sort_key)
 
     state['recommended_vehicles'] = vehicles[:20]
+    logger.info(f"✓ Recommendation complete: {len(state['recommended_vehicles'])} vehicles in state")
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()
 
+    # Emit progress: Search complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "updating_recommendations",
+            "description": f"Found {len(state['recommended_vehicles'])} vehicles",
+            "status": "completed"
+        })
+
     return state
-
-
-def parse_vehicle_list(response_content: str) -> list[Dict[str, Any]]:
-    """
-    Parse vehicle list from agent response.
-
-    Expects JSON format from the agent.
-
-    Args:
-        response_content: Agent's response content
-
-    Returns:
-        List of vehicle dictionaries
-    """
-    try:
-        # Try to find JSON in the response
-        content = response_content.strip()
-
-        # Strip markdown if present
-        if content.startswith("```json"):
-            content = content[7:]
-        if content.startswith("```"):
-            content = content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
-        content = content.strip()
-
-        # Parse JSON
-        vehicles = json.loads(content)
-
-        if isinstance(vehicles, list):
-            return vehicles[:20]  
-        elif isinstance(vehicles, dict) and 'vehicles' in vehicles:
-            return vehicles['vehicles'][:20]
-        else:
-            return []
-
-    except json.JSONDecodeError:
-        print(f"Warning: Could not parse vehicle list from response")
-        return []

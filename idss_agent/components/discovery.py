@@ -1,8 +1,8 @@
 """
-Discovery agent node - generates responses with listing summary and elicitation questions.
+Discovery agent - generates responses with listing summary and elicitation questions.
 """
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.state import VehicleSearchState
@@ -22,21 +22,33 @@ def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_
     return raw_json
 
 
-def discovery_response_generator(state: VehicleSearchState) -> VehicleSearchState:
+def discovery_agent(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
-    Generate full discovery response using LLM:
-    1. Acknowledge user preferences
-    2. Summarize current listings (show actual vehicles, highlight pros, recommend)
-    3. Ask 2-3 strategic elicitation questions
+    Discovery agent - generates vehicle overview and elicitation questions.
 
-    All in one natural, conversational response.
+    This agent:
+    1. Acknowledges user preferences
+    2. Uses bullet points to recommend the first vehicle about how it matches the user's preferences
+    3. Asks 1-2 strategic elicitation questions
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with ai_response
     """
+
+    # Emit progress: Starting response generation
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Presenting vehicles",
+            "status": "in_progress"
+        })
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
@@ -55,15 +67,18 @@ You will be given the user's preferences, and the current list of vehicles that 
 **Your Task:**
 Write a short, friendly response (1 paragraph max) that:
 
-1. **Brief acknowledgment** (1 sentence)
+1. **Brief acknowledgment** (1 sentence, not itemized)
    - Acknowledge their search or latest preference update
+   - create a new line after the acknowledgment
 
-2. **Listing summary & recommendation** (1 concise paragraph, 1-3 sentences)
+2. **Listing summary & recommendation** (1 concise itemized list, 2-3 items)
    - Recommend ONLY the first specific vehicle in the listings
    - Highlight key strengths/pros about why the vehicle is a good fit for the user's preferences
-   - Use itemized lists for clarity, be specific, and be concise
+   - Use ITEMIZED format for clarity
+   - Use specific, concise short phrases for each item
+   - create a new line after each item
 
-3. **Elicitation questions** (1-2 questions)
+3. **Elicitation questions** (1-2 questions, not itemized)
    - Ask strategic questions to help narrow down their needs
    - Focus on missing critical info: budget, location, usage patterns, priorities, mileage preferences, etc.
    - Make questions conversational and bundled together naturally
@@ -97,13 +112,29 @@ Generate your response:
         SystemMessage(content=discovery_system_prompt),
         HumanMessage(content=prompt),
     ]
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
     response = llm.invoke(messages)
 
     state['ai_response'] = response.content.strip()
 
     # Extract and track which topics were asked about
     state = extract_questions_asked(state, response.content)
+
+    # Emit progress: Response complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "generating_response",
+            "description": "Response ready",
+            "status": "completed"
+        })
+
+    # Mark as complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "complete",
+            "description": "Complete",
+            "status": "completed"
+        })
 
     return state
 
@@ -170,23 +201,3 @@ If no questions were asked, return an empty array: []
         print(f"Warning: Could not parse topics from response: {e}")
 
     return state
-
-
-def discovery_tool(state: VehicleSearchState) -> str:
-    """
-    Tool that shows overview of recommended vehicles.
-
-    This is a wrapper around discovery_response_generator that returns
-    a string result for the supervisor to use.
-
-    Args:
-        state: Current state with recommended vehicles
-
-    Returns:
-        String with vehicle overview
-    """
-    # Call existing discovery node
-    result_state = discovery_response_generator(state)
-
-    # Return the generated response
-    return result_state.get("ai_response", "No vehicles to show.")

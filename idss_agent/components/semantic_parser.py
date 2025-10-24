@@ -2,29 +2,51 @@
 Semantic parser node for extracting vehicle search criteria from user input.
 """
 import json
-from typing import Dict, Any
+from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.logger import get_logger
-from idss_agent.state import VehicleSearchState, add_user_message, get_latest_user_message
+from idss_agent.state import VehicleSearchState, get_latest_user_message
 
-logger = get_logger("nodes.semantic_parser")
+logger = get_logger("components.semantic_parser")
 
 
 # System prompt for the semantic parser
 SEMANTIC_PARSER_PROMPT = """
-You are a semantic parser for a vehicle search assistant. Your job is to extract structured information from user messages.
+You are a semantic parser for a vehicle search assistant. Your job is to extract structured information from the ENTIRE conversation.
 
-Given a user's input and the conversation history, extract:
+**INSTRUCTION**: First, check if the LATEST user message contains NEW vehicle search criteria or filter modifications.
+
+- **If YES (new filters)**: Extract and return COMPLETE filters representing current search intent
+- **If NO (follow-up question)**: Return EMPTY filters `{"has_new_filters": false, "explicit_filters": {}, "implicit_preferences": {}}` to indicate NO CHANGE
+
+**Examples of NO NEW FILTERS (return empty {}):**
+- "Tell me more about this vehicle"
+- "Can you show me photos?"
+- "What's the mileage on that one?"
+- "Compare #1 and #2"
+- "What's the safety rating?"
+- "How much is it?"
+- General questions about already-shown vehicles
+
+**Examples of NEW FILTERS (extract and return):**
+- "Show me SUVs under $30k"
+- "I want a red one instead"
+- "Change to Honda"
+- "Under 50k miles please"
+- "In California"
+
+Given the conversation history, extract:
 
 1. **Explicit Filters**: Clear, stated preferences about vehicles (make, model, price, color, etc.)
 2. **Implicit Preferences**: Inferred preferences about priorities, lifestyle, concerns, etc.
 
 Output Format (JSON):
 {
+  "has_new_filters": true,  // or false if latest message is just a follow-up question
   "explicit_filters": {
     "make": "Toyota",  // or "Toyota,Honda" for multiple
-    "model": "Camry",  // or "Camry,Accord" for multiple
+    "model": "Camry",  // or "Camry,Accord" for multiple, don't include trim level.
     "year": "2018-2020",  // single year "2020" or range "2018-2020"
     "price": "15000-25000",  // range format
     "miles": "0-50000",  // mileage range
@@ -51,26 +73,32 @@ Output Format (JSON):
 }
 
 Rules:
-- Only include filters that are mentioned or can be clearly inferred
+- Generate COMPLETE filters based on the ENTIRE conversation, not just the latest message
+- If user changes their preference, replace the old filters with the new ones
 - For colors, use comma-separated strings: "white,black,silver"
 - For ranges, use format "min-max": "2018-2020", "15000-25000"
 - For multiple makes/models/body styles, use comma-separated: "Toyota,Honda"
 - If user says "around $20000", use a reasonable range like "18000-22000"
 - If user says "recent", use last 3-5 years
 - If user says "low mileage", use "0-30000"
-- Update existing filters, don't replace them unless user explicitly changes preference
 - Infer implicit preferences from context clues (e.g., "family" → family-oriented, safety priority)
 
 Examples:
 
+Example 1 - Initial search:
 User: "I'm looking for a reliable sedan under $25k"
+Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {"body_style": "sedan", "price": "0-25000"},
   "implicit_preferences": {"priorities": ["reliability"], "budget_sensitivity": "moderate"}
 }
 
+Example 2 - Multiple options:
 User: "Show me Toyota Camrys or Honda Accords from 2018-2020 in white or silver"
+Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {
     "make": "Toyota,Honda",
     "model": "Camry,Accord",
@@ -83,37 +111,73 @@ User: "Show me Toyota Camrys or Honda Accords from 2018-2020 in white or silver"
   }
 }
 
-User: "I need a family SUV with 3 rows, good safety features, around $30-35k"
+Example 3 - Changing preference (REPLACE, not merge):
+Conversation:
+  User: "Show me Honda Accords"
+  Assistant: "Here are some Honda Accords..."
+  User: "Actually, I want Toyotas instead"
+Output:
 {
+  "has_new_filters": true,
   "explicit_filters": {
-    "body_style": "suv",
-    "seating_capacity": 7,
-    "price": "30000-35000",
-    "features": ["third row seating", "safety features"]
+    "make": "Toyota"
   },
   "implicit_preferences": {
-    "lifestyle": "family-oriented",
-    "priorities": ["safety", "space"],
-    "notes": "Needs 3-row seating for family"
+    "brand_affinity": ["Toyota"]
   }
 }
 
-Now parse the user's message and output ONLY valid JSON, no other text.
+Example 4 - Refining search (keep existing + add new):
+Conversation:
+  User: "Show me Toyota Camrys"
+  Assistant: "Here are some Camrys..."
+  User: "Under $25k please"
+Output:
+{
+  "has_new_filters": true,
+  "explicit_filters": {
+    "make": "Toyota",
+    "model": "Camry",
+    "price": "0-25000"
+  },
+  "implicit_preferences": {
+    "brand_affinity": ["Toyota"],
+    "budget_sensitivity": "budget-conscious"
+  }
+}
+
+Example 5 - Follow-up question (NO new filters):
+Conversation:
+  User: "Show me SUVs under $40k"
+  Assistant: "Here are some great options! #1: 2025 Acura TLX..."
+  User: "Can you tell me more about this vehicle?"
+Output:
+{
+  "has_new_filters": false,
+  "explicit_filters": {},
+  "implicit_preferences": {}
+}
+
+Now parse the conversation and output ONLY valid JSON, no other text.
 """
 
 
-def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
+def semantic_parser_node(
+    state: VehicleSearchState,
+    progress_callback: Optional[Callable[[dict], None]] = None
+) -> VehicleSearchState:
     """
-    Semantic parser node that extracts vehicle preferences from user input.
+    Semantic parser node that extracts vehicle preferences from the ENTIRE conversation.
 
     This node:
-    1. Gets the latest user message from conversation history
-    2. Considers conversation history for context
-    3. Uses an LLM to extract explicit filters and implicit preferences
-    4. Updates the state with extracted information
+    1. Analyzes the COMPLETE conversation history
+    2. Uses an LLM to generate COMPLETE filters representing current search intent
+    3. REPLACES filters entirely (not merge) based on LLM's analysis
+    4. Stores previous filters for history tracking
 
     Args:
         state: Current vehicle search state
+        progress_callback: Optional callback for progress updates
 
     Returns:
         Updated state with parsed filters and preferences
@@ -124,26 +188,31 @@ def semantic_parser_node(state: VehicleSearchState) -> VehicleSearchState:
     if not user_input:
         return state
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    # Emit progress: Starting semantic parsing
+    if progress_callback:
+        progress_callback({
+            "step_id": "semantic_parsing",
+            "description": "Analyzing your message for search criteria",
+            "status": "in_progress"
+        })
 
-    # Build conversation context from LangChain messages
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+    # Build COMPLETE conversation context from ALL LangChain messages
     history_context = "\n".join([
-        f"{'user' if isinstance(msg, HumanMessage) else 'assistant'}: {msg.content}"
-        for msg in state.get("conversation_history", [])[-5:]  # Last 5 messages for context
+        f"{'User' if isinstance(msg, HumanMessage) else 'Assistant'}: {msg.content}"
+        for msg in state.get("conversation_history", [])  # ALL messages, not just last 5
     ])
 
-    # Current state context
+    # Store current filters as previous (for history tracking)
     current_filters = state.get("explicit_filters", {})
     current_implicit = state.get("implicit_preferences", {})
 
     context_info = f"""
-Current Explicit Filters: {json.dumps(current_filters, indent=2)}
-Current Implicit Preferences: {json.dumps(current_implicit, indent=2)}
-
-Recent Conversation:
+COMPLETE Conversation History:
 {history_context}
 
-New User Input: {user_input}
+Based on the ENTIRE conversation above, extract the user's CURRENT search intent.
 """
 
     # Call LLM to parse
@@ -167,29 +236,50 @@ New User Input: {user_input}
 
         parsed_data = json.loads(content)
 
-        # Update explicit filters (merge with existing)
+        # Check if there are new filters
+        has_new_filters = parsed_data.get("has_new_filters", True)  # Default to True for backward compatibility
+
+        if not has_new_filters:
+            # User is asking a follow-up question, not providing new filters
+            logger.info("No new filters detected - user asking follow-up question, keeping existing filters")
+
+            # Emit progress: Semantic parsing complete (no changes)
+            if progress_callback:
+                progress_callback({
+                    "step_id": "semantic_parsing",
+                    "description": "No new search criteria detected",
+                    "status": "completed"
+                })
+
+            return state
+
+        # REPLACE explicit filters entirely (not merge!)
         new_filters = parsed_data.get("explicit_filters", {})
-        updated_filters = {**current_filters, **new_filters}
-        state["explicit_filters"] = updated_filters
 
-        # Update implicit preferences (merge with existing)
+        # Log the change for debugging
+        if new_filters != current_filters:
+            logger.info(f"Filters changed: {current_filters} → {new_filters}")
+        else:
+            logger.info("New filters extracted (same as current)")
+
+        state["explicit_filters"] = new_filters  # REPLACE, not merge!
+
+        # REPLACE implicit preferences entirely
         new_implicit = parsed_data.get("implicit_preferences", {})
-
-        # For lists in implicit preferences, extend rather than replace
-        updated_implicit = current_implicit.copy()
-        for key, value in new_implicit.items():
-            if key in updated_implicit and isinstance(value, list) and isinstance(updated_implicit[key], list):
-                # Merge lists, remove duplicates
-                updated_implicit[key] = list(set(updated_implicit[key] + value))
-            else:
-                updated_implicit[key] = value
-
-        state["implicit_preferences"] = updated_implicit
+        state["implicit_preferences"] = new_implicit  # REPLACE, not merge!
 
     except json.JSONDecodeError as e:
         # If parsing fails, log it but don't crash
         logger.warning(f"Failed to parse LLM response as JSON: {e}")
         logger.debug(f"Response content: {response.content}")
+
+    # Emit progress: Semantic parsing complete
+    if progress_callback:
+        progress_callback({
+            "step_id": "semantic_parsing",
+            "description": "Search criteria extracted",
+            "status": "completed"
+        })
 
     return state
 

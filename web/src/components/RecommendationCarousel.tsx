@@ -7,6 +7,8 @@ interface RecommendationCarouselProps {
   vehicles: Vehicle[];
   onItemSelect?: (vehicle: Vehicle) => void;
   showPlaceholders?: boolean;
+  onToggleFavorite?: (vehicle: Vehicle) => void;
+  isFavorite?: (vehicleId: string) => boolean;
 }
 
 interface ViewTimeData {
@@ -26,7 +28,7 @@ type DisplayCard = {
   isPlaceholder: false;
 };
 
-export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false }: RecommendationCarouselProps) {
+export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false, onToggleFavorite, isFavorite }: RecommendationCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
@@ -154,22 +156,14 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
   const displayCards = getDisplayCards();
 
   return (
-    <div className="relative w-full">
-      {/* Header */}
-              <div className="mb-4 text-center">
-                <h3 className="text-lg font-semibold text-slate-200 mb-1">Recommendations For You</h3>
-                <p className="text-sm text-slate-400">
-                  {showPlaceholders ? 'Start a conversation to see recommendations' : `${vehicles.length} ${vehicles.length === 1 ? 'option' : 'options'} found`}
-                </p>
-              </div>
-
+    <div className="relative w-full h-full flex flex-col">
       {/* Carousel Container */}
-      <div className="relative flex items-center justify-center">
+      <div className="relative flex items-center justify-center flex-1 overflow-hidden">
         {/* Left Arrow */}
         <button
           onClick={prevVehicle}
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
-          className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed -translate-x-6"
+          className="absolute left-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -193,7 +187,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   : ''
               }`}
             >
-              <div className="glass-card rounded-xl p-4 w-[300px] shadow-2xl">
+              <div className="glass-card rounded-xl p-4 w-[250px] h-full max-h-[300px] shadow-2xl flex flex-col overflow-hidden">
                 {card.isPlaceholder ? (
                   /* Placeholder Card Content */
                   <>
@@ -228,7 +222,14 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   </>
         ) : (
           /* Real Item Card Content */
-          <VehicleCard vehicle={card.vehicle} onItemSelect={onItemSelect} />
+          <VehicleCard 
+            vehicle={card.vehicle} 
+            onItemSelect={onItemSelect} 
+            index={(currentIndex + card.position + vehicles.length) % vehicles.length + 1}
+            isCenter={card.isCenter}
+            onToggleFavorite={onToggleFavorite}
+            isFavorite={isFavorite}
+          />
         )}
                       </div>
                     </div>
@@ -239,7 +240,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
         <button
           onClick={nextVehicle}
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
-          className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed translate-x-6"
+          className="absolute right-0 z-10 w-10 h-10 rounded-full glass-dark border border-slate-600/30 flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -258,13 +259,20 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 }
 
 // VehicleCard component
-function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect?: (vehicle: Vehicle) => void }) {
+function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite, isFavorite }: { 
+  vehicle: Vehicle; 
+  onItemSelect?: (vehicle: Vehicle) => void;
+  index?: number;
+  isCenter?: boolean;
+  onToggleFavorite?: (vehicle: Vehicle) => void;
+  isFavorite?: (vehicleId: string) => boolean;
+}) {
   // Use Auto.dev image URL
   const primaryImage = vehicle.image_url;
   const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
 
   return (
-    <>
+      <>
       <div className="aspect-[3/2] bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
         {hasValidImage ? (
           <>
@@ -302,6 +310,33 @@ function VehicleCard({ vehicle, onItemSelect }: { vehicle: Vehicle; onItemSelect
         ) : (
           <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
             No Image Found
+          </div>
+        )}
+        
+        {/* Heart button */}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite(vehicle);
+            }}
+            className="absolute top-2 left-2 w-8 h-8 glass-dark border border-slate-600/30 rounded-full flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 z-20"
+          >
+            <svg 
+              className={`w-5 h-5 transition-all duration-200 ${isFavorite && isFavorite(vehicle.id) ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        )}
+        
+        {/* Number indicator - show on all cards */}
+        {index && (
+          <div className="absolute bottom-0 right-0 w-8 h-8 glass-dark border border-slate-600/30 text-slate-200 rounded-lg flex items-center justify-center text-sm font-bold">
+            {index}
           </div>
         )}
       </div>

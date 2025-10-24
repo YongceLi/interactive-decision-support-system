@@ -37,14 +37,14 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: #dc2626; /* red-600 */
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6); /* purple to blue gradient */
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
-  background: #b91c1c; /* red-700 */
+  background: linear-gradient(135deg, #7c3aed, #2563eb); /* darker purple to blue */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -52,29 +52,36 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: #dc2626; /* red-600 */
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6); /* purple to blue gradient */
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive bullet point wrapping */
+/* Chat message styling */
 .chat-message {
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
 }
 
-.chat-message .bullet-point {
-  display: block;
-  margin-left: 0.5rem;
-  padding-left: 0.5rem;
-  text-indent: -0.5rem;
+.chat-message ul {
+  list-style: none;
+  padding-left: 0;
 }
 
-.chat-message .bullet-point::before {
-  content: "• ";
-  color: inherit;
+.chat-message li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.5rem; /* 8px */
+}
+
+.chat-message li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #8b5cf6; /* purple-500 */
+  font-weight: bold;
 }
 
 /* Custom glassmorphism utilities */
@@ -96,4 +103,30 @@ html {
     backdrop-filter: blur(20px);
     border: 1px solid rgba(148, 163, 184, 0.1);
   }
+}
+
+/* Loading ripple animation */
+@keyframes ripple {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.loading-ripple {
+  background: linear-gradient(
+    90deg,
+    rgba(203, 213, 225, 0.4) 0%,
+    rgba(203, 213, 225, 0.4) 40%,
+    rgba(255, 255, 255, 0.9) 50%,
+    rgba(203, 213, 225, 0.4) 60%,
+    rgba(203, 213, 225, 0.4) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: ripple 8s ease-in-out infinite;
+  color: transparent;
 }
