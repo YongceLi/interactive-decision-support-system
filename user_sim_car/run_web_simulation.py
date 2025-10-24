@@ -63,6 +63,7 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "summary": snap.get("summary", ""),
                 "scores": snap.get("scores", {}),
                 "judge": snap.get("judge"),
+                "rationale": snap.get("rationale"),
             }
         )
 
@@ -111,6 +112,24 @@ def main() -> None:
         verbose=False,
     )
 
+    def emit(event: Dict[str, Any]) -> None:
+        json.dump(event, sys.stdout)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    emit(
+        {
+            "type": "start",
+            "persona": persona,
+            "max_steps": args.max_steps,
+            "temperature": args.temperature,
+            "model": args.model,
+        }
+    )
+
+    def handle_progress(event: Dict[str, Any]) -> None:
+        emit(event)
+
     final_state = runner.run_session(
         seed_persona=persona,
         chat_model=model,
@@ -118,6 +137,7 @@ def main() -> None:
         thread_id="web-demo",  # deterministic thread name for logging dedupe
         recursion_limit=300,
         demo_mode=True,
+        progress_callback=handle_progress,
     )
 
     payload = {
@@ -127,7 +147,7 @@ def main() -> None:
         "model": args.model,
     }
     payload.update(sanitize_for_json(final_state))
-    json.dump(payload, sys.stdout)
+    emit({"type": "complete", "payload": payload})
 
 
 if __name__ == "__main__":

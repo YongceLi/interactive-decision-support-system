@@ -41,6 +41,26 @@ interface SimulationResponse {
   demo_snapshots?: SimulationTurn[];
 }
 
+type SimulationStreamEvent =
+  | { type: 'start'; persona: string; max_steps: number; temperature?: number; model?: string }
+  | { type: 'rl_init'; thresholds?: Thresholds | null; scores?: Thresholds | null; rationale?: string | null }
+  | {
+      type: 'turn';
+      step?: number;
+      snapshot?: SimulationTurn | null;
+      rl_scores?: Thresholds | null;
+      rl_thresholds?: Thresholds | null;
+      rl_rationale?: string | null;
+      summary?: string | null;
+      summary_notes?: string | null;
+      summary_version?: number;
+      judge?: JudgePayload | null;
+      stop_result?: unknown;
+    }
+  | { type: 'stop'; reason: string; step?: number; stop_result?: unknown }
+  | { type: 'complete'; payload: SimulationResponse }
+  | { type: 'error'; message: string };
+
 const DEFAULT_PERSONA = `Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute;
 budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos;
 asks clarifying questions and compares trims; intent: actively shopping.`;
@@ -55,6 +75,7 @@ export default function Page() {
   const handleRun = async () => {
     setIsRunning(true);
     setError(null);
+    setResult(null);
     try {
       const response = await fetch('/api/simulate', {
         method: 'POST',
@@ -69,8 +90,179 @@ export default function Page() {
         throw new Error(payload.error || 'Failed to run simulation');
       }
 
-      const data = (await response.json()) as SimulationResponse;
-      setResult(data);
+      if (!response.body) {
+        throw new Error('Streaming not supported by this browser');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let partial: SimulationResponse | null = null;
+      let terminate = false;
+
+      const applyUpdate = (event: SimulationStreamEvent) => {
+        switch (event.type) {
+          case 'start': {
+            partial = {
+              seed_persona: event.persona,
+              max_steps: event.max_steps,
+              temperature: event.temperature,
+              model: event.model,
+              demo_snapshots: [],
+            };
+            setResult({ ...partial });
+            break;
+          }
+          case 'rl_init': {
+            const base: SimulationResponse =
+              partial ?? {
+                seed_persona: persona,
+                max_steps: maxSteps,
+                demo_snapshots: [],
+              };
+            const updated: SimulationResponse = {
+              ...base,
+              rl_scores: event.scores ?? base.rl_scores,
+              rl_thresholds: event.thresholds ?? base.rl_thresholds,
+              rl_rationale:
+                event.rationale !== undefined ? event.rationale ?? null : base.rl_rationale,
+            };
+            partial = updated;
+            setResult({ ...updated });
+            break;
+          }
+          case 'turn': {
+            const base: SimulationResponse =
+              partial ?? {
+                seed_persona: persona,
+                max_steps: maxSteps,
+                demo_snapshots: [],
+              };
+            const snapshots = [...(base.demo_snapshots ?? [])];
+            if (event.snapshot) {
+              snapshots.push(event.snapshot);
+            }
+            const updated: SimulationResponse = {
+              ...base,
+              demo_snapshots: snapshots,
+            };
+            if (event.rl_scores) {
+              updated.rl_scores = event.rl_scores;
+            }
+            if (event.rl_thresholds) {
+              updated.rl_thresholds = event.rl_thresholds;
+            }
+            if ('rl_rationale' in event) {
+              updated.rl_rationale = event.rl_rationale ?? null;
+            }
+            if (event.summary !== undefined) {
+              updated.conversation_summary = event.summary ?? null;
+            }
+            if (event.summary_notes !== undefined) {
+              updated.summary_notes = event.summary_notes ?? null;
+            }
+            if (event.summary_version !== undefined) {
+              updated.summary_version = event.summary_version;
+            }
+            if (event.judge !== undefined) {
+              updated.last_judge = event.judge;
+            }
+            if (typeof event.step === 'number') {
+              updated.step = event.step;
+            } else if (event.snapshot?.step !== undefined) {
+              updated.step = event.snapshot.step;
+            }
+            partial = updated;
+            setResult({ ...updated, demo_snapshots: [...snapshots] });
+            break;
+          }
+          case 'stop': {
+            const base: SimulationResponse =
+              partial ?? {
+                seed_persona: persona,
+                max_steps: maxSteps,
+                demo_snapshots: [],
+              };
+            const snapshots = [...(base.demo_snapshots ?? [])];
+            const updated: SimulationResponse = {
+              ...base,
+              demo_snapshots: snapshots,
+              stop_reason: event.reason,
+            };
+            if (typeof event.step === 'number') {
+              updated.step = event.step;
+            }
+            partial = updated;
+            setResult({ ...updated, demo_snapshots: [...snapshots] });
+            break;
+          }
+          case 'error': {
+            terminate = true;
+            setError(event.message || 'Simulation failed');
+            break;
+          }
+          case 'complete': {
+            const finalPayload: SimulationResponse = {
+              ...event.payload,
+              demo_snapshots: [...(event.payload.demo_snapshots ?? [])],
+            };
+            partial = finalPayload;
+            setResult(finalPayload);
+            break;
+          }
+          default:
+            break;
+        }
+      };
+
+      const flushBuffer = (final = false) => {
+        let newlineIndex = buffer.indexOf('\n');
+        while (newlineIndex >= 0) {
+          const line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+          const trimmed = line.trim();
+          if (trimmed) {
+            try {
+              const event = JSON.parse(trimmed) as SimulationStreamEvent;
+              applyUpdate(event);
+            } catch (parseError) {
+              console.error('Failed to parse simulation event', parseError, trimmed);
+            }
+          }
+          newlineIndex = buffer.indexOf('\n');
+          if (terminate) {
+            buffer = '';
+            break;
+          }
+        }
+        if (final && buffer.trim() && !terminate) {
+          try {
+            const event = JSON.parse(buffer.trim()) as SimulationStreamEvent;
+            buffer = '';
+            applyUpdate(event);
+          } catch (parseError) {
+            console.error('Failed to parse trailing simulation event', parseError, buffer);
+          }
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          const remaining = decoder.decode();
+          if (remaining) {
+            buffer += remaining;
+          }
+          flushBuffer(true);
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        flushBuffer();
+        if (terminate) {
+          await reader.cancel().catch(() => undefined);
+          break;
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       setError(message);
@@ -226,6 +418,32 @@ export default function Page() {
                         : '—'}
                     </dd>
                   </div>
+                </div>
+              ) : null}
+              {result.rl_thresholds ? (
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Positive threshold</dt>
+                    <dd className="mt-1 text-base font-semibold text-emerald-200">
+                      {typeof result.rl_thresholds.positive === 'number'
+                        ? result.rl_thresholds.positive.toFixed(2)
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Negative threshold</dt>
+                    <dd className="mt-1 text-base font-semibold text-rose-200">
+                      {typeof result.rl_thresholds.negative === 'number'
+                        ? result.rl_thresholds.negative.toFixed(2)
+                        : '—'}
+                    </dd>
+                  </div>
+                </div>
+              ) : null}
+              {result.rl_rationale ? (
+                <div>
+                  <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL rationale</dt>
+                  <dd className="mt-1 whitespace-pre-line text-slate-200/80">{result.rl_rationale}</dd>
                 </div>
               ) : null}
             </dl>

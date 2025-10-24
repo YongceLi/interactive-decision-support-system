@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
@@ -609,6 +609,17 @@ class GraphRunner:
         self.judge_agent = JudgeAgent(chat_model)
 
         self.graph = self._build_graph()
+        self._progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+
+    def _emit_progress(self, event: Dict[str, Any]) -> None:
+        callback = self._progress_callback
+        if callback is None:
+            return
+        try:
+            callback(event)
+        except Exception as exc:  # pragma: no cover - defensive logging for UI streaming
+            if self.verbose:
+                print(f"Progress callback error: {exc}")
 
     def _build_graph(self):
         g = StateGraph(SimState)
@@ -666,6 +677,14 @@ class GraphRunner:
                     print(f"Initial returns: {scores}")
                     if init_notes:
                         print(f"Notes: {init_notes}")
+                self._emit_progress(
+                    {
+                        "type": "rl_init",
+                        "thresholds": thresholds,
+                        "scores": scores,
+                        "rationale": init_notes,
+                    }
+                )
             summary = state.get("conversation_summary", "")
             ui_desc = describe_ui_state(state["ui"], state.get("vehicles", []))
             available_actions = list_available_actions(state["ui"])
@@ -814,6 +833,8 @@ class GraphRunner:
                 "rl_rationale": rationale,
                 "stop_result": stop_result,
             }
+            if self.verbose and rationale:
+                print(f"RL rationale: {rationale}")
             self.api.log_event("post_turn_metrics", {
                 "summary_excerpt": summary[:200],
                 "scores": new_scores,
@@ -822,6 +843,7 @@ class GraphRunner:
                 "judge": state.get("last_judge"),
                 "step": state["step"],
             })
+            snapshot: Optional[Dict[str, Any]] = None
             if state.get("demo_mode"):
                 snapshot = {
                     "step": state["step"],
@@ -831,8 +853,24 @@ class GraphRunner:
                     "summary": summary,
                     "scores": new_scores,
                     "judge": state.get("last_judge"),
+                    "rationale": rationale,
                 }
                 updates["demo_snapshots"] = state.get("demo_snapshots", []) + [snapshot]
+            self._emit_progress(
+                {
+                    "type": "turn",
+                    "step": state["step"],
+                    "snapshot": snapshot,
+                    "rl_scores": new_scores,
+                    "rl_thresholds": thresholds,
+                    "rl_rationale": rationale,
+                    "summary": summary,
+                    "summary_notes": summary_notes,
+                    "summary_version": state.get("summary_version", 0) + 1,
+                    "judge": state.get("last_judge"),
+                    "stop_result": stop_result,
+                }
+            )
             return updates
 
         def n_check_stop(state: SimState):
@@ -859,6 +897,14 @@ class GraphRunner:
                 })
                 if self.verbose:
                     print(f"\n=== Stop: {stop} ===")
+                self._emit_progress(
+                    {
+                        "type": "stop",
+                        "reason": stop,
+                        "step": state["step"],
+                        "stop_result": state.get("stop_result"),
+                    }
+                )
                 return {"stop_reason": stop}
             return {}
 
@@ -915,7 +961,10 @@ class GraphRunner:
         thread_id: Optional[str] = None,
         recursion_limit: int = 100,
         demo_mode: bool = False,
+        progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> SimState:
+        previous_callback = self._progress_callback
+        self._progress_callback = progress_callback
         init: SimState = {
             "seed_persona": seed_persona,
             "persona_family_draft": None,
@@ -962,11 +1011,14 @@ class GraphRunner:
             "demo_snapshots": [],
         }
         tid = thread_id or "sim-thread"
-        state = self.graph.invoke(
-            init,
-            config={
-                "configurable": {"thread_id": tid},
-                "recursion_limit": recursion_limit,
-            },
-        )
+        try:
+            state = self.graph.invoke(
+                init,
+                config={
+                    "configurable": {"thread_id": tid},
+                    "recursion_limit": recursion_limit,
+                },
+            )
+        finally:
+            self._progress_callback = previous_callback
         return state
