@@ -72,10 +72,9 @@ export default function Home() {
   const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
-  const [currentUserInput, setCurrentUserInput] = useState<string>('');
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
   
-  const { currentMessage } = useVerboseLoading(currentUserInput);
+  const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -90,6 +89,71 @@ export default function Home() {
     }
   }, [chatMessages.length]);
 
+  // Helper function to handle streaming response
+  const handleStreamingResponse = async (response: Response) => {
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error('No response body');
+    }
+
+    let buffer = '';
+    let currentEventType = '';
+    let hasCompleted = false;
+    let finalData: any = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        if (line.startsWith('event:')) {
+          currentEventType = line.substring(6).trim();
+          
+          if (currentEventType === 'complete') {
+            hasCompleted = true;
+          }
+        } else if (line.startsWith('data:')) {
+          const dataStr = line.substring(5).trim();
+          
+          if (currentEventType === 'progress') {
+            try {
+              const progressData = JSON.parse(dataStr);
+              if (progressData.description) {
+                setProgressMessage(progressData.description);
+              }
+            } catch (e) {
+              console.error('Error parsing progress data:', e);
+            }
+          } else if (currentEventType === 'complete' && hasCompleted) {
+            try {
+              finalData = JSON.parse(dataStr);
+            } catch (e) {
+              console.error('Error parsing complete data:', e);
+            }
+          } else if (currentEventType === 'error') {
+            try {
+              const errorData = JSON.parse(dataStr);
+              throw new Error(errorData.error || 'Unknown error');
+            } catch (e) {
+              console.error('Error parsing error data:', e);
+            }
+          }
+        }
+      }
+    }
+
+    return finalData;
+  };
+
   const handleChatMessage = async (message: string) => {
     // Add user message immediately
     const userMessage: ChatMessage = {
@@ -99,12 +163,12 @@ export default function Home() {
       timestamp: new Date()
     };
     setChatMessages(prev => [...prev, userMessage]);
-    setCurrentUserInput(message); // Set for contextual loading
     setIsLoading(true);
+    start(); // Start verbose loading
 
     try {
-      // Send message to agent API
-      const response = await fetch('/api/chat', {
+      // Send message to streaming endpoint
+      const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -120,7 +184,8 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
-      const data = await response.json();
+      // Handle streaming response
+      const data = await handleStreamingResponse(response);
       
       // Update session ID
       if (data.session_id) {
@@ -159,7 +224,7 @@ export default function Home() {
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      setCurrentUserInput(''); // Clear the user input
+      stop(); // Stop verbose loading
     }
   };
 
@@ -170,10 +235,11 @@ export default function Home() {
     const filterMessage = `Please find vehicles with these preferences: ${JSON.stringify(filters)}`;
     
     setIsLoading(true);
+    start(); // Start verbose loading
 
     try {
-      // Send filter request to agent API
-      const response = await fetch('/api/chat', {
+      // Send filter request to streaming endpoint
+      const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +255,8 @@ export default function Home() {
         throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
-      const data = await response.json();
+      // Handle streaming response
+      const data = await handleStreamingResponse(response);
       
       // Update session ID
       if (data.session_id) {
@@ -218,6 +285,7 @@ export default function Home() {
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      stop(); // Stop verbose loading
     }
   };
 

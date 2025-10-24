@@ -75,9 +75,9 @@ start_backend() {
         pip install -r requirements.txt
     fi
     
-    # Start the backend server
+    # Start the backend server using uvicorn directly for better control
     print_status "Starting FastAPI server on http://localhost:8000"
-    python api/server.py &
+    uvicorn api.server:app --host 0.0.0.0 --port 8000 > /tmp/idss_backend.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait a moment for server to start
@@ -86,8 +86,10 @@ start_backend() {
     # Check if backend started successfully
     if kill -0 $BACKEND_PID 2>/dev/null; then
         print_success "Backend server started successfully (PID: $BACKEND_PID)"
+        print_status "Backend logs: tail -f /tmp/idss_backend.log"
     else
         print_error "Failed to start backend server"
+        print_error "Check logs: cat /tmp/idss_backend.log"
         exit 1
     fi
 }
@@ -119,7 +121,7 @@ start_frontend() {
     
     # Start the frontend server
     print_status "Starting Next.js server on http://localhost:3000"
-    npm run dev &
+    npm run dev > /tmp/idss_frontend.log 2>&1 &
     FRONTEND_PID=$!
     
     # Go back to root directory
@@ -131,8 +133,10 @@ start_frontend() {
     # Check if frontend started successfully
     if kill -0 $FRONTEND_PID 2>/dev/null; then
         print_success "Frontend server started successfully (PID: $FRONTEND_PID)"
+        print_status "Frontend logs: tail -f /tmp/idss_frontend.log"
     else
         print_error "Failed to start frontend server"
+        print_error "Check logs: cat /tmp/idss_frontend.log"
         exit 1
     fi
 }
@@ -142,12 +146,20 @@ cleanup() {
     print_status "Shutting down servers..."
     
     if [ ! -z "$BACKEND_PID" ]; then
+        print_status "Stopping backend server (PID: $BACKEND_PID)..."
         kill $BACKEND_PID 2>/dev/null || true
+        sleep 1
+        # Force kill if still running
+        kill -9 $BACKEND_PID 2>/dev/null || true
         print_success "Backend server stopped"
     fi
     
     if [ ! -z "$FRONTEND_PID" ]; then
+        print_status "Stopping frontend server (PID: $FRONTEND_PID)..."
         kill $FRONTEND_PID 2>/dev/null || true
+        sleep 1
+        # Force kill if still running
+        kill -9 $FRONTEND_PID 2>/dev/null || true
         print_success "Frontend server stopped"
     fi
     
@@ -182,9 +194,28 @@ main() {
     print_success "API Docs: http://localhost:8000/docs"
     print_success "=============================================="
     print_status "Press Ctrl+C to stop both servers"
+    print_status ""
+    print_status "View backend logs: tail -f /tmp/idss_backend.log"
+    print_status "View frontend logs: tail -f /tmp/idss_frontend.log"
+    print_status ""
     
-    # Wait for user to stop servers
-    wait
+    # Wait for background jobs
+    while true; do
+        # Check if both processes are still running
+        if ! kill -0 $BACKEND_PID 2>/dev/null; then
+            print_error "Backend server crashed!"
+            cleanup
+            exit 1
+        fi
+        
+        if ! kill -0 $FRONTEND_PID 2>/dev/null; then
+            print_error "Frontend server crashed!"
+            cleanup
+            exit 1
+        fi
+        
+        sleep 2
+    done
 }
 
 # Check if we're in the right directory
