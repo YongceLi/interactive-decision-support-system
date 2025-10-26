@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 from idss_agent.logger import get_logger
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
 
 logger = get_logger("intent_classifier")
 
@@ -44,57 +46,19 @@ def classify_intent(conversation_history: List[BaseMessage]) -> UserIntent:
     Returns:
         UserIntent with intent category, confidence, and reasoning
     """
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('intent_classifier')
 
-    # Use GPT-4o-mini for fast, cheap classification
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens')
+    )
 
-    # System prompt with intent definitions (cached)
-    system_prompt = """You are an intent classifier for a vehicle shopping assistant.
-
-Your task: Classify the user's current intent based on their latest message and conversation context.
-
-Intent Definitions:
-
-1. **buying**: User wants to purchase a vehicle and needs guidance through the process
-   - Looking for recommendations and help finding a car
-   - Asking for assistance with vehicle selection
-   - Discussing budget, needs, preferences with purchase intent
-   - Ready to make a purchase decision
-   - Examples: "I need a family SUV", "Help me find a reliable car", "What should I buy?", "Looking for a sedan under $25k"
-
-2. **browsing**: User wants to casually explore options without commitment
-   - Just looking around to see what's available
-   - Wants to see vehicles without buying pressure
-   - Exploratory, non-committal questions
-   - Not ready to commit to buying process
-   - Examples: "Show me sports cars", "What EVs are out there?", "Browse luxury sedans", "Let me see some trucks"
-
-3. **research**: User has specific analytical questions, wants deep comparisons or data
-   - Comparing specific vehicles
-   - Asking about safety ratings, specs, features, performance
-   - Technical or data-driven questions
-   - Deep-dive analysis queries
-   - Examples: "Compare Honda CR-V vs Toyota RAV4", "What's the safety rating for Camry?", "MPG comparison of hybrids", "Which SUV has the best reliability?"
-
-4. **general**: Greetings, unclear intent, off-topic, or system questions
-   - Greetings: "Hello", "Hi there", "Good morning"
-   - Meta questions: "What can you do?", "How does this work?", "Help"
-   - Thanks/acknowledgments: "Thanks", "Great", "Okay"
-   - Off-topic: Unrelated to vehicles
-   - Unclear: Not enough context to determine intent
-   - Examples: "Hello", "Thanks for the info", "What features do you have?", "How do I use this?"
-
-Classification Guidelines:
-- Focus on the user's LATEST message while considering conversation context
-- If user is mid-conversation in buying mode (being interviewed), follow-up answers are still "buying"
-- If user was buying and asks a specific technical question, it's likely still "buying" context (not research)
-- If user has completed buying interview and asks "show me more", that's likely "browsing" (not buying again)
-- Research intent is for users who want information WITHOUT buying commitment yet
-- If unclear or ambiguous, default to 'general'
-- Confidence should reflect certainty (0.0 = not sure at all, 1.0 = very confident)
-- Consider conversation flow: follow-up questions usually maintain the same intent
-
-Return JSON with: intent, confidence, reasoning"""
+    # Load system prompt from template
+    system_prompt = render_prompt('intent_classifier.j2')
 
     # Build messages with full conversation history (optimized for caching)
     messages = [
