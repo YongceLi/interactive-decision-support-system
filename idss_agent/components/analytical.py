@@ -6,6 +6,7 @@ from typing import Optional, Callable
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from idss_agent.config import get_config
 from idss_agent.prompt_loader import render_prompt
@@ -15,6 +16,50 @@ from idss_agent.components.vehicle_database import get_vehicle_database_tools
 from idss_agent.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
+
+
+@tool
+def web_search(query: str) -> str:
+    """
+    Search the web for current information about vehicles.
+
+    Use this tool when local databases don't have the information you need.
+    This is especially useful for:
+    - Recent model years not yet in databases
+    - Current pricing and availability
+    - Latest specifications and features
+    - Recent safety ratings or reviews
+
+    Args:
+        query: Search query string (e.g., "2025 Honda Accord specifications")
+
+    Returns:
+        Search results with relevant information
+    """
+    try:
+        # Import WebSearch here to avoid circular imports
+        from langchain_community.tools.tavily_search import TavilySearchResults
+
+        # Create Tavily search tool (requires TAVILY_API_KEY environment variable)
+        search = TavilySearchResults(max_results=3)
+        results = search.invoke({"query": query})
+
+        # Format results
+        if isinstance(results, list) and results:
+            formatted = []
+            for i, result in enumerate(results[:3], 1):
+                content = result.get('content', '')
+                url = result.get('url', '')
+                formatted.append(f"[Result {i}]\n{content}\nSource: {url}\n")
+            return "\n".join(formatted)
+        return "No web search results found. Please try a different query."
+
+    except ImportError:
+        logger.warning("Tavily search not available, falling back to basic response")
+        return f"Web search tool not configured. For query '{query}', please check online resources manually."
+    except Exception as e:
+        logger.error(f"Web search error: {e}")
+        return f"Web search temporarily unavailable: {str(e)}"
 
 
 class InteractiveElements(BaseModel):
@@ -106,23 +151,35 @@ Your role is to answer specific, data-driven questions about vehicles by leverag
   - Returns: Query results
   - **IMPORTANT**: ALWAYS check schema first before querying
   - Available databases:
-    * `safety_data`: NHTSA crash test ratings, safety features (query by Make, Model, ModelYear)
-    * `feature_data`: EPA fuel economy, MPG ratings, engine specs (query by Make, Model, Year)
+    * `safety_data`: NHTSA crash test ratings, safety features (query by make, model, model_yr - use LIKE patterns!)
+    * `feature_data`: EPA fuel economy, MPG ratings, engine specs (query by make, model, year)
+
+**Web Search Tool:**
+- `web_search`: Search the web for current information
+  - Input: search query string
+  - Returns: Search results with up-to-date information
+  - **Use when**: Local databases don't have the information needed
+  - Example queries: "2025 Honda Accord specifications", "Toyota Camry 2024 safety ratings"
+  - This is your fallback when database queries return no results
 
 ## Guidelines
 
 **Data Accuracy:**
 1. ALWAYS verify table schema before writing SQL queries
 2. Use exact column names and table names from schema
-3. Handle case sensitivity properly (Make/Model/Year vs make/model/year)
+3. Handle case sensitivity properly - column names are lowercase: `make`, `model`, `model_yr` (not Make/Model/ModelYear)
 4. If a query fails, check the schema and try again with correct column names
+5. **IMPORTANT**: Model names may include variants (e.g., "ACCORD SEDAN", "ACCORD HYBRID")
+   - Always use `LIKE '%ModelName%'` pattern matching instead of exact equality
+   - Example: `WHERE model LIKE '%Accord%'` not `WHERE model = 'Accord'`
 
 **Query Best Practices:**
-1. Use WHERE clauses to filter by Make, Model, Year when relevant
+1. Use WHERE clauses with LIKE patterns for make/model matching: `WHERE make LIKE '%Honda%' AND model LIKE '%Accord%'`
 2. Use LIMIT to prevent overwhelming results (typically LIMIT 5-10)
-3. Order results by relevance (e.g., ModelYear DESC for latest models)
+3. Order results by relevance (e.g., model_yr DESC for latest models)
 4. Aggregate data when comparing multiple vehicles (AVG, MAX, MIN)
 5. Join tables when combining safety and fuel economy data
+6. **Always use pattern matching** for model names to catch all variants
 
 **Vehicle References:**
 - When user references "#1", "#2", etc., use the VIN from the provided context
@@ -130,30 +187,41 @@ Your role is to answer specific, data-driven questions about vehicles by leverag
 - When discussing specific listings, use get_vehicle_listing_by_vin
 
 **Response Quality:**
-1. Be concise and direct - answer the specific question asked in one concise paragraph
-2. Use bullet points for multiple data points
-3. Include relevant numbers, ratings, and comparisons
-4. Cite data sources when helpful (e.g., "According to NHTSA safety ratings...")
-5. If data is unavailable, clearly state what you couldn't find and why
+1. **Be concise and informative like a car salesperson** - lead with the most important highlights (2-3 key points)
+2. When user asks general questions ("tell me about X", "what are details"), provide:
+   - Top 2-3 most relevant highlights (safety rating, price range, key feature)
+   - Keep it itemized and concise to 3-5 sentences maximum
+   - Invite them to ask for more specific details
+3. When user asks specific questions ("what's the safety rating", "fuel economy"), be direct:
+   - Answer exactly what was asked
+   - Provide 1-2 related data points if relevant
+   - Keep response focused and brief
+4. Cite data sources when helpful (e.g., "According to NHTSA...")
+5. **IMPORTANT**: Only say "no data available" if you actually tried all tools and found nothing
+   - Don't preemptively claim no data exists
+   - If one tool fails, try others (safety DB, feature DB, web search)
+6. Use itemized list for clarity and readability.
 
-**Error Handling:**
-- If a VIN is invalid or not found, explain clearly
-- If database query returns no results, suggest why (model year not in database, name mismatch)
-- If tools fail, try alternative approaches or explain limitations
-
-**Common Queries:**
-- Safety ratings: Query safety_data by Make/Model/ModelYear
-- Fuel economy: Query feature_data by Make/Model/Year
-- Vehicle comparisons: Fetch data for each vehicle, present side-by-side
-- Specific vehicle details: Use get_vehicle_listing_by_vin with VIN
-- Feature availability: Check listing details or feature_data
+**Error Handling & Fallbacks:**
+1. If database query returns no results:
+   - First, check if you used LIKE patterns correctly
+   - Try broader patterns: `LIKE '%Accord%'` instead of exact match
+   - Check schema to verify column names
+2. If local databases have no information:
+   - Use web search tool to find current information online
+   - Search for: "[make] [model] [year] specifications safety ratings"
+3. Only after trying all available tools should you say information is unavailable
 
 Think step-by-step:
-1. Understand what the user is asking
+1. Understand what the user is asking - is it general or specific?
 2. Identify which tools/databases are needed
 3. Check schema if using SQL
 4. Execute tools in logical order
-5. Synthesize information into a clear answer
+5. **Synthesize information concisely:**
+   - For general questions: 2-3 highlights + invitation to ask more
+   - For specific questions: Direct answer + 1-2 related points
+   - Think: "What would a salesperson say?"
+6. Keep total response to 3-4 sentences for general queries
 """
 
 
@@ -210,7 +278,8 @@ def analytical_agent(
     db_tools = get_vehicle_database_tools(llm)
     tools = [
         get_vehicle_listing_by_vin,
-        get_vehicle_photos_by_vin
+        get_vehicle_photos_by_vin,
+        web_search  # Add web search as fallback tool
     ] + db_tools
 
     # Build vehicle context from state
@@ -312,12 +381,7 @@ def analytical_agent(
                 logger.warning(f"Failed to generate interactive elements: {e}")
                 # Fallback to sensible defaults
                 state["quick_replies"] = None
-                state["suggested_followups"] = [
-                    "Compare with alternatives",
-                    "Show me similar vehicles",
-                    "What about other features?",
-                    "Check pricing options"
-                ]
+                state["suggested_followups"] = []
 
         # Emit progress: Answer ready
         if progress_callback:

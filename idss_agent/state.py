@@ -121,10 +121,9 @@ class AgentResponse(BaseModel):
     )
     suggested_followups: List[str] = Field(
         description=(
-            "Suggested next queries (short phrases, 3-5 options) to help users continue conversation. "
-            "Examples: ['Show me hybrids', 'What about safety?', 'Compare top 3']"
+            "Suggested user's potential next queries to help users continue conversation. "
         ),
-        min_length=3,
+        min_length=0,
         max_length=5
     )
 
