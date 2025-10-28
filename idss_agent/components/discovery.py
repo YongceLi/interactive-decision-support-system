@@ -69,6 +69,16 @@ def discovery_agent(
     # Load system prompt from template
     discovery_system_prompt = render_prompt('discovery.j2')
 
+    # Check if filters were relaxed (fallback occurred)
+    fallback_message = state.get('fallback_message')
+    fallback_note = ""
+    if fallback_message:
+        fallback_note = f"""
+**IMPORTANT - Fallback Applied:**
+The original filters didn't find vehicles, so we relaxed some constraints.
+Include this message naturally in your response: "{fallback_message}"
+"""
+
     prompt = f"""
 **User's Current Filters:**
 {json.dumps(filters, indent=2)}
@@ -81,6 +91,8 @@ def discovery_agent(
 
 **Topics Already Asked About:** {already_asked}
 (Avoid asking about these topics again)
+
+{fallback_note}
 
 Generate your response:
 """
@@ -100,8 +112,10 @@ Generate your response:
     response: AgentResponse = structured_llm.invoke(messages)
 
     state['ai_response'] = response.ai_response
-    state['quick_replies'] = response.quick_replies
-    state['suggested_followups'] = response.suggested_followups
+
+    # Apply feature flags for interactive elements
+    state['quick_replies'] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
+    state['suggested_followups'] = response.suggested_followups if config.features.get('enable_suggested_followups', True) else []
     state['comparison_table'] = None  # Clear comparison table in discovery mode
 
     # Extract and track which topics were asked about

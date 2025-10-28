@@ -69,8 +69,10 @@ def run_general_mode(
 
     response: AgentResponse = structured_llm.invoke(messages)
     state["ai_response"] = response.ai_response
-    state["quick_replies"] = response.quick_replies
-    state["suggested_followups"] = response.suggested_followups
+
+    # Apply feature flags for interactive elements
+    state["quick_replies"] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
+    state["suggested_followups"] = response.suggested_followups if config.features.get('enable_suggested_followups', True) else []
     state["comparison_table"] = None  # Clear comparison table in general mode
 
     # Add AI response to conversation history
