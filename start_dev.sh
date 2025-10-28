@@ -70,7 +70,7 @@ start_backend() {
     source venv/bin/activate
     
     # Check if requirements are installed
-    if ! python -c "import fastapi, uvicorn" 2>/dev/null; then
+    if ! python -c "import fastapi, uvicorn, jinja2, langgraph" 2>/dev/null; then
         print_warning "Installing Python dependencies..."
         pip install -r requirements.txt
     fi
