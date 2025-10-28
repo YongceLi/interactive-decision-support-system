@@ -94,7 +94,6 @@ class SimState(TypedDict):
 
     rl_thresholds: Optional[RLThresholds]
     rl_scores: Optional[RLScores]
-    discount_factor: float
     rl_rationale: Optional[str]
 
     goal: Dict[str, Any]
@@ -254,11 +253,13 @@ class UserAgent:
         sys_prompt = (
             "Calibrate a two-channel stop model for a simulated car shopper based on their persona facets. "
             "Positive channel represents satisfaction momentum; negative represents frustration."
+            "The higher the positive channel is, the harder to please the persona, and vice versa. "
+            "The lower the negative channel is, the easier the persona to be disappointed, impatient, likely to disengage. "
             "Thresholds set stopping points for each channel, where higher means harder to stop."
-            "Initial returns reflect starting satisfaction/frustration levels. The initial values are usually on the very low side, only varying slightly by persona."
-            "Discount factor governs how fast a person likely to change their mood over time. The closer to 1, the more persistent the mood."
-            "Positive, negative values range from 0 to 1, discount from 0.9 to 0.99."
-            "Return JSON only: {{\"thresholds\": {{\"positive\": <float>, \"negative\": <float>}}, \"initial_returns\": {{\"positive\": <float>, \"negative\": <float>}}, \"discount\": <float>, \"notes\": <string>}}"
+            "Initial returns reflect starting satisfaction/frustration levels. The initial values usually have positive and negative values equal to 0, "
+            "unless the persona comes into the conversation with prior satisfaction/frustration."
+            "Positive, negative values range from 0 to 1."
+            "Return JSON only: {{\"thresholds\": {{\"positive\": <float>, \"negative\": <float>}}, \"initial_returns\": {{\"positive\": <float>, \"negative\": <float>}}, \"notes\": <string>}}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
@@ -275,7 +276,6 @@ class UserAgent:
         }).content.strip()
         thresholds: RLThresholds = {"positive": 0.85, "negative": 0.65}
         scores: RLScores = {"positive": 0.15, "negative": 0.15}
-        discount = 0.85
         notes = ""
         try:
             data = json.loads(raw)
@@ -285,12 +285,10 @@ class UserAgent:
             if isinstance(data.get("initial_returns"), dict):
                 for k in ("positive", "negative"):
                     scores[k] = _clamp(float(data["initial_returns"].get(k, scores[k])), 0.0, 0.9)
-            if "discount" in data:
-                discount = _clamp(float(data["discount"]), 0.5, 0.99)
             notes = str(data.get("notes", "")).strip()
         except Exception:
             notes = "RL calibration fallback used due to parsing error."
-        return thresholds, scores, discount, notes
+        return thresholds, scores, notes
 
     def update_rl_scores(
         self,
@@ -298,14 +296,16 @@ class UserAgent:
         summary: str,
         turn: Turn,
         prev_scores: RLScores,
-        discount: float,
         visible_vehicles: List[Dict[str, Any]],
     ) -> Tuple[RLScores, str]:
         sys_prompt = (
-            "Act as an RL critic for a simulated shopper. Based on the latest assistant reply, user tone, UI actions, and running summary, "
+            "Act as a critic for a simulated shopper. Based on the latest assistant reply, user response, UI action, and running summary, "
             "Positive delta boosts satisfaction, negative delta boosts frustration. The higher the delta, the stronger the effect. "
+            "Positive delta increases when the latest assistant replies fit with what the user asks, the UI shows relevant results, "
+            "or the information/question shows in the assistant replies are not repetitive with what inside the summary, etc. Vice versa when positive delta decreases."
+            "Negative delta increases when the latest assistant replies are not relevant, gives the user frustration, or repetitive, etc."
             "Consider utility of visible vehicles too."
-            "Positive, negative deltas range from -0.1 to +0.1."
+            "Positive, negative deltas range from -0.1 to 0.1"
             "Return JSON only: {{\"deltas\": {{\"positive\": <float>, \"negative\": <float>}}, \"rationale\": <string>}}"
         )
         vehicles_brief = []
@@ -350,8 +350,8 @@ class UserAgent:
         except Exception:
             rationale = "RL critic returned non-JSON; applying mild decay."
         new_scores: RLScores = {
-            "positive": _clamp(prev_scores["positive"] * discount + deltas.get("positive", 0.0), 0.0, 1.0),
-            "negative": _clamp(prev_scores["negative"] * discount + deltas.get("negative", 0.0), 0.0, 1.0),
+            "positive": _clamp(prev_scores["positive"] + deltas.get("positive", 0.0), 0.0, 1.0),
+            "negative": _clamp(prev_scores["negative"] + deltas.get("negative", 0.0), 0.0, 1.0),
         }
         return new_scores, rationale
 
@@ -657,14 +657,12 @@ class GraphRunner:
             persona = state["persona"]
             thresholds = state.get("rl_thresholds")
             scores = state.get("rl_scores")
-            discount = state.get("discount_factor", 0.85)
             updates: Dict[str, Any] = {}
             if thresholds is None or scores is None:
-                thresholds, scores, discount, init_notes = self.user_agent.derive_rl_model(persona)
+                thresholds, scores, init_notes = self.user_agent.derive_rl_model(persona)
                 updates.update({
                     "rl_thresholds": thresholds,
                     "rl_scores": scores,
-                    "discount_factor": discount,
                     "rl_rationale": init_notes,
                 })
                 if self.verbose:
@@ -677,7 +675,6 @@ class GraphRunner:
                     payload: Dict[str, Any] = {
                         "thresholds": dict(thresholds or {}),
                         "scores": dict(scores or {}),
-                        "discount": discount,
                         "notes": init_notes,
                     }
                     self.event_callback("rl_init", payload)
@@ -795,13 +792,11 @@ class GraphRunner:
             summary, summary_notes = self.summary_agent.update(summary_prev, turn, state["ui"], state.get("vehicles", []))
             scores = state.get("rl_scores") or {"positive": 0.15, "negative": 0.15}
             thresholds = state.get("rl_thresholds") or {"positive": 0.85, "negative": 0.65}
-            discount = state.get("discount_factor", 0.85)
             new_scores, rationale = self.user_agent.update_rl_scores(
                 persona=state["persona"],
                 summary=summary,
                 turn=turn,
                 prev_scores=scores,
-                discount=discount,
                 visible_vehicles=state.get("vehicles", []),
             )
             stop_result: Optional[StopResult] = None
@@ -945,7 +940,6 @@ class GraphRunner:
             "persona": {"family": "", "writing": "", "interaction": "", "intent": ""},
             "rl_thresholds": None,
             "rl_scores": None,
-            "discount_factor": 0.85,
             "rl_rationale": None,
             "goal": {"max_steps": max_steps, "stop_on_selection": False},
             "ui": {

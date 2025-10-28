@@ -265,8 +265,8 @@ export default function Page() {
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Simulation controls</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Adjust the persona narrative or tweak the step budget. Conversations automatically stop when the RL scorer,
-              judge, or UI criteria trigger an ending.
+              Adjust the persona narrative or tweak the step budget. Conversations automatically stop when the emotion threshold got passed, 
+              or maximum step is reached.
             </p>
           </div>
 
@@ -345,7 +345,7 @@ export default function Page() {
             ) : null}
             {rlThresholds ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL thresholds</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion Score Thresholds</dt>
                 <dd className="mt-1 text-slate-100 space-y-1">
                   <div>Positive: {rlThresholds.positive?.toFixed(2) ?? '—'}</div>
                   <div>Negative: {rlThresholds.negative?.toFixed(2) ?? '—'}</div>
@@ -354,7 +354,7 @@ export default function Page() {
             ) : null}
             {rlScores ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current RL scores</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current Emotion Scores</dt>
                 <dd className="mt-1 text-slate-100 space-y-1">
                   <div>Positive: {rlScores.positive?.toFixed(2) ?? '—'}</div>
                   <div>Negative: {rlScores.negative?.toFixed(2) ?? '—'}</div>
@@ -363,7 +363,7 @@ export default function Page() {
             ) : null}
             {rlNotes ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL notes</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion notes</dt>
                 <dd className="mt-1 whitespace-pre-line text-slate-200/80">{rlNotes}</dd>
               </div>
             ) : null}
@@ -384,7 +384,7 @@ export default function Page() {
           ) : null}
 
           <section className="space-y-5 rounded-2xl border border-slate-700/60 bg-slate-900/40 p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-100">Turn-by-turn timeline</h2>
+            <h2 className="text-lg font-semibold text-slate-100">Simulation Timeline</h2>
             {snapshots.length ? (
               snapshots.map((turn, index) => (
                 <SimulationTurnCard key={turn.step ?? index} turn={turn} />
