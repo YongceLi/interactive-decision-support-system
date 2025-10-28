@@ -107,6 +107,21 @@ export class LoggingService {
   }
 
   /**
+   * Log agent response latency
+   */
+  static async logAgentLatency(sessionId: string, latencyMs: number, message: string): Promise<void> {
+    try {
+      await this.logEvent(sessionId, 'agent_latency', {
+        latency_ms: latencyMs,
+        message: message.substring(0, 200), // Truncate message for logging
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to log agent latency:', error);
+    }
+  }
+
+  /**
    * Log custom events
    */
   static async logCustomEvent(sessionId: string, eventType: string, data: Record<string, any> = {}): Promise<void> {

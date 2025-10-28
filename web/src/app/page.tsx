@@ -260,11 +260,15 @@ export default function Home() {
       // Add assistant response with formatting
       const formattedResponse = formatAgentResponse(data.response);
       
-      // Log button data and latency for debugging
+      // Track latency and log to internal record
       const latency = performance.now() - startTime;
-      console.log('Quick replies:', data.quick_replies);
-      console.log('Suggested followups:', data.suggested_followups);
-      console.log(`Agent latency: ${latency.toFixed(0)}ms`);
+      
+      // Log latency to internal record
+      if (sessionId) {
+        LoggingService.logAgentLatency(sessionId, latency, message).catch(
+          err => console.error('Error logging latency:', err)
+        );
+      }
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -655,7 +659,7 @@ export default function Home() {
                 {/* Buttons below assistant messages (row format, no headers) */}
                 {message.role === 'assistant' && ((message.quick_replies && message.quick_replies.length > 0) || (message.suggested_followups && message.suggested_followups.length > 0)) && (
                   <div className="flex justify-start mt-2">
-                    <div className="max-w-[80%] flex flex-wrap gap-2">
+                    <div className="max-w-[80%] w-full flex flex-wrap gap-2">
                       {[...(message.suggested_followups || []), ...(message.quick_replies || [])].map((reply, idx) => (
                         <button
                           key={idx}
