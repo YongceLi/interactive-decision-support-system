@@ -660,16 +660,24 @@ export default function Home() {
                 {message.role === 'assistant' && ((message.quick_replies && message.quick_replies.length > 0) || (message.suggested_followups && message.suggested_followups.length > 0)) && (
                   <div className="flex justify-start mt-2">
                     <div className="max-w-[80%] w-full flex flex-wrap gap-2">
-                      {[...(message.suggested_followups || []), ...(message.quick_replies || [])].map((reply, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleChatMessage(reply)}
-                          disabled={isLoading}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                          {reply}
-                        </button>
-                      ))}
+                      {(() => {
+                        // Smart display logic: if message contains a question, show quick_replies; otherwise show suggested_followups
+                        const hasQuestion = message.content.includes('?');
+                        const buttonsToShow = hasQuestion 
+                          ? (message.quick_replies || [])
+                          : (message.suggested_followups || []);
+                        
+                        return buttonsToShow.map((reply, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleChatMessage(reply)}
+                            disabled={isLoading}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            {reply}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
