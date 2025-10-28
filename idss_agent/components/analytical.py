@@ -463,12 +463,14 @@ def analytical_agent(
                 # Generate interactive elements from summary
                 try:
                     interactive = generate_interactive_elements(comparison_result['summary'], user_input)
-                    state["quick_replies"] = interactive.quick_replies
-                    state["suggested_followups"] = interactive.suggested_followups
+                    # Apply feature flags
+                    state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                    state["suggested_followups"] = interactive.suggested_followups if config.features.get('enable_suggested_followups', True) else []
                 except Exception as e:
                     logger.warning(f"Failed to generate interactive elements: {e}")
+                    # Apply feature flags for fallback values
                     state["quick_replies"] = None
-                    state["suggested_followups"] = ["Tell me more about the first one", "Which is safer?", "Which is more fuel efficient?"]
+                    state["suggested_followups"] = ["Tell me more about the first one", "Which is safer?", "Which is more fuel efficient?"] if config.features.get('enable_suggested_followups', True) else []
             else:
                 # Normal response - no comparison
                 state["ai_response"] = response_content
@@ -477,8 +479,9 @@ def analytical_agent(
                 # Generate interactive elements (quick replies + suggestions)
                 try:
                     interactive = generate_interactive_elements(response_content, user_input)
-                    state["quick_replies"] = interactive.quick_replies
-                    state["suggested_followups"] = interactive.suggested_followups
+                    # Apply feature flags
+                    state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                    state["suggested_followups"] = interactive.suggested_followups if config.features.get('enable_suggested_followups', True) else []
                 except Exception as e:
                     logger.warning(f"Failed to generate interactive elements: {e}")
                     state["quick_replies"] = None

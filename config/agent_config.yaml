@@ -79,7 +79,9 @@ interactive:
 # Feature flags
 features:
   enable_streaming: true             # Enable SSE streaming for progress updates
-  require_photos: true              # Require photos in vehicle listings
+  require_photos: true               # Require photos in vehicle listings
+  enable_quick_replies: true         # Enable quick reply buttons (potential answers)
+  enable_suggested_followups: false  # Enable suggested followup questions
   
 # API Configuration (Auto.dev specific - modify for other data sources)
 api:
