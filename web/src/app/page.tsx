@@ -603,7 +603,7 @@ export default function Home() {
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[40%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
+        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
               <div key={message.id} className="flex flex-col">
@@ -663,8 +663,8 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[10%]' : ''} flex-shrink-0 border-t border-slate-600/30 glass-dark flex items-center px-8 py-6`}>
-          <div className="w-3/4 mx-auto my-autoitems-center justify-center py-6">
+        <div className="h-[11%] flex-shrink-0 border-t border-slate-600/30 glass-dark flex items-center px-8 py-6">
+          <div className="w-3/4 mx-auto">
             <ChatBox
               messages={[]}
               onSendMessage={handleChatMessage}
