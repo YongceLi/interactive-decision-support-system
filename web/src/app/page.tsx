@@ -87,6 +87,8 @@ export default function Home() {
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<Vehicle[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [previousView, setPreviousView] = useState<'carousel' | 'favorites' | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -368,6 +370,12 @@ export default function Home() {
   };
 
   const handleItemSelect = async (vehicle: Vehicle) => {
+    // Remember where we came from
+    setPreviousView(showFavorites ? 'favorites' : 'carousel');
+    // Hide favorites when showing details
+    if (showFavorites) {
+      setShowFavorites(false);
+    }
     setSelectedItem(vehicle);
     setShowDetails(true);
     setDetailViewStartTime(Date.now());
@@ -400,8 +408,13 @@ export default function Home() {
       });
     }
     
+    // Return to previous view
     setShowDetails(false);
     setSelectedItem(null);
+    if (previousView === 'favorites') {
+      setShowFavorites(true);
+    }
+    setPreviousView(null);
     setDetailViewStartTime(null);
   };
 
@@ -417,7 +430,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
-        {(hasReceivedRecommendations || showFavorites) && (
+        {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
           <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
@@ -627,6 +640,8 @@ export default function Home() {
                     showPlaceholders={false}
                     onToggleFavorite={toggleFavorite}
                     isFavorite={isFavorite}
+                    currentIndex={carouselIndex}
+                    onIndexChange={setCarouselIndex}
                   />
                 </div>
               )}
