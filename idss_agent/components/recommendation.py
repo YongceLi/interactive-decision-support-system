@@ -6,14 +6,101 @@ import math
 import json
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
+from pydantic import BaseModel, Field
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
 from idss_agent.logger import get_logger
 
 
 logger = get_logger("components.recommendation")
+
+
+class VehicleSuggestion(BaseModel):
+    """Suggested vehicles based on user preferences."""
+    makes: List[str] = Field(description="List of 2-4 recommended vehicle makes (e.g., ['Honda', 'Toyota', 'Mazda'])")
+    models: List[str] = Field(description="List of 3-6 recommended vehicle models (e.g., ['Civic', 'Corolla', 'Accord', 'Camry', '3', 'CX-5'])")
+    reasoning: str = Field(description="Brief explanation (1-2 sentences) of why these vehicles match the preferences")
+
+
+def suggest_vehicles_from_preferences(
+    implicit_preferences: Dict[str, Any],
+    existing_filters: Dict[str, Any]
+) -> Optional[VehicleSuggestion]:
+    """
+    Use LLM to suggest vehicle makes/models based on user's implicit preferences.
+
+    Args:
+        implicit_preferences: User's implicit preferences (priorities, concerns, usage_patterns, etc.)
+        existing_filters: Current explicit filters (may have year, price, body_style, etc.)
+
+    Returns:
+        VehicleSuggestion with recommended makes/models, or None if no suggestions
+    """
+
+    # Only suggest if we have meaningful preferences
+    has_preferences = any([
+        implicit_preferences.get('priorities'),
+        implicit_preferences.get('concerns'),
+        implicit_preferences.get('usage_patterns'),
+        implicit_preferences.get('lifestyle'),
+        implicit_preferences.get('brand_affinity')
+    ])
+
+    if not has_preferences:
+        logger.info("No implicit preferences found - skipping vehicle suggestion")
+        return None
+
+    logger.info("Suggesting vehicles based on implicit preferences")
+
+    prompt = f"""You are a vehicle recommendation expert. Based on the user's preferences, suggest specific vehicle makes and models that would be good matches.
+
+**User's Preferences:**
+{json.dumps(implicit_preferences, indent=2)}
+
+**Existing Filters:**
+{json.dumps(existing_filters, indent=2)}
+
+**Instructions:**
+1. Suggest 2-4 vehicle MAKES (brands like Honda, Toyota, Mazda, etc.)
+2. Suggest 3-6 specific MODELS that match the preferences
+3. Focus on vehicles known for the user's priorities and concerns
+4. Consider usage patterns and lifestyle when making suggestions
+5. If existing filters specify year/price/body_style, factor that in
+6. Provide a brief reasoning (1-2 sentences)
+
+**Examples:**
+- Preferences: priorities=["safety"], concerns=["maintenance costs"], usage_patterns="teenage driver"
+  → makes=["Honda", "Toyota", "Mazda"], models=["Civic", "Corolla", "3", "Accord"]
+
+- Preferences: priorities=["fuel_efficiency", "technology"], lifestyle="urban commuter"
+  → makes=["Honda", "Toyota", "Hyundai"], models=["Civic", "Accord Hybrid", "Prius", "Ioniq", "Elantra"]
+
+- Preferences: priorities=["space", "family"], usage_patterns="family with kids"
+  → makes=["Honda", "Toyota", "Subaru"], models=["CR-V", "Pilot", "Highlander", "RAV4", "Outback"]
+
+Generate your suggestions:"""
+
+    try:
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+        structured_llm = llm.with_structured_output(VehicleSuggestion)
+
+        result = structured_llm.invoke([
+            SystemMessage(content="You are a vehicle recommendation expert."),
+            HumanMessage(content=prompt)
+        ])
+
+        logger.info(f"✓ Vehicle suggestions: {len(result.makes)} makes, {len(result.models)} models")
+        logger.info(f"  Makes: {result.makes}")
+        logger.info(f"  Models: {result.models}")
+        logger.info(f"  Reasoning: {result.reasoning}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to suggest vehicles: {e}")
+        return None
 
 
 def fetch_photos_for_vin(vin: Optional[str]) -> Optional[Dict[str, Any]]:
@@ -139,8 +226,24 @@ def update_recommendation_list(
             "status": "in_progress"
         })
 
-    filters = state['explicit_filters']
+    filters = state['explicit_filters'].copy()  # Make a copy to avoid modifying original
     implicit = state['implicit_preferences']
+
+    #If no make/model specified but has preferences, suggest vehicles
+    if not filters.get('make') and not filters.get('model'):
+        suggestions = suggest_vehicles_from_preferences(implicit, filters)
+
+        if suggestions:
+            # Add suggested makes and models to filters
+            # Join multiple makes/models with comma for AutoDev API
+            filters['make'] = ','.join(suggestions.makes)
+            filters['model'] = ','.join(suggestions.models)
+
+            logger.info(f"   Using suggested vehicles: {filters['make']} / {filters['model']}")
+            logger.info(f"   Reasoning: {suggestions.reasoning}")
+
+            # Store suggestion reasoning in state for potential use in response
+            state['suggestion_reasoning'] = suggestions.reasoning
 
     # Normalize model name (remove hyphens/underscores) to match Auto.dev API format
     if filters.get('model'):
