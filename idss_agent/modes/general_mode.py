@@ -71,6 +71,7 @@ def run_general_mode(
     state["ai_response"] = response.ai_response
     state["quick_replies"] = response.quick_replies
     state["suggested_followups"] = response.suggested_followups
+    state["comparison_table"] = None  # Clear comparison table in general mode
 
     # Add AI response to conversation history
     state["conversation_history"].append(AIMessage(content=response.ai_response))

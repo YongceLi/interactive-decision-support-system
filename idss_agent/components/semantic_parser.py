@@ -3,14 +3,30 @@ Semantic parser node for extracting vehicle search criteria from user input.
 """
 import json
 from typing import Optional, Callable
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.logger import get_logger
-from idss_agent.state import VehicleSearchState, get_latest_user_message
+from idss_agent.state import VehicleSearchState, get_latest_user_message, VehicleFiltersPydantic, ImplicitPreferencesPydantic
 from idss_agent.config import get_config
 from idss_agent.prompt_loader import render_prompt
 
 logger = get_logger("components.semantic_parser")
+
+
+class SemanticParserOutput(BaseModel):
+    """Structured output from semantic parser."""
+    has_new_filters: bool = Field(
+        description="True if new filters detected, False if just a follow-up question"
+    )
+    explicit_filters: VehicleFiltersPydantic = Field(
+        default_factory=VehicleFiltersPydantic,
+        description="Explicit vehicle filters"
+    )
+    implicit_preferences: ImplicitPreferencesPydantic = Field(
+        default_factory=ImplicitPreferencesPydantic,
+        description="Implicit user preferences"
+    )
 
 
 def semantic_parser_node(
@@ -78,31 +94,20 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
     # Load system prompt from template
     system_prompt = render_prompt('semantic_parser.j2')
 
-    # Call LLM to parse
+    # Call LLM with structured output
     messages = [
         SystemMessage(content=system_prompt),
         HumanMessage(content=context_info)
     ]
 
-    response = llm.invoke(messages)
+    # Use structured output to avoid JSON parsing errors
+    structured_llm = llm.with_structured_output(SemanticParserOutput)
 
     try:
-        # Strip markdown code blocks if present
-        content = response.content.strip()
-        if content.startswith("```json"):
-            content = content[7:]  # Remove ```json
-        if content.startswith("```"):
-            content = content[3:]  # Remove ```
-        if content.endswith("```"):
-            content = content[:-3]  # Remove trailing ```
-        content = content.strip()
-
-        parsed_data = json.loads(content)
+        parsed_data: SemanticParserOutput = structured_llm.invoke(messages)
 
         # Check if there are new filters
-        has_new_filters = parsed_data.get("has_new_filters", True)  # Default to True for backward compatibility
-
-        if not has_new_filters:
+        if not parsed_data.has_new_filters:
             # User is asking a follow-up question, not providing new filters
             logger.info("No new filters detected - user asking follow-up question, keeping existing filters")
 
@@ -117,7 +122,7 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
             return state
 
         # REPLACE explicit filters entirely (not merge!)
-        new_filters = parsed_data.get("explicit_filters", {})
+        new_filters = parsed_data.explicit_filters.model_dump(exclude_none=True)
 
         # Log the change for debugging
         if new_filters != current_filters:
@@ -128,13 +133,13 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
         state["explicit_filters"] = new_filters  # REPLACE, not merge!
 
         # REPLACE implicit preferences entirely
-        new_implicit = parsed_data.get("implicit_preferences", {})
+        new_implicit = parsed_data.implicit_preferences.model_dump(exclude_none=True)
         state["implicit_preferences"] = new_implicit  # REPLACE, not merge!
 
-    except json.JSONDecodeError as e:
+    except Exception as e:
         # If parsing fails, log it but don't crash
-        logger.warning(f"Failed to parse LLM response as JSON: {e}")
-        logger.debug(f"Response content: {response.content}")
+        logger.warning(f"Failed to parse semantic information: {e}")
+        logger.debug(f"Error details: {str(e)}")
 
     # Emit progress: Semantic parsing complete
     if progress_callback:
