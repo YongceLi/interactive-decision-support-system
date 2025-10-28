@@ -3,6 +3,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  quick_replies?: string[] | null;
+  suggested_followups?: string[];
 }
 
 export interface ChatRequest {

@@ -386,7 +386,7 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites) && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[22rem]">
+          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
@@ -603,7 +603,7 @@ export default function Home() {
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className="flex-1 overflow-y-auto p-12 relative min-h-0">
+        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[40%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
               <div
@@ -644,8 +644,8 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className="border-t border-slate-600/30 glass-dark p-8">
-          <div className="max-w-6xl mx-auto">
+        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[10%]' : ''} flex-shrink-0 border-t border-slate-600/30 glass-dark flex items-center px-8 py-6`}>
+          <div className="w-3/4 mx-auto my-autoitems-center justify-center py-6">
             <ChatBox
               messages={[]}
               onSendMessage={handleChatMessage}
@@ -660,9 +660,9 @@ export default function Home() {
 
       {/* Favorites Button */}
       <button
-        onClick={() => setShowFavorites(true)}
+        onClick={() => setShowFavorites(!showFavorites)}
         className="fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50"
-        title="View Favorites"
+        title={showFavorites ? "Hide Favorites" : "View Favorites"}
       >
         <svg 
           className={`w-6 h-6 ${favorites.length > 0 ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}

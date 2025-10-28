@@ -187,7 +187,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                   : ''
               }`}
             >
-              <div className="glass-card rounded-xl p-4 w-[250px] h-full max-h-[300px] shadow-2xl flex flex-col overflow-hidden">
+              <div className="glass-card rounded-xl p-4 w-[280px] h-full max-h-[360px] shadow-2xl flex flex-col overflow-hidden">
                 {card.isPlaceholder ? (
                   /* Placeholder Card Content */
                   <>
@@ -195,10 +195,10 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                               <div className="text-slate-400 text-sm opacity-50 text-center px-2">Future Recommendations</div>
                             </div>
                     <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-slate-400 mb-2 leading-tight">
+                      <h4 className="text-base font-bold text-slate-400 mb-2 leading-tight">
                         Your recommendations will appear here
                       </h4>
-                      <div className="space-y-1 text-xs">
+                      <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-slate-500">Price:</span>
                           <span className="text-slate-500">---</span>
@@ -214,7 +214,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                       </div>
                       <button 
                         disabled
-                        className="w-full bg-slate-600 text-slate-400 py-2 rounded-lg text-xs font-medium cursor-not-allowed mt-3"
+                        className="w-full bg-slate-600 text-slate-400 py-2 rounded-lg text-sm font-medium cursor-not-allowed mt-3"
                       >
                         Get Recommendations
                       </button>
@@ -308,9 +308,9 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
             </div>
           </>
         ) : (
-          <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
-            No Image Found
-          </div>
+            <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">
+              No Image Found
+            </div>
         )}
         
         {/* Heart button */}
@@ -342,11 +342,11 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
       </div>
       
       <div className="space-y-2">
-        <h4 className="text-sm font-bold text-slate-100 mb-2 leading-tight">
+        <h4 className="text-base font-bold text-slate-100 mb-2 leading-tight">
           {vehicle.year} {vehicle.make} {vehicle.model}
         </h4>
         
-        <div className="space-y-1 text-xs">
+        <div className="space-y-1 text-sm">
           {vehicle.price && (
             <div className="flex justify-between">
               <span className="text-slate-400">Price:</span>
@@ -366,14 +366,14 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
           {vehicle.location && (
             <div className="flex justify-between">
               <span className="text-slate-400">Location:</span>
-              <span className="text-slate-300 text-right max-w-[140px] truncate">{vehicle.location}</span>
+              <span className="text-slate-300 text-right max-w-[160px] truncate">{vehicle.location}</span>
             </div>
           )}
         </div>
 
-        <button 
-          onClick={() => onItemSelect?.(vehicle)}
-          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-xs font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
+        <button numberOf
+          onClick={() => onItemSelect && onItemSelect(vehicle)}
+          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
         >
           View Details
         </button>
