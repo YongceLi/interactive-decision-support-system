@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-10-28
+
+### Added
+
+#### UI Improvements
+- **Responsive layout**: Implemented percentage-based heights (50% recommendations, 40% chat, 10% input) for consistent sizing across screen sizes
+- **Enhanced recommendation cards**: Increased card size from 240px to 280px with improved text sizing for better readability
+- **Quick reply buttons**: Added dynamic button suggestions below agent responses
+- **Agent latency tracking**: Added event logging for agent response times for performance monitoring
+
+#### Event Logging
+- **Favorite/unfavorite events**: User favorite actions now logged as `vehicle_favorited` and `vehicle_unfavorited` events
+- **Agent latency events**: Response times logged as `agent_latency` events with latency_ms, message, and timestamp
+- Added `logFavoriteToggle()` method to LoggingService
+- Added `logAgentLatency()` method to LoggingService
+
+### Changed
+
+#### Layout & UI
+- Removed counter from recommendation carousel to maximize card space
+
 ## 2025-10-24
 
 ### Added
