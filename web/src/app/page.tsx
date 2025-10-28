@@ -260,11 +260,8 @@ export default function Home() {
       // Add assistant response with formatting
       const formattedResponse = formatAgentResponse(data.response);
       
-      // Log button data and latency for debugging
+      // Track latency and log to internal record
       const latency = performance.now() - startTime;
-      console.log('Quick replies:', data.quick_replies);
-      console.log('Suggested followups:', data.suggested_followups);
-      console.log(`Agent latency: ${latency.toFixed(0)}ms`);
       
       // Log latency to internal record
       if (sessionId) {
