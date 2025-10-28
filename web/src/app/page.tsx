@@ -115,17 +115,15 @@ export default function Home() {
       // Log the favorite action
       console.log(`User ${action} vehicle:`, vehicle);
       
-      // Send to agent (non-blocking)
+      // Log event to agent using event API (non-blocking)
       if (sessionId) {
-        const message = `User ${action} ${vehicle.year} ${vehicle.make} ${vehicle.model} (ID: ${vehicle.id})`;
-        fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message,
-            session_id: sessionId,
-          }),
-        }).catch(err => console.error('Error sending favorite to agent:', err));
+        const willBeFavorite = !isFavorite;
+        LoggingService.logFavoriteToggle(
+          sessionId, 
+          vehicle.id, 
+          vehicle.vin || 'unknown',
+          willBeFavorite
+        ).catch(err => console.error('Error logging favorite to agent:', err));
       }
       
       if (isFavorite) {
@@ -230,6 +228,9 @@ export default function Home() {
     setIsLoading(true);
     start(); // Start verbose loading
 
+    // Track latency
+    const startTime = performance.now();
+
     try {
       // Send message to streaming endpoint
       const response = await fetch('/api/chat/stream', {
@@ -259,9 +260,11 @@ export default function Home() {
       // Add assistant response with formatting
       const formattedResponse = formatAgentResponse(data.response);
       
-      // Log button data for debugging
+      // Log button data and latency for debugging
+      const latency = performance.now() - startTime;
       console.log('Quick replies:', data.quick_replies);
       console.log('Suggested followups:', data.suggested_followups);
+      console.log(`Agent latency: ${latency.toFixed(0)}ms`);
       
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
