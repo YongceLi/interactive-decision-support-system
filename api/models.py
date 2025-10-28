@@ -22,6 +22,7 @@ class ChatResponse(BaseModel):
     interviewed: bool = False  # False = in interview, True = interview completed
     quick_replies: Optional[List[str]] = None  # Short answer options (1-3 words, 2-4 options)
     suggested_followups: List[str] = []  # Suggested next queries (short phrases, 3-5 options)
+    comparison_table: Optional[Dict[str, Any]] = None  # Comparison table when user asks to compare vehicles
 
 
 class SessionResponse(BaseModel):

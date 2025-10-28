@@ -60,7 +60,7 @@ models:
 limits:
   max_recommended_items: 20          # Maximum items in recommendation list
   max_conversation_history: 10       # Maximum messages to keep in context (interview mode)
-  max_interview_questions: 8         # Maximum interview turns before forcing recommendation
+  max_interview_questions: 3         # Maximum interview turns before forcing recommendation
   max_vehicle_summary_chars: 4000    # Maximum characters for vehicle JSON summary
   top_vehicles_to_show: 3            # Number of top vehicles to include in prompts
 

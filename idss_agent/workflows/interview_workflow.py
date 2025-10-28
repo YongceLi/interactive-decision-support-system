@@ -172,11 +172,13 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
         state["ai_response"] = ""
         state["quick_replies"] = None
         state["suggested_followups"] = []
+        state["comparison_table"] = None
     else:
         # Normal conversation - set the response and interactive elements
         state["ai_response"] = response.ai_response
         state["quick_replies"] = response.quick_replies
         state["suggested_followups"] = response.suggested_followups
+        state["comparison_table"] = None  # Clear comparison table in interview mode
 
     # Emit progress: Interview question ready
     if progress_callback:

@@ -2,7 +2,9 @@
 Analytical agent - answers specific questions about vehicles using ReAct.
 """
 import os
-from typing import Optional, Callable
+import json
+import re
+from typing import Optional, Callable, Dict, List, Any
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
@@ -10,12 +12,71 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from idss_agent.config import get_config
 from idss_agent.prompt_loader import render_prompt
-from idss_agent.state import VehicleSearchState
+from idss_agent.state import VehicleSearchState, AgentResponse, ComparisonTable
 from idss_agent.components.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
 from idss_agent.components.vehicle_database import get_vehicle_database_tools
 from idss_agent.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
+
+
+def parse_comparison_response(response_text: str) -> Optional[Dict[str, Any]]:
+    """
+    Parse comparison JSON from agent response.
+
+    Args:
+        response_text: Agent's response text
+
+    Returns:
+        Dict with 'summary' and 'comparison_table', or None if not a comparison
+    """
+    try:
+        # Try to extract JSON from response (might be wrapped in markdown code blocks)
+        json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find raw JSON
+            json_match = re.search(r'\{.*"summary".*"comparison_data".*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                return None
+
+        # Parse JSON
+        data = json.loads(json_str)
+
+        # Validate structure
+        if 'summary' not in data or 'comparison_data' not in data:
+            return None
+
+        comparison_data = data['comparison_data']
+        if 'vehicles' not in comparison_data or 'attributes' not in comparison_data:
+            return None
+
+        # Build comparison table
+        vehicles = comparison_data['vehicles']
+        attributes = comparison_data['attributes']
+
+        # Create headers: ["Attribute", "Vehicle 1", "Vehicle 2", ...]
+        headers = ["Attribute"] + vehicles
+
+        # Create rows: each attribute becomes a row
+        rows = []
+        for attr in attributes:
+            row = [attr['name']] + attr['values']
+            rows.append(row)
+
+        comparison_table = ComparisonTable(headers=headers, rows=rows)
+
+        return {
+            'summary': data['summary'],
+            'comparison_table': comparison_table
+        }
+
+    except (json.JSONDecodeError, KeyError, IndexError) as e:
+        logger.debug(f"Failed to parse comparison JSON: {e}")
+        return None
 
 
 @tool
@@ -182,25 +243,43 @@ Your role is to answer specific, data-driven questions about vehicles by leverag
 6. **Always use pattern matching** for model names to catch all variants
 
 **Vehicle References:**
-- When user references "#1", "#2", etc., use the VIN from the provided context
-- When comparing vehicles, fetch data for each using appropriate tools
+- When user references "#1", "#2", etc., use the VIN from the "Available Vehicles" context below
+- When user says "top 3" or "first 3", they mean vehicles #1, #2, #3 from the context
+- When user says "compare top 3" or "compare first few", extract VINs from context and compare those specific listings
+- When comparing specific vehicles by number, use their VINs to fetch detailed data
 - When discussing specific listings, use get_vehicle_listing_by_vin
 
-**Response Quality:**
-1. **Be concise and informative like a car salesperson** - lead with the most important highlights (2-3 key points)
-2. When user asks general questions ("tell me about X", "what are details"), provide:
-   - Top 2-3 most relevant highlights (safety rating, price range, key feature)
-   - Keep it itemized and concise to 3-5 sentences maximum
-   - Invite them to ask for more specific details
-3. When user asks specific questions ("what's the safety rating", "fuel economy"), be direct:
-   - Answer exactly what was asked
-   - Provide 1-2 related data points if relevant
-   - Keep response focused and brief
-4. Cite data sources when helpful (e.g., "According to NHTSA...")
-5. **IMPORTANT**: Only say "no data available" if you actually tried all tools and found nothing
-   - Don't preemptively claim no data exists
-   - If one tool fails, try others (safety DB, feature DB, web search)
-6. Use itemized list for clarity and readability.
+**Comparison Queries (SPECIAL FORMAT):**
+When user asks to compare 2-4 vehicles - WHETHER BY NAME (e.g., "compare Honda Accord vs Toyota Camry") OR BY REFERENCE (e.g., "compare top 3", "compare #1, #2, #3"):
+1. Identify which vehicles to compare (by name or from Available Vehicles context)
+2. Gather data for each vehicle using available tools (use get_vehicle_listing_by_vin for specific listings)
+3. Output your response in this EXACT JSON format:
+```json
+{
+  "summary": "2-3 sentence summary highlighting key differences",
+  "comparison_data": {
+    "vehicles": ["Honda Accord 2024", "Toyota Camry 2024"],
+    "attributes": [
+      {"name": "Price Range", "values": ["$28,500 - $36,200", "$27,400 - $35,000"]},
+      {"name": "Safety Rating", "values": ["5-star ⭐⭐⭐⭐⭐", "5-star ⭐⭐⭐⭐⭐"]},
+      {"name": "Fuel Economy (City)", "values": ["29 MPG", "28 MPG"]},
+      {"name": "Fuel Economy (Highway)", "values": ["37 MPG", "39 MPG"]},
+      {"name": "Fuel Economy (Combined)", "values": ["32 MPG", "32 MPG"]},
+      {"name": "Engine", "values": ["1.5L 4-cyl", "2.5L 4-cyl"]},
+      {"name": "Transmission", "values": ["CVT", "8-speed Auto"]}
+    ]
+  }
+}
+```
+3. **CRITICAL**: For ALL comparison requests (including "top 3", "#1 vs #2", etc.), you MUST output ONLY the JSON format above - no other text
+4. For specific vehicle comparisons (#1, #2, #3), use get_vehicle_listing_by_vin to get detailed data
+5. Include these attributes when available:
+   - Price Range (from CA dataset or web search)
+   - Safety Rating (from safety_data database)
+   - Fuel Economy - City/Highway/Combined (from feature_data database)
+   - Engine (from feature_data database)
+   - Transmission (from feature_data database)
+   - Any other relevant specs user asked about
 
 **Error Handling & Fallbacks:**
 1. If database query returns no results:
@@ -368,20 +447,42 @@ def analytical_agent(
             state["ai_response"] = "I couldn't find enough information to answer that question. Could you provide more details?"
             state["quick_replies"] = None
             state["suggested_followups"] = []
+            state["comparison_table"] = None
         else:
-            state["ai_response"] = response_content
             logger.info(f"Analytical agent: Response generated ({len(response_content)} chars)")
 
-            # Generate interactive elements (quick replies + suggestions)
-            try:
-                interactive = generate_interactive_elements(response_content, user_input)
-                state["quick_replies"] = interactive.quick_replies
-                state["suggested_followups"] = interactive.suggested_followups
-            except Exception as e:
-                logger.warning(f"Failed to generate interactive elements: {e}")
-                # Fallback to sensible defaults
-                state["quick_replies"] = None
-                state["suggested_followups"] = []
+            # Check if this is a comparison response (contains JSON)
+            comparison_result = parse_comparison_response(response_content)
+
+            if comparison_result:
+                # It's a comparison - use summary as response, store table separately
+                state["ai_response"] = comparison_result['summary']
+                state["comparison_table"] = comparison_result['comparison_table'].model_dump()
+                logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} vehicles compared")
+
+                # Generate interactive elements from summary
+                try:
+                    interactive = generate_interactive_elements(comparison_result['summary'], user_input)
+                    state["quick_replies"] = interactive.quick_replies
+                    state["suggested_followups"] = interactive.suggested_followups
+                except Exception as e:
+                    logger.warning(f"Failed to generate interactive elements: {e}")
+                    state["quick_replies"] = None
+                    state["suggested_followups"] = ["Tell me more about the first one", "Which is safer?", "Which is more fuel efficient?"]
+            else:
+                # Normal response - no comparison
+                state["ai_response"] = response_content
+                state["comparison_table"] = None
+
+                # Generate interactive elements (quick replies + suggestions)
+                try:
+                    interactive = generate_interactive_elements(response_content, user_input)
+                    state["quick_replies"] = interactive.quick_replies
+                    state["suggested_followups"] = interactive.suggested_followups
+                except Exception as e:
+                    logger.warning(f"Failed to generate interactive elements: {e}")
+                    state["quick_replies"] = None
+                    state["suggested_followups"] = []
 
         # Emit progress: Answer ready
         if progress_callback:

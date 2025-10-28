@@ -37,9 +37,22 @@ def run_discovery_mode(
     # 1. Parse filters from conversation
     state = semantic_parser_node(state, progress_callback)
 
-    # 2. Update recommendations if filters changed
-    if state["explicit_filters"] != state.get("previous_filters", {}):
-        logger.info("Discovery mode: Filters changed, updating recommendations")
+    # 2. Update recommendations if filters changed OR no vehicles yet
+    filters_changed = state["explicit_filters"] != state.get("previous_filters", {})
+    has_vehicles = len(state.get("recommended_vehicles", [])) > 0
+    has_preferences = any([
+        state.get("implicit_preferences", {}).get("priorities"),
+        state.get("implicit_preferences", {}).get("concerns"),
+        state.get("implicit_preferences", {}).get("usage_patterns"),
+        state.get("implicit_preferences", {}).get("lifestyle")
+    ])
+
+    # Update if: filters changed, OR (no vehicles yet AND has preferences for semantic search)
+    if filters_changed or (not has_vehicles and has_preferences):
+        if filters_changed:
+            logger.info("Discovery mode: Filters changed, updating recommendations")
+        else:
+            logger.info("Discovery mode: No vehicles yet but has preferences, using semantic recommendation")
         state = update_recommendation_list(state, progress_callback)
         state["previous_filters"] = state["explicit_filters"].copy()
 

@@ -117,7 +117,8 @@ async def chat(request: ChatRequest):
             session_id=session_id,
             interviewed=updated_state.get('interviewed', False),
             quick_replies=updated_state.get('quick_replies'),
-            suggested_followups=updated_state.get('suggested_followups', [])
+            suggested_followups=updated_state.get('suggested_followups', []),
+            comparison_table=updated_state.get('comparison_table')
         )
 
     except Exception as e:

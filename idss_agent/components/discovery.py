@@ -102,6 +102,7 @@ Generate your response:
     state['ai_response'] = response.ai_response
     state['quick_replies'] = response.quick_replies
     state['suggested_followups'] = response.suggested_followups
+    state['comparison_table'] = None  # Clear comparison table in discovery mode
 
     # Extract and track which topics were asked about
     state = extract_questions_asked(state, response.ai_response)

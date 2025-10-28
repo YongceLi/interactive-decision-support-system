@@ -90,13 +90,75 @@ class VehicleFiltersPydantic(BaseModel):
 
 class ImplicitPreferencesPydantic(BaseModel):
     """Pydantic version of ImplicitPreferences for LLM structured output."""
-    priorities: Optional[List[str]] = Field(None, description="e.g., ['fuel_efficiency', 'safety', 'reliability', 'luxury']")
-    lifestyle: Optional[str] = Field(None, description="e.g., 'family-oriented', 'outdoorsy', 'urban commuter'")
-    budget_sensitivity: Optional[str] = Field(None, description="e.g., 'budget-conscious', 'moderate', 'luxury-focused'")
-    brand_affinity: Optional[List[str]] = Field(None, description="Brands user seems to prefer")
-    concerns: Optional[List[str]] = Field(None, description="e.g., ['maintenance costs', 'resale value', 'insurance']")
-    usage_patterns: Optional[str] = Field(None, description="e.g., 'daily commuter', 'weekend trips', 'family road trips'")
-    notes: Optional[str] = Field(None, description="Any other important context")
+    priorities: Optional[List[str]] = Field(
+        None,
+        description=(
+            "User's top priorities inferred from phrases like 'safe', 'reliable', 'fuel efficient', 'luxurious', 'spacious'. "
+            "Extract from: 'safe car' → ['safety'], 'reliable vehicle' → ['reliability'], 'good on gas' → ['fuel_efficiency']. "
+            "Common values: 'safety', 'reliability', 'fuel_efficiency', 'luxury', 'performance', 'space', 'technology'"
+        )
+    )
+    lifestyle: Optional[str] = Field(
+        None,
+        description=(
+            "User's lifestyle inferred from context clues like 'family', 'kids', 'outdoor adventures', 'city driving', 'commute'. "
+            "Extract from: 'have kids' → 'family-oriented', 'weekend camping' → 'outdoorsy', 'drive to work daily' → 'urban commuter'. "
+            "Common values: 'family-oriented', 'outdoorsy', 'urban commuter', 'performance enthusiast', 'business professional'"
+        )
+    )
+    budget_sensitivity: Optional[str] = Field(
+        None,
+        description=(
+            "User's budget consciousness inferred from price mentions and financial language. "
+            "Extract from: 'cheapest option' → 'budget-conscious', 'reasonable price' → 'moderate', 'money is not an issue' → 'luxury-focused'. "
+            "Common values: 'budget-conscious', 'moderate', 'luxury-focused'"
+        )
+    )
+    brand_affinity: Optional[List[str]] = Field(
+        None,
+        description=(
+            "Brands the user shows preference for through positive mentions or repeated references. "
+            "Extract from: 'I love Toyota' → ['Toyota'], 'always driven Honda and Mazda' → ['Honda', 'Mazda']"
+        )
+    )
+    concerns: Optional[List[str]] = Field(
+        None,
+        description=(
+            "User's worries or negative priorities inferred from phrases like 'expensive to maintain', 'high insurance', 'bad resale'. "
+            "Extract from: 'low maintenance' → ['maintenance costs'], 'cheap to fix' → ['repair costs'], 'holds value' → ['resale value']. "
+            "Common values: 'maintenance costs', 'repair costs', 'insurance costs', 'resale value', 'reliability issues', 'fuel costs'"
+        )
+    )
+    usage_patterns: Optional[str] = Field(
+        None,
+        description=(
+            "How the user plans to use the vehicle, inferred from purpose statements. "
+            "Extract from: 'drive to work every day' → 'daily commuter', 'for my teenager' → 'teenage driver', 'road trips with family' → 'family road trips'. "
+            "Common values: 'daily commuter', 'weekend trips', 'family road trips', 'teenage driver', 'work vehicle', 'occasional use'"
+        )
+    )
+    notes: Optional[str] = Field(
+        None,
+        description="Any other contextual information that doesn't fit other fields but seems important for understanding user needs"
+    )
+
+
+class ComparisonTable(BaseModel):
+    """
+    Structured comparison table for comparing vehicles.
+
+    Used when user asks to compare 2-4 vehicles (e.g., "compare Honda Accord vs Toyota Camry").
+    """
+    headers: List[str] = Field(
+        description="Column headers: first is 'Attribute', rest are vehicle names like 'Honda Accord 2024'"
+    )
+    rows: List[List[str]] = Field(
+        description=(
+            "Each row is a list of values. First value is the attribute name, "
+            "rest are values for each vehicle. "
+            "Example attributes: 'Price Range', 'Safety Rating', 'Fuel Economy (City)', etc."
+        )
+    )
 
 
 class AgentResponse(BaseModel):
@@ -125,6 +187,14 @@ class AgentResponse(BaseModel):
         ),
         min_length=0,
         max_length=5
+    )
+    comparison_table: Optional[ComparisonTable] = Field(
+        default=None,
+        description=(
+            "Comparison table for when user asks to compare 2-4 vehicles. "
+            "Leave null if not a comparison query. "
+            "When provided, include key attributes like price, safety, fuel economy, etc."
+        )
     )
 
 
@@ -213,6 +283,7 @@ class VehicleSearchState(TypedDict):
     ai_response: str
     quick_replies: Optional[List[str]]  # Short answer options (1-3 words, 2-4 options) for direct questions
     suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
+    comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare vehicles
 
 
 def create_initial_state() -> VehicleSearchState:
@@ -239,7 +310,8 @@ def create_initial_state() -> VehicleSearchState:
         ),  # Initialize empty progress
         ai_response="",
         quick_replies=None,
-        suggested_followups=[]
+        suggested_followups=[],
+        comparison_table=None
     )
 
 
