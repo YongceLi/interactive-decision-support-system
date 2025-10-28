@@ -110,6 +110,24 @@ export default function Home() {
   const toggleFavorite = (vehicle: Vehicle) => {
     setFavorites(prev => {
       const isFavorite = prev.some(v => v.id === vehicle.id);
+      const action = isFavorite ? 'unfavorited' : 'favorited';
+      
+      // Log the favorite action
+      console.log(`User ${action} vehicle:`, vehicle);
+      
+      // Send to agent (non-blocking)
+      if (sessionId) {
+        const message = `User ${action} ${vehicle.year} ${vehicle.make} ${vehicle.model} (ID: ${vehicle.id})`;
+        fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            session_id: sessionId,
+          }),
+        }).catch(err => console.error('Error sending favorite to agent:', err));
+      }
+      
       if (isFavorite) {
         return prev.filter(v => v.id !== vehicle.id);
       } else {
@@ -240,11 +258,18 @@ export default function Home() {
 
       // Add assistant response with formatting
       const formattedResponse = formatAgentResponse(data.response);
+      
+      // Log button data for debugging
+      console.log('Quick replies:', data.quick_replies);
+      console.log('Suggested followups:', data.suggested_followups);
+      
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
         content: formattedResponse,
-        timestamp: new Date()
+        timestamp: new Date(),
+        quick_replies: data.quick_replies,
+        suggested_followups: data.suggested_followups || []
       };
       setChatMessages(prev => [...prev, assistantMessage]);
 
