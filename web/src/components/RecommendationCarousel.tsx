@@ -247,13 +247,6 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
           </svg>
         </button>
       </div>
-
-      {/* Counter */}
-      <div className="text-center mt-4">
-        <span className="text-sm text-slate-400 font-medium">
-          {showPlaceholders ? 'Ready for recommendations' : `${currentIndex + 1} of ${vehicles.length}`}
-        </span>
-      </div>
     </div>
   );
 }
@@ -371,7 +364,7 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
           )}
         </div>
 
-        <button numberOf
+        <button
           onClick={() => onItemSelect && onItemSelect(vehicle)}
           className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:from-purple-600 hover:to-blue-600 transition-all duration-200 shadow-lg hover:shadow-xl mt-3"
         >

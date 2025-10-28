@@ -606,15 +606,15 @@ export default function Home() {
         <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[40%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+              <div key={message.id} className="flex flex-col">
+                <div
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
                     className={`max-w-[80%] p-4 rounded-2xl ${
                       message.role === 'user'
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'glass-dark text-slate-100'
+                        : 'glass-dark text-slateensed 100'
                     }`}
                   >
                     <div 
@@ -622,6 +622,25 @@ export default function Home() {
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
                     />
                   </div>
+                </div>
+                
+                {/* Buttons below assistant messages (row format, no headers) */}
+                {message.role === 'assistant' && ((message.quick_replies && message.quick_replies.length > 0) || (message.suggested_followups && message.suggested_followups.length > 0)) && (
+                  <div className="flex justify-start mt-2">
+                    <div className="max-w-[80%] flex flex-wrap gap-2">
+                      {[...(message.suggested_followups || []), ...(message.quick_replies || [])].map((reply, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleChatMessage(reply)}
+                          disabled={isLoading}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {isLoading && (
