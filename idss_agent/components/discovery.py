@@ -58,11 +58,16 @@ def discovery_agent(
     # Format vehicles for LLM
     vehicles_summary = format_vehicles_for_llm(vehicles, limit=3)
 
-    # Build comprehensive prompt
+    # Get product type from state
+    product_type = state.get('product_type', 'vehicles')
+    
+    # Build product-agnostic prompt
+    product_name = "vehicles" if product_type == "vehicles" else ("PCs" if product_type == "pcs" else "electronics")
+    
     discovery_system_prompt = f"""
-You are a friendly, knowledgeable vehicle shopping assistant helping a user find their ideal car.
+You are a friendly, knowledgeable shopping assistant helping a user find their ideal {product_name}.
 
-You will be given the user's preferences, and the current list of vehicles that match the user's filters.
+You will be given the user's preferences, and the current list of {product_name} that match the user's filters.
 
 **Your Task:**
 Write a short, friendly response (1 paragraph max) that:
@@ -72,8 +77,8 @@ Write a short, friendly response (1 paragraph max) that:
    - create a new line after the acknowledgment
 
 2. **Listing summary & recommendation** (1 concise itemized list, 2-3 items)
-   - Recommend ONLY the first specific vehicle in the listings
-   - Highlight key strengths/pros about why the vehicle is a good fit for the user's preferences
+   - Recommend ONLY the first specific item in the listings
+   - Highlight key strengths/pros about why the item is a good fit for the user's preferences
    - Use ITEMIZED format for clarity
    - Use specific, concise short phrases for each item
    - create a new line after each item
@@ -85,9 +90,9 @@ Write a short, friendly response (1 paragraph max) that:
    - Avoid topics already asked about
 
 **Important:**
-- Be like a knowledgeable friend who knows cars 
+- Be like a knowledgeable friend who knows {product_name}
 - not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
-- Reference actual vehicles from the listings
+- Reference actual items from the listings
 - Keep the summary concise but helpful
 - Ask 1-2 questions, not more
 """
@@ -99,7 +104,7 @@ Write a short, friendly response (1 paragraph max) that:
 **User's Preferences:**
 {json.dumps(implicit, indent=2)}
 
-**Current Listings ({len(vehicles)} vehicles found, showing top 3 as JSON):**
+**Current Listings ({len(vehicles)} items found, showing top 3 as JSON):**
 {vehicles_summary}
 
 **Topics Already Asked About:** {already_asked}

@@ -180,6 +180,9 @@ class VehicleSearchState(TypedDict):
     # Progress tracking for UI streaming
     execution_progress: ExecutionProgress  # Current execution progress for progress bar
 
+    # Product type (for product-agnostic system)
+    product_type: str  # "vehicles", "electronics", "pcs", etc.
+
     # Output
     ai_response: str
 
@@ -206,6 +209,7 @@ def create_initial_state() -> VehicleSearchState:
             steps=[],
             mode="general"
         ),  # Initialize empty progress
+        product_type="vehicles",  # Default to vehicles
         ai_response=""
     )
 

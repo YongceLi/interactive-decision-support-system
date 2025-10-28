@@ -46,23 +46,27 @@ def run_general_mode(
 
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
 
-    system_prompt = """You are a friendly vehicle shopping assistant.
+    # Get product type from state
+    product_type = state.get('product_type', 'vehicles')
+    product_name = "vehicles" if product_type == "vehicles" else ("PCs" if product_type == "pcs" else "electronics")
+    
+    system_prompt = f"""You are a friendly shopping assistant for {product_name}.
 
 The user's message is a greeting, general question, or off-topic.
 
 Respond warmly and helpfully:
 - Greetings: Welcome them and briefly explain what you can help with
-- Meta questions: Describe your capabilities (finding vehicles, comparing cars, answering questions)
+- Meta questions: Describe your capabilities (finding {product_name}, comparing options, answering questions)
 - Thanks/acknowledgments: Acknowledge and offer further assistance
-- Off-topic: Politely redirect to vehicle-related topics
+- Off-topic: Politely redirect to {product_name}-related topics
 
 Keep your response brief (1-2 sentences), friendly, and conversational.
 
 Your main capabilities:
-1. Help users find and buy vehicles (interview process, recommendations)
-2. Browse and explore vehicles casually
-3. Compare vehicles and analyze safety/MPG/features data
-4. Answer questions about cars and automotive topics"""
+1. Help users find and buy {product_name} (interview process, recommendations)
+2. Browse and explore {product_name} casually
+3. Compare {product_name} and analyze features/data
+4. Answer questions about {product_name}"""
 
     # Use last 3 messages for context
     recent = state["conversation_history"][-3:] if len(state["conversation_history"]) > 3 else state["conversation_history"]

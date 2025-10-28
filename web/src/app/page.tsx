@@ -389,7 +389,7 @@ export default function Home() {
           <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[22rem]">
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
-                <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
+                <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full z-50">
                   <FavoritesPage
                     favorites={favorites}
                     onToggleFavorite={toggleFavorite}
@@ -660,9 +660,9 @@ export default function Home() {
 
       {/* Favorites Button */}
       <button
-        onClick={() => setShowFavorites(true)}
-        className="fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50"
-        title="View Favorites"
+        onClick={() => setShowFavorites(!showFavorites)}
+        className={`fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50 ${showFavorites ? 'bg-slate-700' : ''}`}
+        title={showFavorites ? "Close Favorites" : "View Favorites"}
       >
         <svg 
           className={`w-6 h-6 ${favorites.length > 0 ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}

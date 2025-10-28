@@ -198,6 +198,9 @@ main() {
     print_status "View backend logs: tail -f /tmp/idss_backend.log"
     print_status "View frontend logs: tail -f /tmp/idss_frontend.log"
     print_status ""
+    print_status "Note: MCP server runs independently and is not started here."
+    print_status "      It can be used with external MCP clients like Claude Desktop."
+    print_status ""
     
     # Wait for background jobs
     while true; do

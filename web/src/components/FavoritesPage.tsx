@@ -20,7 +20,7 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 px-2">
+      <div className="flex items-center justify-between mb-3 px-2 pl-20 pt-2">
         <h1 className="text-xl font-bold text-slate-200">Favorites</h1>
         <button
           onClick={onClose}
@@ -33,7 +33,7 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="flex-1 overflow-y-auto px-2 pl-20">
         {favorites.length === 0 ? (
           <div className="text-center py-12">
             <svg className="w-12 h-12 mx-auto mb-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

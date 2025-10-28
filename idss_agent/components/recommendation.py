@@ -10,6 +10,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
 from idss_agent.state import VehicleSearchState
 from idss_agent.components.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
+from idss_agent.components.product_api_manager import get_product_api_manager
 from idss_agent.logger import get_logger
 
 
@@ -147,9 +148,13 @@ def update_recommendation_list(
         filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
         logger.info(f"Normalized model name: {filters['model']}")
 
+    # Get product type from state
+    product_type = state.get('product_type', 'vehicles')
+    product_name = "vehicles" if product_type == "vehicles" else ("PCs" if product_type == "pcs" else "electronics")
+    
     # Build prompt for recommendation agent
     recommendation_prompt = f"""
-You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles for the user.
+You are a {product_name} recommendation agent. Your goal is to find up to 20 items for the user.
 
 **Current Filters:**
 {json.dumps(filters, indent=2)}
@@ -158,29 +163,44 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 {json.dumps(implicit, indent=2)}
 
 **Instructions:**
-1. Use search_vehicle_listings tool with the current filters
+1. Use the search tool with the current filters
 2. ALWAYS set page=1 and limit=50
 3. Once you get the results from the tool, your job is DONE
-4. Respond with a simple summary like: "Found X vehicles matching the criteria."
+4. Respond with a simple summary like: "Found X items matching the criteria."
 
 **IMPORTANT:**
 - Call the tool ONCE with current filters, page=1, limit=50
 - After you see the tool results, immediately finish with a brief summary
 - Do NOT call the tool multiple times
-- Do NOT try to list all vehicles in your response
+- Do NOT try to list all items in your response
 """
 
-    # Create ReAct agent with search tool
-    tools = [search_vehicle_listings]
+    # Get the appropriate API manager and tools via MCP
+    api_manager = get_product_api_manager()
+    tools = api_manager.get_all_tools()
+    
+    # Filter to only search tools (using MCP-based tools)
+    search_tools = [tool for tool in tools if hasattr(tool, 'name') and 'search' in tool.name.lower()]
+    
+    # Log which tools are being used
+    logger.info(f"[Recommendation] Using {len(search_tools)} search tools")
+    for tool in search_tools:
+        logger.info(f"[Recommendation] Tool: {tool.name if hasattr(tool, 'name') else 'unknown'}")
+    
+    if not search_tools:
+        # Fallback to direct vehicle search if no MCP tools found
+        logger.warning("No MCP search tools found, falling back to direct API calls")
+        search_tools = [search_vehicle_listings]
+    
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    agent = create_react_agent(llm, tools)
+    agent = create_react_agent(llm, search_tools)
 
     # Run the agent
     result = agent.invoke({"messages": [HumanMessage(content=recommendation_prompt)]})
 
     # Parse the search results from the agent's tool calls
     # Look through messages for tool results
-    vehicles = []
+    products = []
     for msg in result['messages']:
         # Check if this is a tool message with search results
         if hasattr(msg, 'content') and isinstance(msg.content, str):
@@ -188,61 +208,70 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
                 # Try to parse as JSON
                 data = json.loads(msg.content)
 
-                # Check if it's a list of vehicles or has a data field
+                # Check if it's a list of products or has a data field
                 if isinstance(data, list):
-                    vehicles = data
-                    logger.info(f"Found {len(vehicles)} vehicles from search (list format)")
+                    products = data
+                    logger.info(f"Found {len(products)} products from search (list format)")
                     break
                 elif isinstance(data, dict):
                     if 'data' in data and isinstance(data['data'], list):
-                        vehicles = data['data']
-                        logger.info(f"Found {len(vehicles)} vehicles from search (data field)")
+                        products = data['data']
+                        logger.info(f"Found {len(products)} products from search (data field)")
                         break
                     elif 'vehicles' in data and isinstance(data['vehicles'], list):
-                        vehicles = data['vehicles']
-                        logger.info(f"Found {len(vehicles)} vehicles from search (vehicles field)")
+                        products = data['vehicles']
+                        logger.info(f"Found {len(products)} products from search (vehicles field)")
                         break
             except (json.JSONDecodeError, AttributeError):
                 continue
 
-    if not vehicles:
-        logger.warning("No vehicles found from search - filters may be too restrictive")
+    if not products:
+        logger.warning("No products found from search - filters may be too restrictive")
+        # Return empty list early if no products
+        state['recommended_vehicles'] = []
+        return state
 
-    # Deduplicate vehicles by VIN (keep lowest price for each)
-    vehicles = deduplicate_by_vin(vehicles)
-    logger.info(f"After deduplication: {len(vehicles)} unique vehicles")
+    # For vehicles, deduplicate by VIN and enrich with photos
+    if product_type == 'vehicles':
+        products = deduplicate_by_vin(products)
+        logger.info(f"After deduplication: {len(products)} unique vehicles")
+        products = products[:50]
+        products = enrich_vehicles_with_photos(products)
+    else:
+        # For other product types, just limit results
+        products = products[:20]
+        logger.info(f"Limiting to {len(products)} products")
 
-    vehicles = vehicles[:50]
-    vehicles = enrich_vehicles_with_photos(vehicles)
+    # Only sort vehicles, other products keep order from API
+    if product_type == 'vehicles':
+        def vehicle_sort_key(vehicle: Dict[str, Any]) -> Tuple[int, float, float, float]:
+            has_photos = 0 if vehicle.get("photos") else 1
 
-    def vehicle_sort_key(vehicle: Dict[str, Any]) -> Tuple[int, float, float, float]:
-        has_photos = 0 if vehicle.get("photos") else 1
+            miles_raw = vehicle.get("retailListing", {}).get("miles")
+            price_raw = vehicle.get("retailListing", {}).get("price")
 
-        miles_raw = vehicle.get("retailListing", {}).get("miles")
-        price_raw = vehicle.get("retailListing", {}).get("price")
+            try:
+                miles_value = float(miles_raw)
+            except (TypeError, ValueError):
+                miles_value = float("inf")
 
-        try:
-            miles_value = float(miles_raw)
-        except (TypeError, ValueError):
-            miles_value = float("inf")
+            try:
+                price_value = float(price_raw)
+            except (TypeError, ValueError):
+                price_value = float("inf")
 
-        try:
-            price_value = float(price_raw)
-        except (TypeError, ValueError):
-            price_value = float("inf")
+            ratio = (
+                miles_value / price_value
+                if price_value not in (0, float("inf")) and not math.isnan(price_value)
+                else float("inf")
+            )
 
-        ratio = (
-            miles_value / price_value
-            if price_value not in (0, float("inf")) and not math.isnan(price_value)
-            else float("inf")
-        )
+            return (has_photos, ratio, miles_value, price_value)
 
-        return (has_photos, ratio, miles_value, price_value)
+        products.sort(key=vehicle_sort_key)
 
-    vehicles.sort(key=vehicle_sort_key)
-
-    state['recommended_vehicles'] = vehicles[:20]
-    logger.info(f"✓ Recommendation complete: {len(state['recommended_vehicles'])} vehicles in state")
+    state['recommended_vehicles'] = products[:20]
+    logger.info(f"✓ Recommendation complete: {len(state['recommended_vehicles'])} products in state")
 
     # Store current filters as previous for next comparison
     state['previous_filters'] = state['explicit_filters'].copy()

@@ -21,3 +21,6 @@ typing-extensions>=4.8.0
 
 # Environment variables
 python-dotenv>=1.0.0
+
+# MCP (Model Context Protocol)
+mcp>=1.0.0

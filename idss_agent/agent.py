@@ -14,6 +14,7 @@ from typing import Optional, Callable
 from idss_agent.logger import get_logger
 from idss_agent.state import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.components.intent_classifier import classify_intent
+from idss_agent.components.product_api_manager import detect_and_set_product_type
 from idss_agent.modes import run_buying_mode, run_discovery_mode, run_analytical_mode, run_general_mode
 from idss_agent.workflows.interview_workflow import run_interview_workflow
 from idss_agent.progress_config import initialize_progress, start_step, complete_step
@@ -46,6 +47,10 @@ def run_agent(
     # Create initial state if none provided
     if state is None:
         state = create_initial_state()
+
+    # Detect product type from user input and set it
+    product_type = detect_and_set_product_type(user_input)
+    state['product_type'] = product_type.value
 
     # Add user message to conversation history
     state = add_user_message(state, user_input)
