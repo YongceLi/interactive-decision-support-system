@@ -72,6 +72,9 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "scores": snap.get("scores", {}),
                 "judge": snap.get("judge"),
                 "rationale": snap.get("rationale"),
+                "quick_replies": snap.get("quick_replies"),
+                "completion_review": snap.get("completion_review"),
+                "vehicles": snap.get("vehicles"),
             }
         )
 
@@ -106,6 +109,8 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         "goal": payload.get("goal"),
         "ui": payload.get("ui"),
         "history": payload.get("history"),
+        "quick_replies": payload.get("quick_replies"),
+        "completion_review": payload.get("completion_review"),
         "demo_snapshots": serializable_snaps,
     }
 
@@ -128,6 +133,9 @@ def main() -> None:
                 "scores": payload.get("scores"),
                 "judge": payload.get("judge"),
                 "rationale": payload.get("rationale"),
+                "quick_replies": payload.get("quick_replies"),
+                "completion_review": payload.get("completion_review"),
+                "vehicles": payload.get("vehicles"),
             }
         elif event_type == "rl_init":
             data = {
