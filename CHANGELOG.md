@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+#### Location Features
+- **Automatic location request**: Website now requests user's location on first load via browser geolocation API
+- **Location-aware search**: User's location (latitude/longitude) is automatically passed to the agent with their first message after granting location access
+- **Flexible location handling**: Users can still request cars in other locations even after providing their initial location
+- Added `latitude` and `longitude` optional fields to `ChatRequest` API model
+
+### Changed
+- Location is requested via browser permissions instead of asking via chat
+- Location data is seamlessly integrated into the first user message to improve search relevance
+
 ## 2025-10-28
 
 ### Added
