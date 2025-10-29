@@ -6,6 +6,7 @@ import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
 import FilterMenu from '@/components/FilterMenu';
 import FavoritesPage from '@/components/FavoritesPage';
+import ComparisonTable from '@/components/ComparisonTable';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -333,7 +334,8 @@ export default function Home() {
         content: formattedResponse,
         timestamp: new Date(),
         quick_replies: data.quick_replies,
-        suggested_followups: data.suggested_followups || []
+        suggested_followups: data.suggested_followups || [],
+        comparison_table: data.comparison_table || null
       };
       setChatMessages(prev => [...prev, assistantMessage]);
 
@@ -726,6 +728,11 @@ export default function Home() {
                       className="text-sm leading-relaxed chat-message prose prose-invert max-w-none"
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
                     />
+                    
+                    {/* Display comparison table if present */}
+                    {message.comparison_table && (
+                      <ComparisonTable comparison={message.comparison_table} />
+                    )}
                   </div>
                 </div>
                 

@@ -153,26 +153,19 @@ async def chat(request: ChatRequest):
         # Get or create session
         session_id, state = get_or_create_session(request.session_id)
 
-        # Convert location coordinates to zip code if provided
+        # Prepare message - include location as a hidden chat message if provided
+        message = request.message
         if request.latitude and request.longitude:
             zip_code = reverse_geocode(request.latitude, request.longitude)
             if zip_code:
-                # Set zip code in state filters before processing message
-                # This ensures location is available for search, but user can still override
-                if not state.get("explicit_filters", {}).get("zip"):
-                    state.setdefault("explicit_filters", {})["zip"] = zip_code
-                    # Set default distance to 50 miles if not already set
-                    if "distance" not in state.get("explicit_filters", {}):
-                        state["explicit_filters"]["distance"] = 50
-                # Also append location context to message for semantic parser awareness
-                location_context = f" [User is located near ZIP code {zip_code}]"
-                message = request.message + location_context
+                # Prepend location message to the user's message
+                # This will be in conversation history but not shown in UI
+                location_message = f"My location is {zip_code}. "
+                message = location_message + request.message
             else:
-                # If reverse geocoding fails, just append coordinates
-                location_context = f" [User location: {request.latitude}, {request.longitude}]"
-                message = request.message + location_context
-        else:
-            message = request.message
+                # If reverse geocoding fails, use coordinates
+                location_message = f"My location is {request.latitude}, {request.longitude}. "
+                message = location_message + request.message
 
         # Run the agent
         updated_state = run_agent(message, state)
@@ -217,26 +210,19 @@ async def chat_stream(request: ChatRequest):
             # Get or create session
             session_id, state = get_or_create_session(request.session_id)
 
-            # Convert location coordinates to zip code if provided
+            # Prepare message - include location as a hidden chat message if provided
+            message = request.message
             if request.latitude and request.longitude:
                 zip_code = reverse_geocode(request.latitude, request.longitude)
                 if zip_code:
-                    # Set zip code in state filters before processing message
-                    # This ensures location is available for search, but user can still override
-                    if not state.get("explicit_filters", {}).get("zip"):
-                        state.setdefault("explicit_filters", {})["zip"] = zip_code
-                        # Set default distance to 50 miles if not already set
-                        if "distance" not in state.get("explicit_filters", {}):
-                            state["explicit_filters"]["distance"] = 50
-                    # Also append location context to message for semantic parser awareness
-                    location_context = f" [User is located near ZIP code {zip_code}]"
-                    message = request.message + location_context
+                    # Prepend location message to the user's message
+                    # This will be in conversation history but not shown in UI
+                    location_message = f"My location is {zip_code}. "
+                    message = location_message + request.message
                 else:
-                    # If reverse geocoding fails, just append coordinates
-                    location_context = f" [User location: {request.latitude}, {request.longitude}]"
-                    message = request.message + location_context
-            else:
-                message = request.message
+                    # If reverse geocoding fails, use coordinates
+                    location_message = f"My location is {request.latitude}, {request.longitude}. "
+                    message = location_message + request.message
 
             # Create progress queue for async communication
             progress_queue = asyncio.Queue()
@@ -301,7 +287,8 @@ async def chat_stream(request: ChatRequest):
                     "session_id": session_id,
                     "interviewed": updated_state.get('interviewed', False),
                     "quick_replies": updated_state.get('quick_replies'),
-                    "suggested_followups": updated_state.get('suggested_followups', [])
+                    "suggested_followups": updated_state.get('suggested_followups', []),
+                    "comparison_table": updated_state.get('comparison_table')
                 })
             }
 

@@ -1,3 +1,8 @@
+export interface ComparisonTable {
+  headers: string[];
+  rows: string[][];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -5,6 +10,7 @@ export interface ChatMessage {
   timestamp: Date;
   quick_replies?: string[] | null;
   suggested_followups?: string[];
+  comparison_table?: ComparisonTable | null;
 }
 
 export interface ChatRequest {
@@ -18,4 +24,5 @@ export interface ChatResponse {
   filters: Record<string, unknown>;
   preferences: Record<string, unknown>;
   session_id: string;
+  comparison_table?: ComparisonTable | null;
 }
