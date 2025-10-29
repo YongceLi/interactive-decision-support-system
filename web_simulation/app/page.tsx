@@ -1,7 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { SimulationTurnCard, type SimulationTurn } from '../components/SimulationTurn';
+import {
+  SimulationTurnCard,
+  type SimulationTurn,
+  type VehicleSummary,
+  type CompletionReview,
+} from '../components/SimulationTurn';
 
 interface JudgePayload {
   score?: number;
@@ -39,6 +44,9 @@ interface SimulationResponse {
   last_judge?: JudgePayload | null;
   persona?: PersonaFacets;
   goal?: Record<string, unknown>;
+  history?: Array<Record<string, unknown>> | null;
+  quick_replies?: string[] | null;
+  completion_review?: CompletionReview | null;
   demo_snapshots?: SimulationTurn[];
 }
 
@@ -51,6 +59,9 @@ type StreamTurnEvent = {
   scores?: Thresholds;
   judge?: JudgePayload | null;
   rationale?: string | null;
+  quick_replies?: string[] | null;
+  completion_review?: CompletionReview | null;
+  vehicles?: VehicleSummary[] | null;
 };
 
 type StreamEvent =
@@ -134,6 +145,9 @@ export default function Page() {
                   scores: event.data.scores,
                   judge: event.data.judge ?? null,
                   rationale: event.data.rationale ?? null,
+                  quick_replies: event.data.quick_replies ?? null,
+                  completion_review: event.data.completion_review ?? null,
+                  vehicles: event.data.vehicles ?? null,
                 };
                 return [...prev, nextTurn];
               });
