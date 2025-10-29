@@ -95,6 +95,8 @@ export default function Home() {
   const [locationGranted, setLocationGranted] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
+  const [topSectionHeight, setTopSectionHeight] = useState(50); // Percentage
+  const [isDragging, setIsDragging] = useState(false);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -483,12 +485,44 @@ export default function Home() {
 
   const recentMessages = getLastThreeTurns();
 
+  // Handle drag for resizable splitter
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const containerHeight = window.innerHeight;
+      const newHeight = (e.clientY / containerHeight) * 100;
+      
+      // Constrain between 20% and 80%
+      const constrainedHeight = Math.max(20, Math.min(80, newHeight));
+      setTopSectionHeight(constrainedHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
+          <div className="flex-shrink-0 p-1 border-b border-slate-600/30" style={{ height: `${topSectionHeight}%` }}>
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
@@ -706,10 +740,23 @@ export default function Home() {
           </div>
         )}
 
+        {/* Resizable Splitter */}
+        {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
+          <div 
+            className="h-1 bg-slate-600/30 hover:bg-purple-500/50 cursor-row-resize relative group transition-all duration-200"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-1 w-12 bg-slate-500 group-hover:bg-purple-500 rounded-full transition-colors duration-200"></div>
+            </div>
+          </div>
+        )}
+
         {/* Chat Messages - Only last 3 turns */}
         <div 
           ref={chatMessagesContainerRef}
-          className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}
+          className={`overflow-y-auto p-12 relative min-h-0`}
+          style={(hasReceivedRecommendations || showFavorites) ? { height: `${100 - topSectionHeight - 11}%` } : { flex: 1 }}
         >
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
