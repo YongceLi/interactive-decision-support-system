@@ -10,6 +10,8 @@ class ChatRequest(BaseModel):
     """Request model for chat endpoint."""
     message: str
     session_id: Optional[str] = None
+    latitude: Optional[float] = None  # User's location latitude
+    longitude: Optional[float] = None  # User's location longitude
 
 
 class ChatResponse(BaseModel):

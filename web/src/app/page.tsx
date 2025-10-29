@@ -89,6 +89,10 @@ export default function Home() {
   const [showFavorites, setShowFavorites] = useState(false);
   const [previousView, setPreviousView] = useState<'carousel' | 'favorites' | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationRequested, setLocationRequested] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -139,6 +143,31 @@ export default function Home() {
   const isFavorite = (vehicleId: string) => {
     return favorites.some(v => v.id === vehicleId);
   };
+
+  // Request user location on first load
+  useEffect(() => {
+    if (!locationRequested && navigator.geolocation) {
+      setLocationRequested(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationGranted(true);
+        },
+        (error) => {
+          console.log('Location access denied or unavailable:', error);
+          setLocationDenied(true);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+  }, [locationRequested]);
 
   // Initialize with the agent's first message
   useEffect(() => {
@@ -233,6 +262,19 @@ export default function Home() {
     // Track latency
     const startTime = performance.now();
 
+    // Prepare request body with location if available and this is the first user message
+    const isFirstUserMessage = chatMessages.filter(m => m.role === 'user').length === 0;
+    const requestBody: any = {
+      message,
+      session_id: sessionId,
+    };
+    
+    // Include location with first user message after location is granted
+    if (isFirstUserMessage && userLocation && locationGranted) {
+      requestBody.latitude = userLocation.latitude;
+      requestBody.longitude = userLocation.longitude;
+    }
+
     try {
       // Send message to streaming endpoint
       const response = await fetch('/api/chat/stream', {
@@ -240,10 +282,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message,
-          session_id: sessionId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
