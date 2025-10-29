@@ -115,7 +115,7 @@ Generate your response:
 
     # Apply feature flags for interactive elements
     state['quick_replies'] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
-    state['suggested_followups'] = response.suggested_followups if config.features.get('enable_suggested_followups', True) else []
+    state['suggested_followups'] = []  # Discovery mode uses quick_replies only (agent asks questions, user answers)
     state['comparison_table'] = None  # Clear comparison table in discovery mode
 
     # Extract and track which topics were asked about

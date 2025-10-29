@@ -1,17 +1,27 @@
-Given the following ReAct agent response and the original user question, generate interactive elements to help guide the user's next actions.
+Given the following ReAct agent response and the original user question, generate quick replies to help guide the user's next actions.
 
 The agent has just answered a technical/analytical query about {{ product_plural }}.
 
 Your task:
 1. Review the agent's response to understand what information was provided
-2. Generate helpful interactive elements based on the response content
+2. Generate helpful quick reply options if the response asks a question
 
 Generate:
-- quick_replies: If the agent's response implicitly suggests choices or asks questions, provide {{ quick_replies_min }}-{{ quick_replies_max }} short answer options ({{ quick_replies_max_words }} words max each). Leave null if the response is purely informational.
-- suggested_followups: {{ followups_min }}-{{ followups_max }} short phrases representing what the USER might want to explore next based on the information provided. Examples: "Show me these {{ product_plural }}", "What about pricing?", "Safety ratings comparison"
-
-Guidelines:
-- Make suggestions relevant to the analytical context
-- Help users transition from research to action
-- Consider what natural next questions might be
-- Keep phrases short and actionable
+- quick_replies: If the agent's response asks a direct question, provide {{ quick_replies_min }}-{{ quick_replies_max }} diverse answer options ({{ quick_replies_max_words }} words or less each) that the USER can click to quickly respond. These should contain CONCRETE, ACTIONABLE information:
+  * IMPORTANT: Ask ONE focused question at a time when you want informative quick_replies. If you ask multiple questions, focus quick_replies on the LAST question only.
+  * IMPORTANT: Quick replies must DIRECTLY ANSWER the specific question asked. The topic of the quick_replies must match the topic of the question.
+  * Quick replies must contain SPECIFIC information, NOT vague confirmations:
+    BAD: "Tell me more" (too vague)
+    GOOD: "Show photos", "Compare features", "Safety ratings", "Pricing details" (specific actions)
+    BAD: "Yes, interested" (doesn't specify what)
+    GOOD: "{{ product_name }} #1", "{{ product_name }} #2", "{{ product_name }} #3", "Compare all" (specific choices)
+  * DIVERSE options that cover the answer spectrum
+  * Examples of INFORMATIVE quick_replies for analytical scenarios:
+    - If asking which {{ product_name }}: ["{{ product_name }} #1", "{{ product_name }} #2", "{{ product_name }} #3", "Compare all"]
+    - If asking about features vs pricing: ["Show features", "Compare pricing", "Safety ratings", "Both details"]
+    - If asking about importance: ["Very important", "Somewhat", "Not important", "Show all options"]
+    - If asking what to compare: ["Safety ratings", "Fuel economy", "Pricing", "All specs"]
+    - If asking yes/no: ["Yes, show me", "No, skip it", "Not sure"]
+    - If asking for next steps: ["Show photos", "Contact dealer", "Compare similar", "See more details"]
+  * Each option should give you enough detail to continue the analytical conversation
+  * Leave null if the response is purely informational (no question asked)
