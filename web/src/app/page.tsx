@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
@@ -93,6 +93,7 @@ export default function Home() {
   const [locationRequested, setLocationRequested] = useState(false);
   const [locationGranted, setLocationGranted] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -181,6 +182,21 @@ export default function Home() {
       setChatMessages([initialMessage]);
     }
   }, [chatMessages.length]);
+
+  // Auto-scroll chat messages to bottom when new messages arrive or loading state changes
+  useEffect(() => {
+    if (chatMessagesContainerRef.current) {
+      // Use requestAnimationFrame for smoother scrolling after DOM updates
+      requestAnimationFrame(() => {
+        if (chatMessagesContainerRef.current) {
+          chatMessagesContainerRef.current.scrollTo({
+            top: chatMessagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+  }, [chatMessages, isLoading]);
 
   // Helper function to handle streaming response
   const handleStreamingResponse = async (response: Response) => {
@@ -689,7 +705,10 @@ export default function Home() {
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
+        <div 
+          ref={chatMessagesContainerRef}
+          className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}
+        >
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
               <div key={message.id} className="flex flex-col">
