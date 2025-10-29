@@ -37,17 +37,8 @@ class InterviewResponse(BaseModel):
         description=(
             "Short answer options (2-5 words each) for questions in your response. "
             "Provide 2-4 options if you ask a direct question. "
-            "Examples: ['Under $20k', '$20k-$30k'], ['Sedan', 'SUV', 'Truck']"
         ),
         max_length=4
-    )
-    suggested_followups: list[str] = Field(
-        description=(
-            "Suggested next queries (short phrases, 3-5 options) to help users continue. "
-            "Examples: ['Show me vehicles now', 'I want a safe car', 'My budget is $30k']"
-        ),
-        min_length=3,
-        max_length=5
     )
     should_end: bool = Field(description="True if interview mode should end, false to continue")
 
@@ -62,6 +53,15 @@ class ExtractionResult(BaseModel):
     implicit_preferences: ImplicitPreferencesPydantic = Field(
         default_factory=ImplicitPreferencesPydantic,
         description="Implicit preferences with specific fields"
+    )
+    questions_asked: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Topics covered during the interview conversation. "
+            "Include topics that were asked about OR volunteered by the user. "
+            "Possible topics: budget, location, usage, priorities, mileage, "
+            "vehicle_type, features, timeline, new_vs_used, etc."
+        )
     )
 
 
@@ -118,13 +118,8 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     if not user_input:
         # First turn - greeting
         state["ai_response"] = "Hi there! Welcome. What brings you in today? Are you looking to replace a current vehicle or is this your first car?"
-        state["quick_replies"] = ["Replacing current", "First car", "Just browsing"]
-        state["suggested_followups"] = [
-            "Show me vehicles now",
-            "Tell me about financing",
-            "What's your best deal?",
-            "I need help deciding"
-        ]
+        state["quick_replies"] = ["Replacing current", "First car", "Adding to household", "Just exploring"]
+        state["suggested_followups"] = []  # Interview mode doesn't use suggested followups
         state["_interview_should_end"] = False
 
         # Emit progress: Interview question ready
@@ -176,8 +171,9 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     else:
         # Normal conversation - set the response and interactive elements
         state["ai_response"] = response.ai_response
-        state["quick_replies"] = response.quick_replies
-        state["suggested_followups"] = response.suggested_followups
+        # Apply feature flag for quick_replies
+        state["quick_replies"] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
+        state["suggested_followups"] = []  # Interview mode doesn't use suggested followups
         state["comparison_table"] = None  # Clear comparison table in interview mode
 
     # Emit progress: Interview question ready
@@ -253,9 +249,11 @@ CONVERSATION:
 
     state["explicit_filters"] = {**state["explicit_filters"], **result.explicit_filters.model_dump(exclude_none=True)}
     state["implicit_preferences"] = {**state["implicit_preferences"], **result.implicit_preferences.model_dump(exclude_none=True)}
+    state["questions_asked"] = result.questions_asked  # Track topics covered during interview for discovery handoff
 
     logger.info(f"Extracted filters: {state['explicit_filters']}")
     logger.info(f"Extracted preferences: {state['implicit_preferences']}")
+    logger.info(f"Topics covered in interview: {state['questions_asked']}")
 
     # Emit progress: Extraction complete
     if progress_callback:

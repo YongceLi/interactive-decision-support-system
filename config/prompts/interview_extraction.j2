@@ -1,18 +1,29 @@
 Analyze this {{ product_role }} conversation and extract comprehensive {{ product_name }} search criteria.
 
-Extract ALL explicit filters and implicit preferences from this conversation.
+Extract ALL explicit filters, implicit preferences, AND topics covered from this conversation.
 
-Explicit filters are clear, stated requirements:
+**Explicit filters** are clear, stated requirements:
 - Make, model, year, price range, mileage, body style, transmission, colors, features, location, etc.
 - Use comma-separated for multiple options: "Toyota,Honda"
 - Use ranges for year/price/miles: "2018-2020", "20000-30000"
 
-Implicit preferences are inferred needs and priorities:
+**Implicit preferences** are inferred needs and priorities:
 - priorities: List of what matters most (safety, fuel efficiency, reliability, performance, etc.)
 - lifestyle: Family-oriented, outdoorsy, urban commuter, etc.
 - budget_sensitivity: budget-conscious, moderate, luxury-focused
 - usage_patterns: Daily commute, weekend trips, family road trips, etc.
 - concerns: List of concerns (maintenance costs, resale value, insurance, etc.)
 - notes: Any other important context
+
+**Questions asked** - topics that were discussed during the interview (either asked by the salesperson OR volunteered by the customer):
+- Include topics from this list: budget, location, usage, priorities, mileage, vehicle_type, features, timeline, new_vs_used
+- Examples:
+  - If budget/price was discussed → include "budget"
+  - If zip code/location was mentioned → include "location"
+  - If they talked about how they'll use it → include "usage"
+  - If they discussed what matters most → include "priorities"
+  - If body style (sedan/SUV/truck) came up → include "vehicle_type"
+  - If new vs used was covered → include "new_vs_used"
+  - If mileage preferences were mentioned → include "mileage"
 
 Be comprehensive - extract EVERYTHING mentioned or clearly implied.
