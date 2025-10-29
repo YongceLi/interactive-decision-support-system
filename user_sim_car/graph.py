@@ -296,7 +296,7 @@ class CompletionJudgeAgent:
             "You determine if the simulated shopper has achieved their intents and can wrap up the conversation. "
             "Use the persona facets, running summary, and full conversation history. "
             "If core needs remain unmet, recommend continuing."
-            "Return JSON only: {\\"should_end\\": <bool>, \\"confidence\\": <float>, \\"reason\\": <string>}"
+            "Return JSON only: {{\"should_end\": <bool>, \"confidence\": <float>, \"reason\": <string>}}"
         )
         history_text = "\n".join(
             f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
@@ -348,6 +348,7 @@ class UserAgent:
             "The higher the positive channel is, the harder to please the persona, and vice versa. "
             "The lower the negative channel is, the easier the persona to be disappointed, impatient, likely to disengage. "
             "Thresholds set stopping points for each channel, where higher means harder to stop."
+            "Set these thresholds conservatively. Thresholds usually have positive values around from 0.8 to 1.0 and negative values around from 0.6 to 0.8. "
             "Initial returns reflect starting satisfaction/frustration levels. The initial values usually have positive and negative values equal to 0, "
             "unless the persona comes into the conversation with prior satisfaction/frustration."
             "Positive, negative values range from 0 to 1."
@@ -399,7 +400,7 @@ class UserAgent:
             "Negative delta increases when the latest assistant replies are not relevant, gives the user frustration, or repetitive, etc."
             "Consider utility of visible vehicles too."
             "Positive, negative deltas range from -0.1 to 0.1"
-            "Return JSON only: {\"deltas\": {\"positive\": <float>, \"negative\": <float>}, \"rationale\": <string>}"
+            "Return JSON only: {{\"deltas\": {{\"positive\": <float>, \"negative\": <float>}}, \"rationale\": <string>}}"
         )
         vehicles_brief = []
         for v in (visible_vehicles or [])[:3]:
@@ -487,7 +488,7 @@ class UserAgent:
         instructions = (
             "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, CAROUSEL_LEFT, CAROUSEL_RIGHT, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, SCROLL, STARE, STOP)."
             "If you choose a quick reply button, set user_text exactly to that text and mention it in the notes."
-            "Return JSON only: {\"user_text\": <string>, \"actions\": <list>, \"notes\": <string>}"
+            "Return JSON only: {{\"user_text\": <string>, \"actions\": <list>, \"notes\": <string>}}"
         )
         reminder_msg = reminder or ""
         history_text = "\n".join(
@@ -527,6 +528,28 @@ class UserAgent:
         }).content.strip()
         user_text, notes = "", ""
         actions: List[Dict[str, Any]] = []
+        try:
+            data = json.loads(raw)
+            user_text = str(data.get("user_text", "")).strip()
+            notes = str(data.get("notes", "")).strip()
+            raw_actions = data.get("actions", [])
+            if isinstance(raw_actions, dict):
+                raw_actions = [raw_actions]
+            for a in raw_actions or []:
+                if isinstance(a, dict) and "type" in a:
+                    action = {"type": str(a["type"]).upper()}
+                    for key, value in a.items():
+                        if key == "type":
+                            continue
+                        action[key] = value
+                    actions.append(action)
+                elif isinstance(a, str):
+                    actions.append({"type": a.upper()})
+        except Exception:
+            user_text = raw
+            notes = "Fallback: non-JSON user action payload; defaulting to STARE."
+            actions = [{"type": "STARE"}]
+        return user_text, actions, notes
 
 
 # ---------- UI utilities ----------

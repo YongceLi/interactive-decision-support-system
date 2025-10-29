@@ -212,17 +212,17 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
 
         <QuickRepliesList options={turn.quick_replies} />
 
-        <section>
+        {/* <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Summary Slice</h3>
           <p className="mt-1 text-slate-200/90">{turn.summary}</p>
-        </section>
+        </section> */}
 
-        {turn.rationale ? (
+        {/* {turn.rationale ? (
           <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
             <div className="font-semibold uppercase tracking-wide text-slate-300/80">Rescoring Rationale</div>
             <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
           </section>
-        ) : null}
+        ) : null} */}
 
         <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
@@ -245,12 +245,12 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
 
         <CompletionReviewCard review={turn.completion_review} />
 
-        {turn.judge && !turn.judge.passes && turn.judge.reminder ? (
+        {/* {turn.judge && !turn.judge.passes && turn.judge.reminder ? (
           <section className="rounded-lg border border-rose-400/60 bg-rose-950/50 p-3 text-xs text-rose-100">
             <div className="font-semibold uppercase tracking-wide">Judge Reminder</div>
             <p className="mt-1 whitespace-pre-line">{turn.judge.reminder}</p>
           </section>
-        ) : null}
+        ) : null} */}
       </div>
     </article>
   );
