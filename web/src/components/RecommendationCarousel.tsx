@@ -9,6 +9,8 @@ interface RecommendationCarouselProps {
   showPlaceholders?: boolean;
   onToggleFavorite?: (vehicle: Vehicle) => void;
   isFavorite?: (vehicleId: string) => boolean;
+  currentIndex?: number;
+  onIndexChange?: (index: number) => void;
 }
 
 interface ViewTimeData {
@@ -28,20 +30,28 @@ type DisplayCard = {
   isPlaceholder: false;
 };
 
-export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false, onToggleFavorite, isFavorite }: RecommendationCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+export default function RecommendationCarousel({ vehicles, onItemSelect, showPlaceholders = false, onToggleFavorite, isFavorite, currentIndex: controlledIndex, onIndexChange }: RecommendationCarouselProps) {
+  const [internalIndex, setInternalIndex] = useState(0);
+  const currentIndex = controlledIndex !== undefined ? controlledIndex : internalIndex;
+  const setCurrentIndex = (index: number) => {
+    if (controlledIndex !== undefined && onIndexChange) {
+      onIndexChange(index);
+    } else {
+      setInternalIndex(index);
+    }
+  };
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | null>(null);
   const [viewTimes, setViewTimes] = useState<Record<string, number>>({});
   const startTimeRef = useRef<number>(Date.now());
   const isIdleRef = useRef<boolean>(false);
 
-  // Reset to first item when new vehicles are loaded
+  // Reset to first item when new vehicles are loaded (only if not controlled externally)
   useEffect(() => {
-    if (vehicles.length > 0) {
+    if (vehicles.length > 0 && controlledIndex === undefined) {
       setCurrentIndex(0);
     }
-  }, [vehicles]);
+  }, [vehicles, controlledIndex]);
 
   // Track viewing time for each vehicle
   useEffect(() => {
@@ -105,7 +115,8 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
     
     setIsAnimating(true);
     setAnimationDirection('right');
-    setCurrentIndex((prev) => (prev + 1) % vehicles.length);
+    const newIndex = (currentIndex + 1) % vehicles.length;
+    setCurrentIndex(newIndex);
     
     setTimeout(() => {
       setIsAnimating(false);
@@ -118,7 +129,8 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
     
     setIsAnimating(true);
     setAnimationDirection('left');
-    setCurrentIndex((prev) => (prev - 1 + vehicles.length) % vehicles.length);
+    const newIndex = (currentIndex - 1 + vehicles.length) % vehicles.length;
+    setCurrentIndex(newIndex);
     
     setTimeout(() => {
       setIsAnimating(false);
