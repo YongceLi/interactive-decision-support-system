@@ -97,6 +97,7 @@ export default function Home() {
   const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
   const [topSectionHeight, setTopSectionHeight] = useState(50); // Percentage
   const [isDragging, setIsDragging] = useState(false);
+  const [budgetValue, setBudgetValue] = useState<Record<string, number>>({});
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -522,8 +523,9 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30" style={{ height: `${topSectionHeight}%` }}>
-            <div className="max-w-6xl mx-auto h-full">
+          <div className="flex-shrink-0 overflow-hidden" style={{ height: `${topSectionHeight}%` }}>
+            <div className="p-1 h-full">
+              <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
                   <FavoritesPage
@@ -724,7 +726,7 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="h-full">
+                <div className="h-full overflow-y-auto">
                   <RecommendationCarousel 
                     vehicles={vehicles} 
                     onItemSelect={handleItemSelectSync}
@@ -736,6 +738,7 @@ export default function Home() {
                   />
                 </div>
               )}
+              </div>
             </div>
           </div>
         )}
@@ -794,16 +797,56 @@ export default function Home() {
                           ? (message.quick_replies || [])
                           : (message.suggested_followups || []);
                         
-                        return buttonsToShow.map((reply, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleChatMessage(reply)}
-                            disabled={isLoading}
-                            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                          >
-                            {reply}
-                          </button>
-                        ));
+                        return buttonsToShow.map((reply, idx) => {
+                          const isBudgetReply = reply.toLowerCase().includes('budget');
+                          const replyKey = `${message.id}-${idx}`;
+                          
+                          if (isBudgetReply) {
+                            const currentValue = budgetValue[replyKey] ?? 50000;
+                            
+                            return (
+                              <div key={idx} className="bg-white/10 border border-white/20 rounded-lg p-3 min-w-[200px]">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-slate-300 text-sm font-medium">Budget: ${currentValue.toLocaleString()}</span>
+                                  <button
+                                    onClick={() => handleChatMessage(`My budget is $${currentValue.toLocaleString()}`)}
+                                    disabled={isLoading}
+                                    className="px-3 py-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-blue-600"
+                                  >
+                                    Submit
+                                  </button>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="200000"
+                                  step="5000"
+                                  value={currentValue}
+                                  onChange={(e) => {
+                                    const newValue = parseInt(e.target.value);
+                                    setBudgetValue(prev => ({ ...prev, [replyKey]: newValue }));
+                                  }}
+                                  className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                                />
+                                <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                  <span>$0</span>
+                                  <span>$200K</span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleChatMessage(reply)}
+                              disabled={isLoading}
+                              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              {reply}
+                            </button>
+                          );
+                        });
                       })()}
                     </div>
                   </div>
