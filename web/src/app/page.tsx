@@ -63,7 +63,11 @@ function parseMarkdown(text: string): string {
   // This targets the first line that doesn't start with '<' (i.e., not an HTML tag)
   html = html.replace(/^([^\n<].*?)\n/, '<p class="mb-2">$1</p>\n');
   
-  // Convert line breaks to <br> for non-list content
+  // Convert single line breaks to <br>, but preserve paragraph structure
+  // First, wrap paragraphs separated by blank lines
+  html = html.replace(/\n\n+/g, '</p><p class="mb-2">');
+  
+  // Convert remaining single line breaks to <br> for non-list content
   html = html.replace(/\n(?!<)/g, '<br>');
   
   // Remove extra <br> tags immediately before <ul> tags (to remove blank lines before bullet lists)
@@ -72,6 +76,19 @@ function parseMarkdown(text: string): string {
   // Remove extra <br> tags immediately after </ul> tags (to remove blank lines after bullet lists)
   // Handle cases with whitespace and multiple <br> tags
   html = html.replace(/<\/ul>\s*(<br>)+/g, '</ul>');
+  
+  // Clean up any empty paragraphs
+  html = html.replace(/<p class="mb-2"><\/p>/g, '');
+  
+  // Ensure all content is wrapped in paragraphs if not already
+  if (!html.includes('<p') && !html.includes('<ul') && !html.includes('<h')) {
+    html = `<p class="mb-2">${html}</p>`;
+  } else {
+    // Wrap any leading content not in a tag
+    html = html.replace(/^(?!<)([^<]+)/, '<p class="mb-2">$1</p>');
+    // Wrap any trailing content not in a tag
+    html = html.replace(/([^>]+)$(?!<\/)/, '<p class="mb-2">$1</p>');
+  }
   
   return html;
 }
