@@ -115,31 +115,64 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  const toggleFavorite = (vehicle: Vehicle) => {
+  const toggleFavorite = async (vehicle: Vehicle) => {
+    const currentlyFavorited = favorites.some(v => v.id === vehicle.id);
+    const newFavoritedState = !currentlyFavorited;
+    const action = newFavoritedState ? 'favorited' : 'unfavorited';
+
+    // Log the favorite action
+    console.log(`User ${action} vehicle:`, vehicle);
+
+    // Update local favorites state
     setFavorites(prev => {
-      const isFavorite = prev.some(v => v.id === vehicle.id);
-      const action = isFavorite ? 'unfavorited' : 'favorited';
-      
-      // Log the favorite action
-      console.log(`User ${action} vehicle:`, vehicle);
-      
-      // Log event to agent using event API (non-blocking)
-      if (sessionId) {
-        const willBeFavorite = !isFavorite;
-        LoggingService.logFavoriteToggle(
-          sessionId, 
-          vehicle.id, 
-          vehicle.vin || 'unknown',
-          willBeFavorite
-        ).catch(err => console.error('Error logging favorite to agent:', err));
-      }
-      
-      if (isFavorite) {
+      if (currentlyFavorited) {
         return prev.filter(v => v.id !== vehicle.id);
       } else {
         return [...prev, vehicle];
       }
     });
+
+    // Send to backend and get proactive response
+    if (sessionId) {
+      try {
+        console.log('Sending favorite action to backend:', {
+          sessionId,
+          vehicleVin: vehicle.vin,
+          isFavorited: newFavoritedState
+        });
+
+        // Call the new favorite endpoint
+        const response = await idssApiService.sendFavoriteAction(sessionId, vehicle, newFavoritedState);
+
+        console.log('Received response from backend:', response);
+
+        // If favorited (not unfavorited) and we got a proactive response
+        if (newFavoritedState && response.response) {
+          // Add proactive response to chat messages
+          setChatMessages(prev => [...prev, {
+            id: `favorite-${Date.now()}`,
+            role: 'assistant',
+            content: response.response,
+            timestamp: new Date(),
+            quick_replies: response.quick_replies || undefined
+          }]);
+
+          console.log('Proactive response added to chat:', response.response);
+        }
+      } catch (error) {
+        console.error('Error sending favorite action to backend:', error);
+        console.error('Error details:', error instanceof Error ? error.message : error);
+        // Favorite still works locally even if backend fails
+      }
+
+      // Also log to analytics event API (non-blocking, keep for backward compatibility)
+      LoggingService.logFavoriteToggle(
+        sessionId,
+        vehicle.id,
+        vehicle.vin || 'unknown',
+        newFavoritedState
+      ).catch(err => console.error('Error logging favorite to analytics:', err));
+    }
   };
 
   const isFavorite = (vehicleId: string) => {

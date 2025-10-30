@@ -298,6 +298,9 @@ def run_supervisor(
     """
     logger.info("Supervisor: Analyzing request...")
 
+    # Clear comparison table at start of each request (will be set again if current request generates one)
+    state['comparison_table'] = None
+
     # 1. Analyze request to detect multiple intents
     analysis = analyze_request(user_input, state)
 

@@ -18,6 +18,7 @@ import concurrent.futures
 import json
 from sse_starlette.sse import EventSourceResponse
 import requests
+import logging
 
 load_dotenv()
 
@@ -30,7 +31,8 @@ from api.models import (
     ResetResponse,
     EventRequest,
     EventResponse,
-    EventsResponse
+    EventsResponse,
+    FavoriteRequest
 )
 
 required_env_vars = ["OPENAI_API_KEY", "AUTODEV_API_KEY"]
@@ -55,6 +57,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 sessions: Dict[str, VehicleSearchState] = {}
 
@@ -432,6 +438,106 @@ async def get_events(session_id: str, event_type: Optional[str] = None):
         events=events,
         total=len(events)
     )
+
+
+@app.post("/session/{session_id}/favorite", response_model=ChatResponse)
+async def handle_favorite(
+    session_id: str,
+    request: FavoriteRequest
+):
+    """
+    Handle vehicle favorite/unfavorite action and return proactive response.
+
+    This endpoint:
+    1. Logs the favorite/unfavorite event for analytics
+    2. Updates the favorites list in session state
+    3. Generates contextual proactive question (for favorites only)
+    4. Returns quick replies for analytical deep dive
+
+    Args:
+        session_id: Session ID
+        request: FavoriteRequest with vehicle object and favorited status
+
+    Returns:
+        ChatResponse with proactive message and quick replies (or empty if unfavorited)
+    """
+    # Get or create session state
+    if session_id not in sessions:
+        sessions[session_id] = create_initial_state()
+
+    state = sessions[session_id]
+
+    # Log the event for analytics
+    event_id = str(uuid.uuid4())
+    event = {
+        "event_id": event_id,
+        "event_type": "vehicle_favorited" if request.is_favorited else "vehicle_unfavorited",
+        "timestamp": datetime.now().isoformat(),
+        "data": {
+            "vin": request.vehicle.get("vin"),
+            "vehicle": request.vehicle
+        }
+    }
+    state["interaction_events"].append(event)
+    logger.info(f"Session {session_id}: Logged {event['event_type']} for VIN {request.vehicle.get('vin')}")
+
+    # Update favorites list in state
+    vin = request.vehicle.get("vin")
+
+    if request.is_favorited:
+        # Add to favorites (avoid duplicates)
+        if not any(fav.get("vin") == vin for fav in state["favorites"]):
+            state["favorites"].append(request.vehicle)
+            logger.info(f"Session {session_id}: Added vehicle {vin} to favorites. Total: {len(state['favorites'])}")
+
+        # Generate proactive response using LLM
+        from idss_agent.components.proactive_responses import generate_favorite_response
+
+        try:
+            proactive_response = generate_favorite_response(request.vehicle, state)
+
+            return ChatResponse(
+                response=proactive_response.ai_response,
+                vehicles=state.get("recommended_vehicles", []),
+                filters=state.get("explicit_filters", {}),
+                preferences=state.get("implicit_preferences", {}),
+                session_id=session_id,
+                interviewed=state.get("interviewed", False),
+                quick_replies=proactive_response.quick_replies,
+                suggested_followups=[],
+                comparison_table=None
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate proactive response: {e}")
+            # Return empty response on error
+            return ChatResponse(
+                response="",
+                vehicles=state.get("recommended_vehicles", []),
+                filters=state.get("explicit_filters", {}),
+                preferences=state.get("implicit_preferences", {}),
+                session_id=session_id,
+                interviewed=state.get("interviewed", False),
+                quick_replies=None,
+                suggested_followups=[],
+                comparison_table=None
+            )
+    else:
+        # Remove from favorites (unfavorited)
+        state["favorites"] = [fav for fav in state["favorites"] if fav.get("vin") != vin]
+        logger.info(f"Session {session_id}: Removed vehicle {vin} from favorites. Total: {len(state['favorites'])}")
+
+        # No proactive response for unfavorite
+        return ChatResponse(
+            response="",
+            vehicles=state.get("recommended_vehicles", []),
+            filters=state.get("explicit_filters", {}),
+            preferences=state.get("implicit_preferences", {}),
+            session_id=session_id,
+            interviewed=state.get("interviewed", False),
+            quick_replies=None,
+            suggested_followups=[],
+            comparison_table=None
+        )
 
 
 if __name__ == "__main__":
