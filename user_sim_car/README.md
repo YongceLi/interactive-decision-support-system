@@ -12,13 +12,12 @@ This repository contains a **LangGraph-based user simulator** that interacts wit
 - **Conversation summary agent**: Maintains an accumulating summary of the dialogue and UI activity. Each new turn is fused with the running memory before the user agent plans its next move.
 - **Judge agent**: Scores every simulated reply (0–1 alignment) against persona + intent before it is accepted. If the score drops below `0.75`, the user agent is reminded and re-drafts the turn.
 - **User Agent (multi-action)**: Generates the next user message plus **zero-or-many** UI actions such as:
-  - `{"type": "CLICK_CARD", "index": 0|1|2, "label": "#<card number>"}`
+  - `{"type": "CLICK_CARD", "index": 0|1|2}`
   - `{"type": "TOGGLE_FILTER", "id": "suv"}` / `{"type": "SET_MILEAGE", "value": 60000}`
   - `{"type": "REFRESH_FILTERS"}`, `{"type": "SHOW_FAVORITES"}`, `{"type": "CLOSE_DETAIL"}`
-  - `{"type": "QUICK_REPLY", "value": "<button text>", "label": "<button text>"}` (only when the user text matches a visible quick reply)
-  - stop actions: `{"type": "STOP_POSITIVE"}` or `{"type": "STOP_NEGATIVE"}` when emotion dictates ending the session
+  - stop actions indicate why the shopper exits: `STOP_NEGATIVE`, `STOP_POSITIVE`
 - **Rich UI model**: Mirrors the Next.js front-end — carousel cards, filter drawer (tokens + Refresh button), favorites tray, and detail modal selection state.
-- **Emotion critic**: A single [-1, 1] sentiment value is recalibrated before each user turn using persona context, the prior exchange, and UI outcomes. A persona-derived lower threshold determines when frustration triggers a `STOP_NEGATIVE` exit, while hitting +1 and passing completion review yields `STOP_POSITIVE`.
+- **RL-style stop scorer**: Two channels (`positive`, `negative`) updated **after each assistant response**. The critic returns deltas that are discounted/accumulated (γ ∈ [0.5, 0.99]); thresholds are derived from the persona. Crossing a threshold records a structured `stop_result`.
 - **Demo snapshots (optional)**: When `demo_mode=True`, every turn stores a JSON snapshot (scores, judge verdict, summary excerpt) for UI playback.
 - **Event logging**: Posts to `POST /session/{session_id}/event` with payload `{"event_type":"...", "data":{"details":{...}}}`.
 
@@ -67,7 +66,7 @@ This repository contains a **LangGraph-based user simulator** that interacts wit
 **Payload**:
 
 ```json
-{"event_type":"post_turn_metrics", "data":{"details":{"emotion":{"value":0.25,"delta":0.05,"threshold":-0.45}, "step":3}}}
+{"event_type":"emotion_update", "data":{"score":{"value":0.18}, "delta":-0.07, "threshold":{"lower":-0.35}, "step":3}}
 ```
 
 ## Files

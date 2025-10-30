@@ -53,19 +53,16 @@ def main() -> None:
     print("\n=== STOPPED ===")
     print("Reason:", final_state.get("stop_reason"))
     print("Steps:", final_state.get("step"))
-    print("Final emotion value:", final_state.get("emotion_value"))
-    print("Emotion threshold:", final_state.get("emotion_threshold"))
-    print("Final emotion rationale:", final_state.get("emotion_rationale"))
+    print("Final emotion score:", final_state.get("emotion_score"))
+    print("Final threshold:", final_state.get("emotion_threshold"))
+    print("Emotion rationale:", final_state.get("emotion_rationale"))
     print("Judge summary:", final_state.get("last_judge"))
     print("Conversation summary (truncated):", (final_state.get("conversation_summary") or "")[:400])
 
     if args.demo:
         print("\n=== Demo snapshots ===")
         for snap in final_state.get("demo_snapshots", []):
-            emotion = snap.get("emotion", {})
-            print(
-                f"Step {snap['step']}: alignment={snap.get('judge', {}).get('score')} emotion={emotion.get('value')} (Δ {emotion.get('delta')})"
-            )
+            print(f"Step {snap['step']}: alignment={snap.get('judge', {}).get('score')} emotion={snap.get('emotion')}")
             if snap.get("rationale"):
                 print(f"  Rationale: {snap['rationale']}")
             print("  User:", snap["user_text"])

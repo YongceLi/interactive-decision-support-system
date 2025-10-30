@@ -2,7 +2,7 @@
 graph.py — LangGraph-based user simulator for the car recommendation UI.
 
 This revision introduces:
-- A pre-turn emotion critic that maintains a single [-1, 1] score with persona-calibrated lower thresholding.
+- A rolling RL-style scorer with positive/negative channels updated after each assistant response.
 - A conversation summary agent that maintains an aggregated memory of the dialogue and UI actions.
 - A judge agent that enforces persona/goal alignment before committing user turns.
 - Richer UI state modeling (filters, detail modal, favorites, etc.) and dynamic action availability.
@@ -61,7 +61,7 @@ def build_truncated_history(turns: List["Turn"]) -> List[HistoryMessage]:
 # ---------- Helpers & TypedDicts ----------
 
 
-def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
+def _clamp(value: float, lo: float = -1.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, value))
 
 
@@ -97,22 +97,22 @@ class Turn(TypedDict):
     actions: List[Dict[str, Any]]
     visible_indices: List[int]
     notes: str
-    decision_rationale: Optional[str]
+
+
+class EmotionScore(TypedDict):
+    value: float
+
+
+class EmotionThreshold(TypedDict):
+    lower: float
 
 
 class StopResult(TypedDict):
     kind: str
-    emotion_value: float
-    threshold: float
+    score: EmotionScore
+    threshold: EmotionThreshold
     rationale: str
     at_step: int
-
-
-class EmotionSnapshot(TypedDict, total=False):
-    value: float
-    delta: float
-    threshold: float
-    rationale: str
 
 
 class SimState(TypedDict):
@@ -125,11 +125,11 @@ class SimState(TypedDict):
 
     persona: PersonaDict
 
-    emotion_value: Optional[float]
-    emotion_threshold: Optional[float]
-    emotion_delta: Optional[float]
+    emotion_threshold: Optional[EmotionThreshold]
+    emotion_score: Optional[EmotionScore]
     emotion_rationale: Optional[str]
-    emotion_last_step: Optional[int]
+    emotion_delta: Optional[float]
+    emotion_delta_rationale: Optional[str]
 
     goal: Dict[str, Any]
     ui: UIState
@@ -152,8 +152,6 @@ class SimState(TypedDict):
 
     demo_mode: bool
     demo_snapshots: List[Dict[str, Any]]
-
-    last_emotion_event: Optional[EmotionSnapshot]
 
 
 # ---------- Persona Agents ----------
@@ -291,8 +289,8 @@ class CompletionJudgeAgent:
         goal: Dict[str, Any],
         summary: str,
         history: List[HistoryMessage],
-        emotion_value: Optional[float],
-        threshold: float,
+        emotion_score: EmotionScore,
+        emotion_threshold: EmotionThreshold,
     ) -> Dict[str, Any]:
         sys_prompt = (
             "You determine if the simulated shopper has achieved their intents and can wrap up the conversation. "
@@ -309,7 +307,7 @@ class CompletionJudgeAgent:
              "Persona facets:\n"
              "- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}\n\n"
              "Goal context: {goal}\n\n"
-             "Current emotion value: {emotion_value} (threshold={threshold})\n\n"
+             "Current emotion value vs disengagement threshold: value={emotion} threshold={threshold}\n\n"
              "Conversation summary:\n{summary}\n\n"
              "Conversation history:\n{history}\n\n"
              "Return JSON only."),
@@ -320,8 +318,8 @@ class CompletionJudgeAgent:
             "interaction": persona["interaction"],
             "intent": persona["intent"],
             "goal": goal,
-            "emotion_value": emotion_value,
-            "threshold": threshold,
+            "emotion": emotion_score.get("value", 0.0),
+            "threshold": emotion_threshold.get("lower", -0.4),
             "summary": summary or "",
             "history": history_text,
         }).content.strip()
@@ -336,21 +334,20 @@ class CompletionJudgeAgent:
         return result
 
 
-# ---------- Emotion critic & user agent ----------
+# ---------- User Agent (RL scorer + action planner) ----------
 
 
 @dataclass
-class EmotionCritic:
-    def __init__(self, model: BaseChatModel):
-        self.model = model
+class UserAgent:
+    model: BaseChatModel
 
-    def initialize(self, persona: PersonaDict) -> Tuple[float, float, str]:
+    def derive_emotion_model(self, persona: PersonaDict) -> Tuple[EmotionThreshold, EmotionScore, str]:
         sys_prompt = (
-            "You are calibrating an emotion tracker for a simulated car shopper. "
-            "Return a baseline emotion value in [-1, 1] (0 = neutral) and a lower bound threshold in [-1, 0]. "
-            "The threshold indicates how low the emotion value can drop before the user becomes too frustrated to continue. "
-            "Consider how easily this persona becomes impatient or disengages. "
-            "Return JSON only: {{\"emotion_value\": <float>, \"threshold\": <float>, \"rationale\": <string>}}"
+            "Calibrate the scalar emotion model for a simulated car shopper using their persona facets. "
+            "Emotion value ranges from -1 (furious) to 1 (delighted); 0 is neutral. "
+            "Set a single lower-bound disengagement threshold: higher (e.g., -0.1) means they disengage quickly, lower (e.g., -0.7) means they are patient."
+            "Most personas begin at 0 unless the seed implies prior satisfaction or frustration."
+            "Return JSON only: {{\"threshold\": <float>, \"initial_value\": <float>, \"notes\": <string>}}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
@@ -365,39 +362,50 @@ class EmotionCritic:
             "interaction": persona["interaction"],
             "intent": persona["intent"],
         }).content.strip()
-        value, threshold, rationale = 0.0, -0.6, ""
+        threshold: EmotionThreshold = {"lower": -0.4}
+        score: EmotionScore = {"value": 0.0}
+        notes = ""
         try:
             data = json.loads(raw)
-            value = float(data.get("emotion_value", 0.0))
-            threshold = float(data.get("threshold", -0.6))
-            rationale = str(data.get("rationale", "")).strip()
+            if "threshold" in data:
+                threshold["lower"] = _clamp(float(data.get("threshold", threshold["lower"])), -0.9, 0.4)
+            if "initial_value" in data:
+                score["value"] = _clamp(float(data.get("initial_value", score["value"])))
+            notes = str(data.get("notes", "")).strip()
         except Exception:
-            rationale = "Emotion initialization fallback applied."
-        value = _clamp(value, -1.0, 1.0)
-        threshold = _clamp(threshold, -1.0, 0.0)
-        return value, threshold, rationale
+            notes = "Emotion calibration fallback used due to parsing error."
+        return threshold, score, notes
 
-    def update(
+    def update_emotion_score(
         self,
         persona: PersonaDict,
         summary: str,
-        previous_turn: Optional[Turn],
         history: List[HistoryMessage],
-        previous_emotion: float,
-        threshold: float,
-    ) -> EmotionSnapshot:
+        prev_score: EmotionScore,
+        last_turn: Optional[Turn],
+        last_rationale: Optional[str],
+        threshold: EmotionThreshold,
+        ui_after: str,
+    ) -> Tuple[EmotionScore, float, str]:
         sys_prompt = (
-            "You score the shopper's current emotion before their next turn. "
-            "Analyze how well the assistant just supported the shopper and how the shopper reacted. "
-            "Ignore superficial tone; rely on whether the assistant satisfied requests, the UI results, and the user's chosen actions. "
-            "Return an emotion delta in [-0.25, 0.25] that will be added to the previous value (clamped to [-1, 1]). "
-            "Provide two rationales: one for why the delta is calculated and one for how the resulting emotion value explains the shopper's upcoming behavior. "
-            "Return JSON only: {{\"delta\": <float>, \"delta_rationale\": <string>, \"behavior_rationale\": <string>}}"
+            "Update the shopper's scalar emotion value before they respond to the assistant. "
+            "Emotion value is in [-1, 1]; -1 is furious, 1 is thrilled. "
+            "Focus on whether the assistant satisfied the shopper's most recent request and what the UI now shows. "
+            "Never adjust the score purely because the shopper's words sound positive or negative; treat tone only as a clue to their goals. "
+            "Use persona facets, the running summary, truncated conversation history, and the last user/assistant exchange plus resulting UI actions. "
+            "Account for the current emotion value and disengagement threshold ({threshold_lower}). "
+            "Return a delta between -0.4 and 0.4. "
+            "Explain both (a) why the delta was chosen and (b) how the resulting emotion value will influence the shopper's upcoming message and UI actions. "
+            "Return JSON only: {{\"delta\": <float>, \"rationale\": <string>}}"
         )
         history_text = "\n".join(
             f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
         ) or "No prior turns."
-        turn_payload = previous_turn or {}
+        turn_obj = last_turn or {}
+        last_user = str(turn_obj.get("user_text", "")).strip()
+        last_assistant = str(turn_obj.get("assistant_text", "")).strip()
+        actions = turn_obj.get("actions", []) or []
+        actions_text = json.dumps(actions, ensure_ascii=False)
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
             ("human",
@@ -405,47 +413,42 @@ class EmotionCritic:
              "- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}\n\n"
              "Conversation summary:\n{summary}\n\n"
              "Conversation history:\n{history}\n\n"
-             "Previous emotion value: {previous_value}\n"
-             "Lower bound threshold: {threshold}\n"
-             "Latest turn data: {turn}\n\n"
+             "Previous emotion value: {prev}\n"
+             "Last user request: {last_user}\n"
+             "Assistant reply: {last_assistant}\n"
+             "UI after their actions: {ui_after}\n"
+             "User actions executed: {actions}\n"
+             "User agent rationale for that turn: {notes}\n"
+             "Disengagement threshold (lower bound): {threshold}\n\n"
              "Return JSON only."),
         ])
         raw = (prompt | self.model).invoke({
-            "family": persona.get("family", ""),
-            "writing": persona.get("writing", ""),
-            "interaction": persona.get("interaction", ""),
-            "intent": persona.get("intent", ""),
+            "family": persona["family"],
+            "writing": persona["writing"],
+            "interaction": persona["interaction"],
+            "intent": persona["intent"],
             "summary": summary or "",
             "history": history_text,
-            "previous_value": previous_emotion,
+            "prev": prev_score,
+            "last_user": last_user or "No prior user message.",
+            "last_assistant": last_assistant or "Assistant response unavailable.",
+            "ui_after": ui_after or "UI state unchanged.",
+            "actions": actions_text,
+            "notes": last_rationale or "None provided",
             "threshold": threshold,
-            "turn": turn_payload,
+            "threshold_lower": threshold.get("lower", -0.4),
         }).content.strip()
         delta = 0.0
         rationale = ""
-        behavior = ""
         try:
             data = json.loads(raw)
-            delta = float(data.get("delta", 0.0))
-            rationale = str(data.get("delta_rationale", "")).strip()
-            behavior = str(data.get("behavior_rationale", "")).strip()
+            delta = _clamp(float(data.get("delta", 0.0)), -0.4, 0.4)
+            rationale = str(data.get("rationale", "")).strip()
         except Exception:
-            rationale = "Emotion critic returned non-JSON; defaulting to neutral delta."
-        delta = _clamp(delta, -0.25, 0.25)
-        new_value = _clamp(previous_emotion + delta, -1.0, 1.0)
-        combined_rationale = (
-            f"Delta rationale: {rationale or 'n/a'}. Behavior rationale: {behavior or 'n/a'}."
-        )
-        return {
-            "value": new_value,
-            "delta": delta,
-            "threshold": threshold,
-            "rationale": combined_rationale,
-        }
+            rationale = f"Emotion critic returned non-JSON; keeping previous score. Raw: {raw[:200]}"
+        new_value = _clamp(prev_score.get("value", 0.0) + delta)
+        return {"value": new_value}, delta, rationale
 
-
-class UserAgent:
-    model: BaseChatModel
 
     def produce(
         self,
@@ -453,9 +456,10 @@ class UserAgent:
         summary: str,
         ui_description: str,
         goal: Dict[str, Any],
-        emotion_value: float,
-        emotion_delta: float,
-        threshold: float,
+        emotion_threshold: EmotionThreshold,
+        emotion_score: EmotionScore,
+        emotion_delta: Optional[float],
+        emotion_delta_rationale: Optional[str],
         available_actions: List[str],
         last_assistant: str,
         history: List[HistoryMessage],
@@ -463,12 +467,11 @@ class UserAgent:
         reminder: Optional[str] = None,
     ) -> Tuple[str, List[Dict[str, Any]], str]:
         sys_prompt = (
-            "You simulate a human car shopper. Use natural, varied sentences matching the persona. "
-            "Incorporate the running summary, UI state, last assistant message, and current emotion value. "
-            "When there is no actionable UI element, articulate needs explicitly. Always keep text under 120 words."
+            "You simulate a human car shopper. Use natural, varied sentences matching the persona. Incorporate the running summary, "
+            "UI state, emotion value, and last assistant message. When there is no actionable UI element, articulate needs explicitly. Always keep text under 120 words."
         )
         action_guide = "\n".join([
-            "- CLICK_CARD: open the vehicle detail modal for the given carousel index (0-2). Always specify which card number you tap.",
+            "- CLICK_CARD: open the vehicle detail modal for the given carousel index (0-2).",
             "- CLOSE_DETAIL: close the currently open vehicle detail modal.",
             "- TOGGLE_FAVORITE: add/remove the highlighted vehicle from favorites (requires index).",
             "- CAROUSEL_LEFT / CAROUSEL_RIGHT: move the vehicle carousel backward or forward to see different cars.",
@@ -477,13 +480,15 @@ class UserAgent:
             "- SET_MILEAGE / SET_PRICE_BAND: adjust numeric search constraints.",
             "- OPEN_FILTER_MENU / CLOSE_FILTER_MENU: open or close the filter drawer.",
             "- SHOW_FAVORITES / HIDE_FAVORITES: switch between favorites-only and all results.",
-            "- STOP_POSITIVE: end the session happily when everything the persona needs is achieved.",
-            "- STOP_NEGATIVE: end the session in frustration when emotion value dips below the threshold.",
-            "- QUICK_REPLY: only use when you actually click a quick-reply button. Report the exact button text as the value.",
+            "- QUICK_REPLY: press one of the assistant's quick reply chips (include a value field).",
+            "- STOP_NEGATIVE: end the session because the shopper is frustrated or disengaging.",
+            "- STOP_POSITIVE: end the session joyfully after achieving all shopping goals.",
         ])
         instructions = (
-            "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, CAROUSEL_LEFT, CAROUSEL_RIGHT, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, STOP_POSITIVE, STOP_NEGATIVE, QUICK_REPLY)."
-            "If you choose a quick reply button, add an action {{\"type\": \"QUICK_REPLY\", \"value\": <button text>}} and set user_text exactly to that text."
+            "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, CAROUSEL_LEFT, CAROUSEL_RIGHT, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, QUICK_REPLY, STOP_NEGATIVE, STOP_POSITIVE)."
+            "Use STOP_NEGATIVE only when the shopper is giving up from low emotion or impatience, and STOP_POSITIVE only when the intent feels completely satisfied and the emotion value is at its peak."
+            "If you choose a quick reply, set user_text exactly to that text, include a single QUICK_REPLY action with a value field describing the button label, and avoid conflicting actions."
+            "Always include a decision_rationale string explaining how the current emotion value, the latest delta, and persona facets shaped the message and UI plan."
             "Return JSON only: {{\"user_text\": <string>, \"actions\": <list>, \"decision_rationale\": <string>}}"
         )
         reminder_msg = reminder or ""
@@ -491,20 +496,21 @@ class UserAgent:
             f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
         ) or "No prior turns."
         quick_reply_text = ", ".join(quick_replies or []) if quick_replies else "None"
+        delta_str = "{:+.2f}".format(emotion_delta) if emotion_delta is not None else "+0.00"
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
             ("system", "Persona facets:\n- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}"),
             ("system", "Conversation summary so far:\n{summary}"),
             ("system", "Conversation history (chronological):\n{history}"),
             ("system", "UI context:\n{ui_description}"),
-            ("system", "Emotion tracker: value={emotion_value} | delta={emotion_delta} | threshold={threshold}"),
+            ("system", "Emotion tracker: value={emotion_value} | delta={emotion_delta} | threshold(lower)={emotion_threshold} | delta_rationale={emotion_delta_rationale}"),
             ("system", "Available UI actions right now: {available}"),
             ("system", "UI action guide:\n{action_guide}"),
-            ("system", "Quick reply buttons visible: {quick_replies}. If one fits perfectly, click it by echoing the same text."),
+            ("system", "Quick reply buttons visible: {quick_replies}. If one fits perfectly, you can click it by echoing the same text."),
             ("system", "Judge reminder: {reminder}"),
             ("human",
              "Assistant just said:\n{assistant}\n\n"
-             "Craft the next user message, UI action plan, and explain your decision. {instructions}"),
+             "Craft the next user message and UI action plan. {instructions}"),
         ]).partial(instructions=instructions)
         raw = (prompt | self.model).invoke({
             "family": persona["family"],
@@ -514,21 +520,22 @@ class UserAgent:
             "summary": summary or "",
             "history": history_text,
             "ui_description": ui_description,
-            "emotion_value": emotion_value,
-            "emotion_delta": emotion_delta,
-            "threshold": threshold,
+            "emotion_value": emotion_score.get("value", 0.0),
+            "emotion_delta": delta_str,
+            "emotion_threshold": emotion_threshold.get("lower", -0.4),
+            "emotion_delta_rationale": emotion_delta_rationale or "None recorded",
             "available": available_actions,
             "action_guide": action_guide,
             "quick_replies": quick_reply_text,
             "assistant": last_assistant or "",
             "reminder": reminder_msg or "None",
         }).content.strip()
-        user_text, rationale = "", ""
+        user_text, notes = "", ""
         actions: List[Dict[str, Any]] = []
         try:
             data = json.loads(raw)
             user_text = str(data.get("user_text", "")).strip()
-            rationale = str(data.get("decision_rationale", "")).strip()
+            notes = str(data.get("decision_rationale", data.get("notes", ""))).strip()
             raw_actions = data.get("actions", [])
             if isinstance(raw_actions, dict):
                 raw_actions = [raw_actions]
@@ -544,50 +551,11 @@ class UserAgent:
                     actions.append({"type": a.upper()})
         except Exception:
             user_text = raw
-            rationale = "Fallback: non-JSON user plan; defaulting to STOP_NEGATIVE."
-            actions = [{"type": "STOP_NEGATIVE"}]
-        quick_reply_options = {opt.strip(): opt.strip() for opt in (quick_replies or []) if isinstance(opt, str)}
-        quick_reply_used: Optional[str] = None
-        for action in actions:
-            t = str(action.get("type", "")).upper()
-            if t == "CLICK_CARD":
-                idx_raw = action.get("index")
-                if isinstance(idx_raw, str) and idx_raw.isdigit():
-                    action["index"] = int(idx_raw)
-                if isinstance(action.get("index"), (int, float)):
-                    idx_int = max(0, int(action["index"]))
-                    action["index"] = idx_int
-                    action["label"] = f"#{idx_int + 1}"
-            elif t == "QUICK_REPLY":
-                value = action.get("value") or action.get("label") or action.get("text") or action.get("option")
-                if isinstance(value, (int, float)):
-                    value = str(value)
-                if isinstance(value, str):
-                    value = value.strip()
-                if not value and isinstance(user_text, str) and user_text.strip():
-                    value = user_text.strip()
-                if isinstance(value, str) and value:
-                    snapped = quick_reply_options.get(value) or quick_reply_options.get(value.strip())
-                    if snapped:
-                        value = snapped
-                    action["value"] = value
-                    action["label"] = value
-                    quick_reply_used = value
-        if quick_reply_used:
-            if isinstance(user_text, str):
-                if user_text.strip() != quick_reply_used:
-                    user_text = quick_reply_used
-            else:
-                user_text = quick_reply_used
-        elif isinstance(user_text, str) and user_text.strip() in quick_reply_options:
-            quick_value = quick_reply_options[user_text.strip()]
-            actions.append({"type": "QUICK_REPLY", "value": quick_value, "label": quick_value})
-            quick_reply_used = quick_value
-        for action in actions:
-            if action.get("type") == "CLICK_CARD" and "label" not in action and isinstance(action.get("index"), (int, float)):
-                idx_int = int(action["index"])
-                action["label"] = f"#{idx_int + 1}"
-        return user_text, actions, rationale
+            notes = "Fallback: non-JSON user action payload; no structured UI actions captured."
+            actions = []
+        return user_text, actions, notes
+
+
 
 
 # ---------- UI utilities ----------
@@ -780,7 +748,7 @@ def list_available_actions(ui: UIState) -> List[str]:
         if start + visible < total:
             actions.append("CAROUSEL_RIGHT")
     actions.extend(["SHOW_FAVORITES", "HIDE_FAVORITES"])
-    actions.extend(["STOP_POSITIVE", "STOP_NEGATIVE"])
+    actions.extend(["STOP_NEGATIVE", "STOP_POSITIVE"])
     return sorted(set(actions))
 
 
@@ -806,7 +774,6 @@ class GraphRunner:
         self.interaction_agent = PersonaAgent("Interaction style (clarification, coherence)", chat_model)
         self.intent_agent = PersonaAgent("Intent (market research, checking, comparing)", chat_model)
 
-        self.emotion_critic = EmotionCritic(chat_model)
         self.user_agent = UserAgent(chat_model)
         self.summary_agent = SummaryAgent(chat_model)
         self.judge_agent = JudgeAgent(chat_model)
@@ -852,92 +819,58 @@ class GraphRunner:
 
         def n_user(state: SimState):
             persona = state["persona"]
-            updates: Dict[str, Any] = {}
-            summary = state.get("conversation_summary", "")
-            history_turns = state.get("history", [])
-            history_messages = build_truncated_history(history_turns)
-            emotion_value = state.get("emotion_value")
             threshold = state.get("emotion_threshold")
-            delta = state.get("emotion_delta") or 0.0
-            if emotion_value is None or threshold is None:
-                value, thresh, rationale = self.emotion_critic.initialize(persona)
+            score = state.get("emotion_score")
+            updates: Dict[str, Any] = {}
+            if threshold is None or score is None:
+                threshold, score, init_notes = self.user_agent.derive_emotion_model(persona)
                 updates.update({
-                    "emotion_value": value,
-                    "emotion_threshold": thresh,
-                    "emotion_delta": 0.0,
-                    "emotion_rationale": rationale,
-                    "emotion_last_step": state.get("step", 0),
-                    "last_emotion_event": {"value": value, "delta": 0.0, "threshold": thresh, "rationale": rationale},
-                })
-                emotion_value = value
-                threshold = thresh
-                delta = 0.0
-                if self.verbose:
-                    print("\n=== Emotion initialized ===")
-                    print(f"Emotion value: {value:.3f} | Threshold: {thresh:.3f}")
-                    if rationale:
-                        print(f"Rationale: {rationale}")
-                if self.event_callback:
-                    self.event_callback(
-                        "emotion_init",
-                        {"value": emotion_value, "threshold": threshold, "rationale": rationale},
-                    )
-            elif state.get("step", 0) > 0 and state.get("emotion_last_step") != state.get("step"):
-                previous_turn = history_turns[-1] if history_turns else None
-                snapshot = self.emotion_critic.update(
-                    persona=persona,
-                    summary=summary,
-                    previous_turn=previous_turn,
-                    history=history_messages,
-                    previous_emotion=emotion_value,
-                    threshold=threshold or -0.6,
-                )
-                emotion_value = snapshot["value"]
-                delta = snapshot.get("delta", 0.0)
-                updates.update({
-                    "emotion_value": emotion_value,
-                    "emotion_delta": delta,
-                    "emotion_rationale": snapshot.get("rationale"),
-                    "emotion_last_step": state.get("step"),
-                    "last_emotion_event": snapshot,
+                    "emotion_threshold": threshold,
+                    "emotion_score": score,
+                    "emotion_rationale": init_notes,
                 })
                 if self.verbose:
-                    print("\n=== Emotion update ===")
-                    print(
-                        f"Value: {emotion_value:.3f} | Delta: {delta:+.3f} | Threshold: {threshold:.3f}"
-                    )
-                    if snapshot.get("rationale"):
-                        print(f"Rationale: {snapshot['rationale']}")
+                    print("\n=== Emotion model initialized ===")
+                    print(f"Threshold (lower bound): {threshold}")
+                    print(f"Initial emotion value: {score}")
+                    if init_notes:
+                        print(f"Notes: {init_notes}")
                 if self.event_callback:
-                    self.event_callback("emotion_update", snapshot)
-            emotion_value = emotion_value if emotion_value is not None else 0.0
-            threshold = threshold if threshold is not None else -0.6
+                    payload: Dict[str, Any] = {
+                        "threshold": dict(threshold or {}),
+                        "score": dict(score or {}),
+                        "notes": init_notes,
+                    }
+                    self.event_callback("emotion_init", payload)
+            summary = state.get("conversation_summary", "")
             ui_desc = describe_ui_state(state["ui"], state.get("vehicles", []))
             available_actions = list_available_actions(state["ui"])
-            if state.get("quick_replies"):
+            quick_replies = state.get("quick_replies") or []
+            if quick_replies:
                 available_actions = sorted(set(available_actions + ["QUICK_REPLY"]))
             last_assistant = state.get("last_assistant", "")
-            quick_replies = state.get("quick_replies")
+            history_messages = build_truncated_history(state.get("history", []))
             reminder = None
             judge_result: Optional[Dict[str, Any]] = None
-            user_text, actions, rationale = "", [], ""
+            user_text, actions, notes = "", [], ""
             for _attempt in range(2):
-                user_text, actions, rationale = self.user_agent.produce(
+                user_text, actions, notes = self.user_agent.produce(
                     persona=persona,
                     summary=summary,
                     ui_description=ui_desc,
                     goal=state["goal"],
-                    emotion_value=emotion_value,
-                    emotion_delta=delta,
-                    threshold=threshold,
+                    emotion_threshold=threshold or state.get("emotion_threshold", {"lower": -0.4}),
+                    emotion_score=score or state.get("emotion_score", {"value": 0.0}),
+                    emotion_delta=state.get("emotion_delta"),
+                    emotion_delta_rationale=state.get("emotion_delta_rationale"),
                     available_actions=available_actions,
                     last_assistant=last_assistant,
                     history=history_messages,
-                    quick_replies=quick_replies,
+                    quick_replies=quick_replies or None,
                     reminder=reminder,
                 )
-                if any((a.get("type") or "").upper() == "QUICK_REPLY" for a in actions):
-                    judge_result = {"score": 1.0, "passes": True, "skipped": "quick_reply"}
+                if any((str(a.get("type", "")).upper() if isinstance(a, dict) else str(a).upper()) == "QUICK_REPLY" for a in (actions or [])):
+                    judge_result = {"score": 1.0, "passes": True, "feedback": "Quick reply selected; auto-approved.", "reminder": ""}
                     break
                 judge_result = self.judge_agent.evaluate(persona, state["goal"], summary, user_text, actions)
                 if judge_result.get("score", 0.0) >= self.judge_agent.threshold:
@@ -946,10 +879,11 @@ class GraphRunner:
             updates["backend_response"] = {
                 "pending_user_text": user_text,
                 "pending_actions": actions,
-                "decision_rationale": rationale,
+                "notes": notes,
             }
             updates["last_judge"] = judge_result
             return updates
+
 
         def n_ui(state: SimState):
             pending = state["backend_response"]
@@ -981,8 +915,10 @@ class GraphRunner:
                 "judge": state.get("last_judge"),
             }
             resp = self.api.chat(message=user_text, ui_context=ui_ctx, meta=meta)
-            vehicles = resp.get("vehicles")
-            if not vehicles:
+            vehicles_payload = resp.get("vehicles")
+            if vehicles_payload:
+                vehicles = vehicles_payload
+            else:
                 vehicles = state.get("vehicles", [])
             total = len(vehicles)
             ui_updated: UIState = dict(state["ui"])
@@ -1003,21 +939,18 @@ class GraphRunner:
                 "assistant_text": assistant_text,
                 "actions": pending.get("pending_actions", []),
                 "visible_indices": visible_indices,
-                "notes": pending.get("decision_rationale", ""),
-                "decision_rationale": pending.get("decision_rationale"),
+                "notes": pending.get("notes", ""),
             }
             if self.verbose:
                 turn_no = state["step"] + 1
                 print(f"\n--- Turn {turn_no} ---")
-                if turn.get("decision_rationale"):
-                    print(f"Decision rationale: {turn['decision_rationale']}")
+                if turn["notes"]:
+                    print(f"Notes: {turn['notes']}")
                 print(f"User: {turn['user_text']}")
                 print(f"Actions: {turn['actions']}")
                 print(f"Assistant: {assistant_text if len(assistant_text) < 2000 else assistant_text[:2000] + '…'}")
                 print("-----")
-                print(
-                    f"Emotion: value={state.get('emotion_value')} | delta={state.get('emotion_delta')} | threshold={state.get('emotion_threshold')}"
-                )
+                print(f"Emotion: {state.get('emotion_score')} | Threshold: {state.get('emotion_threshold')}")
                 print(f"Judge: {state.get('last_judge')}")
             hist = state["history"] + [turn]
             self.api.log_event("assistant_response", {
@@ -1026,6 +959,7 @@ class GraphRunner:
                 "step": state["step"],
             })
             resp_copy = dict(resp)
+            resp_copy["vehicles"] = vehicles
             return {
                 "backend_response": resp_copy,
                 "ui": ui_updated,
@@ -1043,77 +977,103 @@ class GraphRunner:
             turn = state["history"][-1]
             summary_prev = state.get("conversation_summary", "")
             summary, summary_notes = self.summary_agent.update(summary_prev, turn, state["ui"], state.get("vehicles", []))
-            emotion_value = state.get("emotion_value")
-            threshold = state.get("emotion_threshold") if state.get("emotion_threshold") is not None else -0.6
-            emotion_rationale = state.get("emotion_rationale")
-            stop_result: Optional[StopResult] = None
-            completion_review: Optional[Dict[str, Any]] = None
-            if state.get("stop_result"):
-                stop_result = state["stop_result"]
-                completion_review = state.get("completion_review")
-            else:
-                if emotion_value is not None and emotion_value <= threshold:
-                    stop_result = {
-                        "kind": "negative",
-                        "emotion_value": emotion_value,
-                        "threshold": threshold,
-                        "rationale": emotion_rationale or "Emotion value dropped below threshold.",
-                        "at_step": state["step"],
-                    }
-                elif emotion_value is not None and emotion_value >= 0.999:
-                    completion_review = self.completion_judge.evaluate(
-                        persona=state["persona"],
-                        goal=state["goal"],
-                        summary=summary,
-                        history=build_truncated_history(state.get("history", [])),
-                        emotion_value=emotion_value,
-                        threshold=threshold,
-                    )
-                    if completion_review.get("should_end"):
-                        stop_result = {
-                            "kind": "positive",
-                            "emotion_value": emotion_value,
-                            "threshold": threshold,
-                            "rationale": completion_review.get("reason") or emotion_rationale or "Emotion peaked at 1 with completion approval.",
-                            "at_step": state["step"],
-                        }
             updates: Dict[str, Any] = {
                 "conversation_summary": summary,
                 "summary_version": state.get("summary_version", 0) + 1,
                 "summary_notes": summary_notes,
+            }
+            if self.verbose and summary_notes:
+                print(f"Summary notes: {summary_notes}")
+            self.api.log_event("summary_update", {
+                "summary_excerpt": summary[:200],
+                "notes": summary_notes,
+                "step": state["step"],
+            })
+            return updates
+
+
+        def n_emotion_update(state: SimState):
+            completed_steps = int(state.get("step") or 0)
+            last_processed = int(state.get("emotion_last_step") or -1)
+            history = state.get("history") or []
+            if completed_steps <= last_processed:
+                return {}
+            if not history:
+                return {"emotion_last_step": completed_steps}
+            threshold = state.get("emotion_threshold") or {"lower": -0.4}
+            score = state.get("emotion_score") or {"value": 0.0}
+            last_turn = history[-1]
+            summary = state.get("conversation_summary", "")
+            history_messages = build_truncated_history(history)
+            ui_snapshot = describe_ui_state(state["ui"], state.get("vehicles", []))
+            new_score, delta, rationale = self.user_agent.update_emotion_score(
+                persona=state["persona"],
+                summary=summary,
+                history=history_messages,
+                prev_score=score,
+                last_turn=last_turn,
+                last_rationale=last_turn.get("notes"),
+                threshold=threshold,
+                ui_after=ui_snapshot,
+            )
+            completion_review: Optional[Dict[str, Any]] = None
+            stop_result: Optional[StopResult] = None
+            completion_gate = 0.999
+            if new_score.get("value", 0.0) >= completion_gate:
+                completion_review = self.completion_judge.evaluate(
+                    persona=state["persona"],
+                    goal=state["goal"],
+                    summary=summary,
+                    history=history_messages,
+                    emotion_score=new_score,
+                    emotion_threshold=threshold,
+                )
+                if completion_review.get("should_end"):
+                    stop_result = {
+                        "kind": "STOP_POSITIVE",
+                        "score": new_score,
+                        "threshold": threshold,
+                        "rationale": completion_review.get("reason") or rationale or "Goals satisfied; completion judge approved.",
+                        "at_step": state["step"],
+                    }
+            if stop_result is None and new_score.get("value", 0.0) <= threshold.get("lower", -0.4):
+                stop_result = {
+                    "kind": "STOP_NEGATIVE",
+                    "score": new_score,
+                    "threshold": threshold,
+                    "rationale": rationale or "Emotion value dropped below disengagement threshold.",
+                    "at_step": state["step"],
+                }
+            updates: Dict[str, Any] = {
+                "emotion_score": new_score,
+                "emotion_delta": delta,
+                "emotion_delta_rationale": rationale,
+                "emotion_rationale": rationale,
                 "stop_result": stop_result,
                 "completion_review": completion_review,
+                "emotion_last_step": completed_steps,
             }
-            if emotion_rationale and self.verbose:
-                print(f"Emotion rationale: {emotion_rationale}")
-            self.api.log_event("post_turn_metrics", {
-                "summary_excerpt": summary[:200],
-                "emotion": {
-                    "value": emotion_value,
-                    "delta": state.get("emotion_delta"),
-                    "threshold": threshold,
-                    "rationale": emotion_rationale,
-                },
-                "judge": state.get("last_judge"),
+            if self.verbose and rationale:
+                print(f"Emotion update: value={new_score.get('value')} delta={delta:+.2f} -> {rationale}")
+            self.api.log_event("emotion_update", {
+                "score": new_score,
+                "delta": delta,
+                "threshold": threshold,
+                "rationale": rationale,
                 "completion_review": completion_review,
                 "step": state["step"],
             })
             if state.get("demo_mode"):
                 snapshot = {
                     "step": state["step"],
-                    "user_text": turn["user_text"],
-                    "assistant_text": turn["assistant_text"],
-                    "actions": turn["actions"],
-                    "decision_rationale": turn.get("decision_rationale"),
+                    "user_text": last_turn.get("user_text"),
+                    "assistant_text": last_turn.get("assistant_text"),
+                    "actions": last_turn.get("actions"),
                     "summary": summary,
-                    "emotion": {
-                        "value": emotion_value,
-                        "delta": state.get("emotion_delta"),
-                        "threshold": threshold,
-                        "rationale": emotion_rationale,
-                    },
+                    "emotion": new_score,
+                    "delta": delta,
                     "judge": state.get("last_judge"),
-                    "rationale": emotion_rationale,
+                    "rationale": rationale,
                     "quick_replies": state.get("quick_replies"),
                     "completion_review": completion_review,
                     "vehicles": (state.get("vehicles", []) or [])[:3],
@@ -1123,6 +1083,7 @@ class GraphRunner:
                     self.event_callback("turn", snapshot)
             return updates
 
+
         def n_check_stop(state: SimState):
             goal = state["goal"]
             step_limit = int(goal.get("max_steps", 8))
@@ -1131,19 +1092,24 @@ class GraphRunner:
             stop = None
             if state.get("stop_result"):
                 sr = state["stop_result"]
-                stop = (
-                    f"Stop ({sr['kind']}) — emotion={sr.get('emotion_value')} threshold={sr.get('threshold')}"
-                )
+                stop = f"Stop ({sr['kind']}) — emotion={sr['score']} threshold={sr['threshold']}"
             if stop is None:
                 if state["step"] >= step_limit:
                     stop = f"Reached step limit {step_limit}"
-                elif any((a.get("type") or "").upper() in {"STOP_POSITIVE", "STOP_NEGATIVE"} for a in last_actions):
-                    action = next(
-                        (a for a in last_actions if (a.get("type") or "").upper() in {"STOP_POSITIVE", "STOP_NEGATIVE"}),
-                        {},
-                    )
-                    stop = f"User chose {action.get('type', 'STOP')}"
-                elif selection is not None and goal.get("stop_on_selection", True):
+                else:
+                    manual_stop = None
+                    for a in last_actions:
+                        t = (a.get("type") if isinstance(a, dict) else None) or ""
+                        upper = str(t).upper()
+                        if upper == "STOP_NEGATIVE":
+                            manual_stop = "User decided to stop (negative)"
+                            break
+                        if upper == "STOP_POSITIVE":
+                            manual_stop = "User decided to stop (positive)"
+                            break
+                    if manual_stop:
+                        stop = manual_stop
+                if stop is None and selection is not None and goal.get("stop_on_selection", True):
                     stop = f"Selected item index {selection}"
             if stop:
                 self.api.log_event("session_stop", {
@@ -1166,6 +1132,7 @@ class GraphRunner:
         g.add_node("ui", n_ui)
         g.add_node("backend", n_call_backend)
         g.add_node("post_backend", n_post_backend)
+        g.add_node("emotion", n_emotion_update)
         g.add_node("check_stop", n_check_stop)
 
         g.add_edge(START, "family")
@@ -1192,7 +1159,8 @@ class GraphRunner:
         g.add_edge("user", "ui")
         g.add_edge("ui", "backend")
         g.add_edge("backend", "post_backend")
-        g.add_edge("post_backend", "check_stop")
+        g.add_edge("post_backend", "emotion")
+        g.add_edge("emotion", "check_stop")
 
         def route_check(state: SimState) -> str:
             return END if state.get("stop_reason") else "user"
@@ -1217,11 +1185,12 @@ class GraphRunner:
             "persona_interaction_draft": None,
             "persona_intent_draft": None,
             "persona": {"family": "", "writing": "", "interaction": "", "intent": ""},
-            "emotion_value": None,
             "emotion_threshold": None,
-            "emotion_delta": None,
+            "emotion_score": None,
             "emotion_rationale": None,
-            "emotion_last_step": None,
+            "emotion_delta": None,
+            "emotion_delta_rationale": None,
+            "emotion_last_step": -1,
             "goal": {"max_steps": max_steps, "stop_on_selection": False},
             "ui": {
                 "total": 0,
@@ -1257,7 +1226,6 @@ class GraphRunner:
             "completion_review": None,
             "demo_mode": demo_mode,
             "demo_snapshots": [],
-            "last_emotion_event": None,
         }
         tid = thread_id or "sim-thread"
         state = self.graph.invoke(

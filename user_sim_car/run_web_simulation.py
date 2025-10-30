@@ -62,15 +62,15 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
     snapshots = payload.get("demo_snapshots") or []
     serializable_snaps = []
     for snap in snapshots:
-                serializable_snaps.append(
-                    {
-                        "step": snap.get("step"),
-                        "user_text": snap.get("user_text", ""),
-                        "assistant_text": snap.get("assistant_text", ""),
-                        "actions": snap.get("actions", []),
-                        "decision_rationale": snap.get("decision_rationale"),
-                        "summary": snap.get("summary", ""),
-                        "emotion": snap.get("emotion", {}),
+        serializable_snaps.append(
+            {
+                "step": snap.get("step"),
+                "user_text": snap.get("user_text", ""),
+                "assistant_text": snap.get("assistant_text", ""),
+                "actions": snap.get("actions", []),
+                "summary": snap.get("summary", ""),
+                "emotion": snap.get("emotion"),
+                "delta": snap.get("delta"),
                 "judge": snap.get("judge"),
                 "rationale": snap.get("rationale"),
                 "quick_replies": snap.get("quick_replies"),
@@ -96,11 +96,12 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         "conversation_summary": payload.get("conversation_summary"),
         "summary_version": payload.get("summary_version"),
         "summary_notes": payload.get("summary_notes"),
-        "emotion_value": payload.get("emotion_value"),
+        "emotion_score": payload.get("emotion_score"),
         "emotion_threshold": payload.get("emotion_threshold"),
-        "emotion_delta": payload.get("emotion_delta"),
         "emotion_rationale": payload.get("emotion_rationale"),
-        "last_emotion_event": payload.get("last_emotion_event"),
+        "emotion_delta": payload.get("emotion_delta"),
+        "emotion_delta_rationale": payload.get("emotion_delta_rationale"),
+        "discount_factor": payload.get("discount_factor"),
         "last_judge": judge,
         "persona": {
             "family": persona.get("family"),
@@ -131,21 +132,20 @@ def main() -> None:
                 "user_text": payload.get("user_text", ""),
                 "assistant_text": payload.get("assistant_text", ""),
                 "actions": payload.get("actions", []),
-                "decision_rationale": payload.get("decision_rationale"),
                 "summary": payload.get("summary", ""),
                 "emotion": payload.get("emotion"),
+                "delta": payload.get("delta"),
                 "judge": payload.get("judge"),
                 "rationale": payload.get("rationale"),
                 "quick_replies": payload.get("quick_replies"),
                 "completion_review": payload.get("completion_review"),
                 "vehicles": payload.get("vehicles"),
             }
-        elif event_type in {"emotion_init", "emotion_update"}:
+        elif event_type == "emotion_init":
             data = {
-                "value": payload.get("value"),
-                "delta": payload.get("delta"),
                 "threshold": payload.get("threshold"),
-                "rationale": payload.get("rationale"),
+                "score": payload.get("score"),
+                "notes": payload.get("notes"),
             }
         else:
             data = payload
