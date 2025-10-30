@@ -278,10 +278,10 @@ export default function Page() {
         <aside className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-xl">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Simulation controls</h2>
-            <p className="mt-1 text-sm text-slate-400">
+            {/* <p className="mt-1 text-sm text-slate-400">
               Adjust the persona narrative or tweak the step budget. Conversations automatically stop when the emotion threshold got passed, 
               or maximum step is reached.
-            </p>
+            </p> */}
           </div>
 
           <div className="space-y-2">
@@ -335,7 +335,7 @@ export default function Page() {
               <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Steps used</dt>
               <dd className="mt-1 text-slate-100">{stepsUsed}</dd>
             </div>
-            {judgeSummary ? (
+            {/* {judgeSummary ? (
               <div>
                 <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Judge feedback</dt>
                 <dd className="mt-1 text-slate-100">
@@ -343,7 +343,7 @@ export default function Page() {
                   {judgeSummary.feedback}
                 </dd>
               </div>
-            ) : null}
+            ) : null} */}
             {personaFacets.length ? (
               <div>
                 <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Persona facets</dt>

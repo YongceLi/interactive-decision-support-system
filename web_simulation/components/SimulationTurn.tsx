@@ -217,12 +217,12 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
           <p className="mt-1 text-slate-200/90">{turn.summary}</p>
         </section> */}
 
-        {/* {turn.rationale ? (
+        {turn.rationale ? (
           <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
-            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Rescoring Rationale</div>
+            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Emotion Rationale</div>
             <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
           </section>
-        ) : null} */}
+        ) : null}
 
         <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
