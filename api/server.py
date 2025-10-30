@@ -17,6 +17,7 @@ import asyncio
 import concurrent.futures
 import json
 from sse_starlette.sse import EventSourceResponse
+import requests
 
 load_dotenv()
 
@@ -58,6 +59,56 @@ app.add_middleware(
 sessions: Dict[str, VehicleSearchState] = {}
 
 # Helper Functions
+def reverse_geocode(latitude: float, longitude: float) -> Optional[str]:
+    """
+    Convert latitude/longitude to ZIP code using OpenStreetMap Nominatim API.
+    
+    Args:
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+    
+    Returns:
+        5-digit ZIP code string, or None if geocoding fails
+    """
+    try:
+        # Use OpenStreetMap Nominatim API (free, no API key required)
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": latitude,
+            "lon": longitude,
+            "format": "json",
+            "addressdetails": 1
+        }
+        headers = {
+            "User-Agent": "IDSS-Agent/1.0"  # Required by Nominatim
+        }
+        
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        data = response.json()
+        address = data.get("address", {})
+        
+        # Try to extract ZIP code from various possible fields
+        zip_code = (
+            address.get("postcode") or
+            address.get("postal_code") or
+            address.get("zip") or
+            address.get("zipcode")
+        )
+        
+        if zip_code:
+            # Ensure it's a 5-digit ZIP code (US format)
+            # Extract first 5 digits if longer
+            zip_code = zip_code.split("-")[0].split()[0]
+            if len(zip_code) >= 5:
+                return zip_code[:5]
+        
+        return None
+    except Exception as e:
+        print(f"Error in reverse geocoding: {e}")
+        return None
+
 def get_or_create_session(session_id: Optional[str] = None) -> tuple[str, VehicleSearchState]:
     """Get existing session or create new one."""
     if session_id and session_id in sessions:
@@ -102,8 +153,22 @@ async def chat(request: ChatRequest):
         # Get or create session
         session_id, state = get_or_create_session(request.session_id)
 
+        # Prepare message - include location as a hidden chat message if provided
+        message = request.message
+        if request.latitude and request.longitude:
+            zip_code = reverse_geocode(request.latitude, request.longitude)
+            if zip_code:
+                # Prepend location message to the user's message
+                # This will be in conversation history but not shown in UI
+                location_message = f"My location is {zip_code}. "
+                message = location_message + request.message
+            else:
+                # If reverse geocoding fails, use coordinates
+                location_message = f"My location is {request.latitude}, {request.longitude}. "
+                message = location_message + request.message
+
         # Run the agent
-        updated_state = run_agent(request.message, state)
+        updated_state = run_agent(message, state)
 
         # Update session storage
         sessions[session_id] = updated_state
@@ -145,6 +210,20 @@ async def chat_stream(request: ChatRequest):
             # Get or create session
             session_id, state = get_or_create_session(request.session_id)
 
+            # Prepare message - include location as a hidden chat message if provided
+            message = request.message
+            if request.latitude and request.longitude:
+                zip_code = reverse_geocode(request.latitude, request.longitude)
+                if zip_code:
+                    # Prepend location message to the user's message
+                    # This will be in conversation history but not shown in UI
+                    location_message = f"My location is {zip_code}. "
+                    message = location_message + request.message
+                else:
+                    # If reverse geocoding fails, use coordinates
+                    location_message = f"My location is {request.latitude}, {request.longitude}. "
+                    message = location_message + request.message
+
             # Create progress queue for async communication
             progress_queue = asyncio.Queue()
 
@@ -165,7 +244,7 @@ async def chat_stream(request: ChatRequest):
             # Run agent in thread pool to avoid blocking event loop
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 # Submit agent execution to thread pool
-                future = executor.submit(run_agent, request.message, state, progress_callback)
+                future = executor.submit(run_agent, message, state, progress_callback)
 
                 # Stream progress updates while agent is running
                 while not future.done():
@@ -208,7 +287,8 @@ async def chat_stream(request: ChatRequest):
                     "session_id": session_id,
                     "interviewed": updated_state.get('interviewed', False),
                     "quick_replies": updated_state.get('quick_replies'),
-                    "suggested_followups": updated_state.get('suggested_followups', [])
+                    "suggested_followups": updated_state.get('suggested_followups', []),
+                    "comparison_table": updated_state.get('comparison_table')
                 })
             }
 

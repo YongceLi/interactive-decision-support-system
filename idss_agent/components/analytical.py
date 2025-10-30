@@ -124,33 +124,29 @@ def web_search(query: str) -> str:
 
 
 class InteractiveElements(BaseModel):
-    """Quick replies and suggestions for analytical responses."""
+    """Quick replies for analytical responses."""
     quick_replies: Optional[list[str]] = Field(
         default=None,
         description=(
-            "Short answer options (less than 5 words each) if the response asks a direct question. "
-            "Provide less than 5 options. Leave null if no direct question asked. "
+            "Short answer options (5 words or less each) if the response asks a direct question. "
+            "Provide 2-4 CONCRETE, ACTIONABLE options that directly answer the question. "
+            "Examples: ['Vehicle #1', 'Vehicle #2', 'Compare both'], ['Show photos', 'Compare pricing', 'Safety ratings'], "
+            "['Yes, show me', 'No, skip it', 'Not sure']. "
+            "Leave null if no direct question asked."
         )
-    )
-    suggested_followups: list[str] = Field(
-        description=(
-            "Suggested next user inputs (short phrases, less than 5 options) to help users continue exploration. "
-            "Should be contextually relevant to the analytical response and ask for new information."
-        ),
-        max_length=5
     )
 
 
 def generate_interactive_elements(ai_response: str, user_question: str) -> InteractiveElements:
     """
-    Generate quick replies and suggested followups for an analytical response.
+    Generate quick replies for an analytical response.
 
     Args:
         ai_response: The analytical agent's response
         user_question: The user's original question
 
     Returns:
-        InteractiveElements with quick_replies and suggested_followups
+        InteractiveElements with quick_replies (suggested_followups disabled for analytical mode)
     """
     # Get configuration
     config = get_config()
@@ -465,27 +461,27 @@ def analytical_agent(
                     interactive = generate_interactive_elements(comparison_result['summary'], user_input)
                     # Apply feature flags
                     state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
-                    state["suggested_followups"] = interactive.suggested_followups if config.features.get('enable_suggested_followups', True) else []
+                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only (agent asks questions, user answers)
                 except Exception as e:
                     logger.warning(f"Failed to generate interactive elements: {e}")
                     # Apply feature flags for fallback values
                     state["quick_replies"] = None
-                    state["suggested_followups"] = ["Tell me more about the first one", "Which is safer?", "Which is more fuel efficient?"] if config.features.get('enable_suggested_followups', True) else []
+                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only
             else:
                 # Normal response - no comparison
                 state["ai_response"] = response_content
                 state["comparison_table"] = None
 
-                # Generate interactive elements (quick replies + suggestions)
+                # Generate interactive elements (quick replies only)
                 try:
                     interactive = generate_interactive_elements(response_content, user_input)
                     # Apply feature flags
                     state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
-                    state["suggested_followups"] = interactive.suggested_followups if config.features.get('enable_suggested_followups', True) else []
+                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only (agent asks questions, user answers)
                 except Exception as e:
                     logger.warning(f"Failed to generate interactive elements: {e}")
                     state["quick_replies"] = None
-                    state["suggested_followups"] = []
+                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only
 
         # Emit progress: Answer ready
         if progress_callback:

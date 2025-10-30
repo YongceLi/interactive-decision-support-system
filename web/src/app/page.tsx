@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChatBox from '@/components/ChatBox';
 import RecommendationCarousel from '@/components/RecommendationCarousel';
 import ItemDetailModal from '@/components/ItemDetailModal';
 import FilterMenu from '@/components/FilterMenu';
 import FavoritesPage from '@/components/FavoritesPage';
+import ComparisonTable from '@/components/ComparisonTable';
 import { Vehicle } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
@@ -87,6 +88,13 @@ export default function Home() {
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
   const [favorites, setFavorites] = useState<Vehicle[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [previousView, setPreviousView] = useState<'carousel' | 'favorites' | null>(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationRequested, setLocationRequested] = useState(false);
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -138,6 +146,31 @@ export default function Home() {
     return favorites.some(v => v.id === vehicleId);
   };
 
+  // Request user location on first load
+  useEffect(() => {
+    if (!locationRequested && navigator.geolocation) {
+      setLocationRequested(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+          setLocationGranted(true);
+        },
+        (error) => {
+          console.log('Location access denied or unavailable:', error);
+          setLocationDenied(true);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+  }, [locationRequested]);
+
   // Initialize with the agent's first message
   useEffect(() => {
     if (chatMessages.length === 0) {
@@ -150,6 +183,21 @@ export default function Home() {
       setChatMessages([initialMessage]);
     }
   }, [chatMessages.length]);
+
+  // Auto-scroll chat messages to bottom when new messages arrive or loading state changes
+  useEffect(() => {
+    if (chatMessagesContainerRef.current) {
+      // Use requestAnimationFrame for smoother scrolling after DOM updates
+      requestAnimationFrame(() => {
+        if (chatMessagesContainerRef.current) {
+          chatMessagesContainerRef.current.scrollTo({
+            top: chatMessagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
+    }
+  }, [chatMessages, isLoading]);
 
   // Helper function to handle streaming response
   const handleStreamingResponse = async (response: Response) => {
@@ -231,6 +279,19 @@ export default function Home() {
     // Track latency
     const startTime = performance.now();
 
+    // Prepare request body with location if available and this is the first user message
+    const isFirstUserMessage = chatMessages.filter(m => m.role === 'user').length === 0;
+    const requestBody: any = {
+      message,
+      session_id: sessionId,
+    };
+    
+    // Include location with first user message after location is granted
+    if (isFirstUserMessage && userLocation && locationGranted) {
+      requestBody.latitude = userLocation.latitude;
+      requestBody.longitude = userLocation.longitude;
+    }
+
     try {
       // Send message to streaming endpoint
       const response = await fetch('/api/chat/stream', {
@@ -238,10 +299,7 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          message,
-          session_id: sessionId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -276,7 +334,8 @@ export default function Home() {
         content: formattedResponse,
         timestamp: new Date(),
         quick_replies: data.quick_replies,
-        suggested_followups: data.suggested_followups || []
+        suggested_followups: data.suggested_followups || [],
+        comparison_table: data.comparison_table || null
       };
       setChatMessages(prev => [...prev, assistantMessage]);
 
@@ -368,6 +427,12 @@ export default function Home() {
   };
 
   const handleItemSelect = async (vehicle: Vehicle) => {
+    // Remember where we came from
+    setPreviousView(showFavorites ? 'favorites' : 'carousel');
+    // Hide favorites when showing details
+    if (showFavorites) {
+      setShowFavorites(false);
+    }
     setSelectedItem(vehicle);
     setShowDetails(true);
     setDetailViewStartTime(Date.now());
@@ -400,8 +465,13 @@ export default function Home() {
       });
     }
     
+    // Return to previous view
     setShowDetails(false);
     setSelectedItem(null);
+    if (previousView === 'favorites') {
+      setShowFavorites(true);
+    }
+    setPreviousView(null);
     setDetailViewStartTime(null);
   };
 
@@ -417,7 +487,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
-        {(hasReceivedRecommendations || showFavorites) && (
+        {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
           <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
@@ -627,6 +697,8 @@ export default function Home() {
                     showPlaceholders={false}
                     onToggleFavorite={toggleFavorite}
                     isFavorite={isFavorite}
+                    currentIndex={carouselIndex}
+                    onIndexChange={setCarouselIndex}
                   />
                 </div>
               )}
@@ -635,7 +707,10 @@ export default function Home() {
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
+        <div 
+          ref={chatMessagesContainerRef}
+          className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}
+        >
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
               <div key={message.id} className="flex flex-col">
@@ -653,6 +728,11 @@ export default function Home() {
                       className="text-sm leading-relaxed chat-message prose prose-invert max-w-none"
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
                     />
+                    
+                    {/* Display comparison table if present */}
+                    {message.comparison_table && (
+                      <ComparisonTable comparison={message.comparison_table} />
+                    )}
                   </div>
                 </div>
                 
@@ -660,16 +740,24 @@ export default function Home() {
                 {message.role === 'assistant' && ((message.quick_replies && message.quick_replies.length > 0) || (message.suggested_followups && message.suggested_followups.length > 0)) && (
                   <div className="flex justify-start mt-2">
                     <div className="max-w-[80%] w-full flex flex-wrap gap-2">
-                      {[...(message.suggested_followups || []), ...(message.quick_replies || [])].map((reply, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => handleChatMessage(reply)}
-                          disabled={isLoading}
-                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                          {reply}
-                        </button>
-                      ))}
+                      {(() => {
+                        // Smart display logic: if message contains a question, show quick_replies; otherwise show suggested_followups
+                        const hasQuestion = message.content.includes('?');
+                        const buttonsToShow = hasQuestion 
+                          ? (message.quick_replies || [])
+                          : (message.suggested_followups || []);
+                        
+                        return buttonsToShow.map((reply, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleChatMessage(reply)}
+                            disabled={isLoading}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            {reply}
+                          </button>
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
