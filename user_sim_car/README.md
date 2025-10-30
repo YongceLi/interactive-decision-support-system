@@ -15,7 +15,7 @@ This repository contains a **LangGraph-based user simulator** that interacts wit
   - `{"type": "CLICK_CARD", "index": 0|1|2}`
   - `{"type": "TOGGLE_FILTER", "id": "suv"}` / `{"type": "SET_MILEAGE", "value": 60000}`
   - `{"type": "REFRESH_FILTERS"}`, `{"type": "SHOW_FAVORITES"}`, `{"type": "CLOSE_DETAIL"}`
-  - fallback navigation actions: `SCROLL`, `STARE`, `STOP`
+  - stop actions indicate why the shopper exits: `STOP_NEGATIVE`, `STOP_POSITIVE`
 - **Rich UI model**: Mirrors the Next.js front-end — carousel cards, filter drawer (tokens + Refresh button), favorites tray, and detail modal selection state.
 - **RL-style stop scorer**: Two channels (`positive`, `negative`) updated **after each assistant response**. The critic returns deltas that are discounted/accumulated (γ ∈ [0.5, 0.99]); thresholds are derived from the persona. Crossing a threshold records a structured `stop_result`.
 - **Demo snapshots (optional)**: When `demo_mode=True`, every turn stores a JSON snapshot (scores, judge verdict, summary excerpt) for UI playback.
@@ -66,7 +66,7 @@ This repository contains a **LangGraph-based user simulator** that interacts wit
 **Payload**:
 
 ```json
-{"event_type":"post_turn_metrics", "data":{"details":{"scores":{"positive":0.41,"negative":0.18}, "step":3}}}
+{"event_type":"emotion_update", "data":{"score":{"value":0.18}, "delta":-0.07, "threshold":{"lower":-0.35}, "step":3}}
 ```
 
 ## Files

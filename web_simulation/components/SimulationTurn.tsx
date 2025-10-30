@@ -33,13 +33,18 @@ export interface CompletionReview {
   reason?: string;
 }
 
+export interface EmotionSnapshot {
+  value?: number;
+}
+
 export interface SimulationTurn {
   step: number;
   user_text: string;
   assistant_text: string;
   actions: Array<Record<string, unknown>>;
   summary: string;
-  scores?: { positive?: number; negative?: number };
+  emotion?: EmotionSnapshot | null;
+  delta?: number | null;
   judge?: { score?: number; passes?: boolean; feedback?: string; reminder?: string } | null;
   rationale?: string | null;
   quick_replies?: string[] | null;
@@ -190,19 +195,17 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
         <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
-            <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Positive</div>
+            <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Emotion Value</div>
             <div className="mt-1 text-lg font-semibold text-emerald-200">
-              {turn.scores && typeof turn.scores.positive === 'number'
-                ? turn.scores.positive.toFixed(2)
+              {turn.emotion && typeof turn.emotion.value === 'number'
+                ? turn.emotion.value.toFixed(2)
                 : '—'}
             </div>
           </div>
           <div>
-            <div className="font-semibold uppercase tracking-wide text-rose-300/90">Negative</div>
-            <div className="mt-1 text-lg font-semibold text-rose-200">
-              {turn.scores && typeof turn.scores.negative === 'number'
-                ? turn.scores.negative.toFixed(2)
-                : '—'}
+            <div className="font-semibold uppercase tracking-wide text-sky-300/90">Delta</div>
+            <div className="mt-1 text-lg font-semibold text-sky-200">
+              {typeof turn.delta === 'number' ? turn.delta.toFixed(2) : '—'}
             </div>
           </div>
         </section>

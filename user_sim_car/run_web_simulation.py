@@ -69,7 +69,8 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
                 "assistant_text": snap.get("assistant_text", ""),
                 "actions": snap.get("actions", []),
                 "summary": snap.get("summary", ""),
-                "scores": snap.get("scores", {}),
+                "emotion": snap.get("emotion"),
+                "delta": snap.get("delta"),
                 "judge": snap.get("judge"),
                 "rationale": snap.get("rationale"),
                 "quick_replies": snap.get("quick_replies"),
@@ -95,9 +96,11 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         "conversation_summary": payload.get("conversation_summary"),
         "summary_version": payload.get("summary_version"),
         "summary_notes": payload.get("summary_notes"),
-        "rl_scores": payload.get("rl_scores"),
-        "rl_thresholds": payload.get("rl_thresholds"),
-        "rl_rationale": payload.get("rl_rationale"),
+        "emotion_score": payload.get("emotion_score"),
+        "emotion_threshold": payload.get("emotion_threshold"),
+        "emotion_rationale": payload.get("emotion_rationale"),
+        "emotion_delta": payload.get("emotion_delta"),
+        "emotion_delta_rationale": payload.get("emotion_delta_rationale"),
         "discount_factor": payload.get("discount_factor"),
         "last_judge": judge,
         "persona": {
@@ -130,18 +133,18 @@ def main() -> None:
                 "assistant_text": payload.get("assistant_text", ""),
                 "actions": payload.get("actions", []),
                 "summary": payload.get("summary", ""),
-                "scores": payload.get("scores"),
+                "emotion": payload.get("emotion"),
+                "delta": payload.get("delta"),
                 "judge": payload.get("judge"),
                 "rationale": payload.get("rationale"),
                 "quick_replies": payload.get("quick_replies"),
                 "completion_review": payload.get("completion_review"),
                 "vehicles": payload.get("vehicles"),
             }
-        elif event_type == "rl_init":
+        elif event_type == "emotion_init":
             data = {
-                "thresholds": payload.get("thresholds"),
-                "scores": payload.get("scores"),
-                "discount": payload.get("discount"),
+                "threshold": payload.get("threshold"),
+                "score": payload.get("score"),
                 "notes": payload.get("notes"),
             }
         else:
