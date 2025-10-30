@@ -819,29 +819,9 @@ class GraphRunner:
 
         def n_user(state: SimState):
             persona = state["persona"]
-            threshold = state.get("emotion_threshold")
-            score = state.get("emotion_score")
+            threshold = state.get("emotion_threshold") or {"lower": -0.4}
+            score = state.get("emotion_score") or {"value": 0.0}
             updates: Dict[str, Any] = {}
-            if threshold is None or score is None:
-                threshold, score, init_notes = self.user_agent.derive_emotion_model(persona)
-                updates.update({
-                    "emotion_threshold": threshold,
-                    "emotion_score": score,
-                    "emotion_rationale": init_notes,
-                })
-                if self.verbose:
-                    print("\n=== Emotion model initialized ===")
-                    print(f"Threshold (lower bound): {threshold}")
-                    print(f"Initial emotion value: {score}")
-                    if init_notes:
-                        print(f"Notes: {init_notes}")
-                if self.event_callback:
-                    payload: Dict[str, Any] = {
-                        "threshold": dict(threshold or {}),
-                        "score": dict(score or {}),
-                        "notes": init_notes,
-                    }
-                    self.event_callback("emotion_init", payload)
             summary = state.get("conversation_summary", "")
             ui_desc = describe_ui_state(state["ui"], state.get("vehicles", []))
             available_actions = list_available_actions(state["ui"])
@@ -859,8 +839,8 @@ class GraphRunner:
                     summary=summary,
                     ui_description=ui_desc,
                     goal=state["goal"],
-                    emotion_threshold=threshold or state.get("emotion_threshold", {"lower": -0.4}),
-                    emotion_score=score or state.get("emotion_score", {"value": 0.0}),
+                    emotion_threshold=threshold,
+                    emotion_score=score,
                     emotion_delta=state.get("emotion_delta"),
                     emotion_delta_rationale=state.get("emotion_delta_rationale"),
                     available_actions=available_actions,
@@ -993,15 +973,43 @@ class GraphRunner:
 
 
         def n_emotion_update(state: SimState):
+            updates: Dict[str, Any] = {}
+            threshold = state.get("emotion_threshold")
+            score = state.get("emotion_score")
+            if threshold is None or score is None:
+                persona = state.get("persona") or {"family": "", "writing": "", "interaction": "", "intent": ""}
+                threshold, score, init_notes = self.user_agent.derive_emotion_model(persona)
+                updates.update({
+                    "emotion_threshold": threshold,
+                    "emotion_score": score,
+                    "emotion_rationale": init_notes,
+                })
+                if self.verbose:
+                    print("\n=== Emotion model initialized ===")
+                    print(f"Threshold (lower bound): {threshold}")
+                    print(f"Initial emotion value: {score}")
+                    if init_notes:
+                        print(f"Notes: {init_notes}")
+                if self.event_callback:
+                    payload: Dict[str, Any] = {
+                        "threshold": dict(threshold or {}),
+                        "score": dict(score or {}),
+                        "notes": init_notes,
+                    }
+                    self.event_callback("emotion_init", payload)
+            threshold = threshold or updates.get("emotion_threshold") or {"lower": -0.4}
+            score = score or updates.get("emotion_score") or {"value": 0.0}
             completed_steps = int(state.get("step") or 0)
             last_processed = int(state.get("emotion_last_step") or -1)
             history = state.get("history") or []
             if completed_steps <= last_processed:
+                if updates:
+                    updates.setdefault("emotion_last_step", last_processed)
+                    return updates
                 return {}
             if not history:
-                return {"emotion_last_step": completed_steps}
-            threshold = state.get("emotion_threshold") or {"lower": -0.4}
-            score = state.get("emotion_score") or {"value": 0.0}
+                updates["emotion_last_step"] = completed_steps
+                return updates
             last_turn = history[-1]
             summary = state.get("conversation_summary", "")
             history_messages = build_truncated_history(history)
@@ -1044,7 +1052,7 @@ class GraphRunner:
                     "rationale": rationale or "Emotion value dropped below disengagement threshold.",
                     "at_step": state["step"],
                 }
-            updates: Dict[str, Any] = {
+            updates.update({
                 "emotion_score": new_score,
                 "emotion_delta": delta,
                 "emotion_delta_rationale": rationale,
@@ -1052,7 +1060,7 @@ class GraphRunner:
                 "stop_result": stop_result,
                 "completion_review": completion_review,
                 "emotion_last_step": completed_steps,
-            }
+            })
             if self.verbose and rationale:
                 print(f"Emotion update: value={new_score.get('value')} delta={delta:+.2f} -> {rationale}")
             self.api.log_event("emotion_update", {
@@ -1143,6 +1151,7 @@ class GraphRunner:
         g.add_edge("writing", "merge")
         g.add_edge("interaction", "merge")
         g.add_edge("intent", "merge")
+        g.add_edge("await_more", "merge")
 
         def route_merge(state: SimState) -> str:
             if all([
@@ -1151,10 +1160,10 @@ class GraphRunner:
                 state.get("persona_interaction_draft"),
                 state.get("persona_intent_draft"),
             ]):
-                return "user"
+                return "emotion"
             return "await_more"
 
-        g.add_conditional_edges("merge", route_merge, {"user": "user", "await_more": "await_more"})
+        g.add_conditional_edges("merge", route_merge, {"emotion": "emotion", "await_more": "await_more"})
 
         g.add_edge("user", "ui")
         g.add_edge("ui", "backend")
