@@ -33,15 +33,23 @@ export interface CompletionReview {
   reason?: string;
 }
 
+export interface EmotionSnapshot {
+  value?: number;
+  delta?: number;
+  threshold?: number;
+  rationale?: string | null;
+}
+
 export interface SimulationTurn {
   step: number;
   user_text: string;
   assistant_text: string;
   actions: Array<Record<string, unknown>>;
   summary: string;
-  scores?: { positive?: number; negative?: number };
+  emotion?: EmotionSnapshot | null;
   judge?: { score?: number; passes?: boolean; feedback?: string; reminder?: string } | null;
   rationale?: string | null;
+  decision_rationale?: string | null;
   quick_replies?: string[] | null;
   vehicles?: VehicleSummary[] | null;
   completion_review?: CompletionReview | null;
@@ -188,20 +196,28 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
         ) : null}
       </header>
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
-        <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
+        <section className="grid gap-4 text-xs text-slate-300 sm:grid-cols-3">
           <div>
-            <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Positive</div>
-            <div className="mt-1 text-lg font-semibold text-emerald-200">
-              {turn.scores && typeof turn.scores.positive === 'number'
-                ? turn.scores.positive.toFixed(2)
+            <div className="font-semibold uppercase tracking-wide text-sky-300/90">Emotion Value</div>
+            <div className="mt-1 text-lg font-semibold text-sky-200">
+              {turn.emotion && typeof turn.emotion.value === 'number'
+                ? turn.emotion.value.toFixed(2)
                 : '—'}
             </div>
           </div>
           <div>
-            <div className="font-semibold uppercase tracking-wide text-rose-300/90">Negative</div>
+            <div className="font-semibold uppercase tracking-wide text-amber-300/90">Delta</div>
+            <div className="mt-1 text-lg font-semibold text-amber-200">
+              {turn.emotion && typeof turn.emotion.delta === 'number'
+                ? `${turn.emotion.delta >= 0 ? '+' : ''}${turn.emotion.delta.toFixed(2)}`
+                : '—'}
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold uppercase tracking-wide text-rose-300/90">Threshold</div>
             <div className="mt-1 text-lg font-semibold text-rose-200">
-              {turn.scores && typeof turn.scores.negative === 'number'
-                ? turn.scores.negative.toFixed(2)
+              {turn.emotion && typeof turn.emotion.threshold === 'number'
+                ? turn.emotion.threshold.toFixed(2)
                 : '—'}
             </div>
           </div>
@@ -217,6 +233,9 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
         <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
           <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
+          {turn.decision_rationale ? (
+            <p className="mt-2 text-xs text-slate-300/90">Reasoning: {turn.decision_rationale}</p>
+          ) : null}
         </section>
 
         <section>

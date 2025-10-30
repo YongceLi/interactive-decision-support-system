@@ -24,7 +24,7 @@ load_dotenv()
 DEFAULT_PERSONA = (
     "Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute; "
     "budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos; "
-    "asks clarifying questions and compares trims; intent: actively shopping."
+    "asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305"
 )
 
 
@@ -62,14 +62,15 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
     snapshots = payload.get("demo_snapshots") or []
     serializable_snaps = []
     for snap in snapshots:
-        serializable_snaps.append(
-            {
-                "step": snap.get("step"),
-                "user_text": snap.get("user_text", ""),
-                "assistant_text": snap.get("assistant_text", ""),
-                "actions": snap.get("actions", []),
-                "summary": snap.get("summary", ""),
-                "scores": snap.get("scores", {}),
+                serializable_snaps.append(
+                    {
+                        "step": snap.get("step"),
+                        "user_text": snap.get("user_text", ""),
+                        "assistant_text": snap.get("assistant_text", ""),
+                        "actions": snap.get("actions", []),
+                        "decision_rationale": snap.get("decision_rationale"),
+                        "summary": snap.get("summary", ""),
+                        "emotion": snap.get("emotion", {}),
                 "judge": snap.get("judge"),
                 "rationale": snap.get("rationale"),
                 "quick_replies": snap.get("quick_replies"),
@@ -95,10 +96,11 @@ def sanitize_for_json(payload: Dict[str, Any]) -> Dict[str, Any]:
         "conversation_summary": payload.get("conversation_summary"),
         "summary_version": payload.get("summary_version"),
         "summary_notes": payload.get("summary_notes"),
-        "rl_scores": payload.get("rl_scores"),
-        "rl_thresholds": payload.get("rl_thresholds"),
-        "rl_rationale": payload.get("rl_rationale"),
-        "discount_factor": payload.get("discount_factor"),
+        "emotion_value": payload.get("emotion_value"),
+        "emotion_threshold": payload.get("emotion_threshold"),
+        "emotion_delta": payload.get("emotion_delta"),
+        "emotion_rationale": payload.get("emotion_rationale"),
+        "last_emotion_event": payload.get("last_emotion_event"),
         "last_judge": judge,
         "persona": {
             "family": persona.get("family"),
@@ -129,20 +131,21 @@ def main() -> None:
                 "user_text": payload.get("user_text", ""),
                 "assistant_text": payload.get("assistant_text", ""),
                 "actions": payload.get("actions", []),
+                "decision_rationale": payload.get("decision_rationale"),
                 "summary": payload.get("summary", ""),
-                "scores": payload.get("scores"),
+                "emotion": payload.get("emotion"),
                 "judge": payload.get("judge"),
                 "rationale": payload.get("rationale"),
                 "quick_replies": payload.get("quick_replies"),
                 "completion_review": payload.get("completion_review"),
                 "vehicles": payload.get("vehicles"),
             }
-        elif event_type == "rl_init":
+        elif event_type in {"emotion_init", "emotion_update"}:
             data = {
-                "thresholds": payload.get("thresholds"),
-                "scores": payload.get("scores"),
-                "discount": payload.get("discount"),
-                "notes": payload.get("notes"),
+                "value": payload.get("value"),
+                "delta": payload.get("delta"),
+                "threshold": payload.get("threshold"),
+                "rationale": payload.get("rationale"),
             }
         else:
             data = payload

@@ -6,6 +6,7 @@ import {
   type SimulationTurn,
   type VehicleSummary,
   type CompletionReview,
+  type EmotionSnapshot,
 } from '../components/SimulationTurn';
 
 interface JudgePayload {
@@ -22,11 +23,6 @@ interface PersonaFacets {
   intent?: string;
 }
 
-interface Thresholds {
-  positive?: number;
-  negative?: number;
-}
-
 interface SimulationResponse {
   seed_persona: string;
   max_steps: number;
@@ -37,10 +33,11 @@ interface SimulationResponse {
   conversation_summary?: string;
   summary_version?: number;
   summary_notes?: string;
-  rl_scores?: Thresholds;
-  rl_thresholds?: Thresholds;
-  rl_rationale?: string;
-  discount_factor?: number;
+  emotion_value?: number;
+  emotion_threshold?: number;
+  emotion_delta?: number;
+  emotion_rationale?: string;
+  last_emotion_event?: EmotionSnapshot | null;
   last_judge?: JudgePayload | null;
   persona?: PersonaFacets;
   goal?: Record<string, unknown>;
@@ -56,9 +53,10 @@ type StreamTurnEvent = {
   assistant_text: string;
   actions?: Array<Record<string, unknown>>;
   summary?: string;
-  scores?: Thresholds;
+  emotion?: EmotionSnapshot;
   judge?: JudgePayload | null;
   rationale?: string | null;
+  decision_rationale?: string | null;
   quick_replies?: string[] | null;
   completion_review?: CompletionReview | null;
   vehicles?: VehicleSummary[] | null;
@@ -66,21 +64,14 @@ type StreamTurnEvent = {
 
 type StreamEvent =
   | { type: 'turn'; data: StreamTurnEvent }
-  | {
-      type: 'rl_init';
-      data: {
-        thresholds?: Thresholds;
-        scores?: Thresholds;
-        discount?: number;
-        notes?: string;
-      };
-    }
+  | { type: 'emotion_init'; data: EmotionSnapshot }
+  | { type: 'emotion_update'; data: EmotionSnapshot }
   | { type: 'complete'; data: SimulationResponse }
   | { type: 'error'; data?: { message?: string } };
 
 const DEFAULT_PERSONA = `Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute;
 budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos;
-asks clarifying questions and compares trims; intent: actively shopping.`;
+asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305`;
 
 export default function Page() {
   const [persona, setPersona] = useState<string>(DEFAULT_PERSONA);
@@ -89,19 +80,14 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SimulationResponse | null>(null);
   const [turns, setTurns] = useState<SimulationTurn[]>([]);
-  const [rlInfo, setRlInfo] = useState<{
-    thresholds?: Thresholds;
-    scores?: Thresholds;
-    discount?: number;
-    notes?: string;
-  } | null>(null);
+  const [emotionInfo, setEmotionInfo] = useState<EmotionSnapshot | null>(null);
 
   const handleRun = async () => {
     setIsRunning(true);
     setError(null);
     setResult(null);
     setTurns([]);
-    setRlInfo(null);
+    setEmotionInfo(null);
 
     try {
       const response = await fetch('/api/simulate', {
@@ -142,42 +128,39 @@ export default function Page() {
                   assistant_text: event.data.assistant_text,
                   actions: event.data.actions ?? [],
                   summary: event.data.summary ?? '',
-                  scores: event.data.scores,
+                  emotion: event.data.emotion ?? undefined,
                   judge: event.data.judge ?? null,
                   rationale: event.data.rationale ?? null,
+                  decision_rationale: event.data.decision_rationale ?? null,
                   quick_replies: event.data.quick_replies ?? null,
                   completion_review: event.data.completion_review ?? null,
                   vehicles: event.data.vehicles ?? null,
                 };
                 return [...prev, nextTurn];
               });
-              if (event.data.scores) {
-                setRlInfo((prev) => ({
-                  ...(prev ?? {}),
-                  scores: event.data.scores,
-                }));
+              if (event.data.emotion) {
+                setEmotionInfo(event.data.emotion);
               }
               break;
-            case 'rl_init':
-              setRlInfo({
-                thresholds: event.data.thresholds,
-                scores: event.data.scores,
-                discount: event.data.discount,
-                notes: event.data.notes,
-              });
+            case 'emotion_init':
+            case 'emotion_update':
+              setEmotionInfo(event.data);
               break;
             case 'complete':
               setResult(event.data);
               if (event.data.demo_snapshots?.length) {
                 setTurns(event.data.demo_snapshots);
               }
-              setRlInfo((prev) => ({
-                ...(prev ?? {}),
-                thresholds: event.data.rl_thresholds ?? prev?.thresholds,
-                scores: event.data.rl_scores ?? prev?.scores,
-                discount: event.data.discount_factor ?? prev?.discount,
-                notes: event.data.rl_rationale ?? prev?.notes,
-              }));
+              if (event.data.last_emotion_event) {
+                setEmotionInfo(event.data.last_emotion_event);
+              } else {
+                setEmotionInfo({
+                  value: event.data.emotion_value,
+                  delta: event.data.emotion_delta,
+                  threshold: event.data.emotion_threshold,
+                  rationale: event.data.emotion_rationale,
+                });
+              }
               break;
             case 'error':
               setError(event.data?.message ?? 'Simulation error');
@@ -264,9 +247,28 @@ export default function Page() {
 
   const stopReason = result?.stop_reason ?? (turns.length ? (isRunning ? 'Running…' : 'In progress') : 'Pending');
   const stepsUsed = result?.step ?? turns.length;
-  const rlThresholds = rlInfo?.thresholds ?? result?.rl_thresholds ?? undefined;
-  const rlScores = rlInfo?.scores ?? result?.rl_scores ?? undefined;
-  const rlNotes = rlInfo?.notes ?? result?.rl_rationale ?? undefined;
+  const latestEmotion = useMemo(() => {
+    if (emotionInfo) {
+      return emotionInfo;
+    }
+    if (result?.last_emotion_event) {
+      return result.last_emotion_event;
+    }
+    if (
+      result?.emotion_value !== undefined ||
+      result?.emotion_delta !== undefined ||
+      result?.emotion_threshold !== undefined ||
+      result?.emotion_rationale
+    ) {
+      return {
+        value: result?.emotion_value,
+        delta: result?.emotion_delta,
+        threshold: result?.emotion_threshold,
+        rationale: result?.emotion_rationale,
+      } as EmotionSnapshot;
+    }
+    return null;
+  }, [emotionInfo, result?.emotion_delta, result?.emotion_rationale, result?.emotion_threshold, result?.emotion_value, result?.last_emotion_event]);
 
   return (
     <main className="flex flex-col gap-10 px-6 py-10 lg:px-12">
@@ -357,28 +359,24 @@ export default function Page() {
                 </dd>
               </div>
             ) : null}
-            {rlThresholds ? (
-              <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion Score Thresholds</dt>
-                <dd className="mt-1 text-slate-100 space-y-1">
-                  <div>Positive: {rlThresholds.positive?.toFixed(2) ?? '—'}</div>
-                  <div>Negative: {rlThresholds.negative?.toFixed(2) ?? '—'}</div>
+            {latestEmotion ? (
+              <div className="space-y-1">
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion tracker</dt>
+                <dd className="mt-1 text-slate-100">
+                  <div>Value: {typeof latestEmotion.value === 'number' ? latestEmotion.value.toFixed(2) : '—'}</div>
+                  <div>
+                    Delta:{' '}
+                    {typeof latestEmotion.delta === 'number'
+                      ? `${latestEmotion.delta >= 0 ? '+' : ''}${latestEmotion.delta.toFixed(2)}`
+                      : '—'}
+                  </div>
+                  <div>
+                    Threshold: {typeof latestEmotion.threshold === 'number' ? latestEmotion.threshold.toFixed(2) : '—'}
+                  </div>
                 </dd>
-              </div>
-            ) : null}
-            {rlScores ? (
-              <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current Emotion Scores</dt>
-                <dd className="mt-1 text-slate-100 space-y-1">
-                  <div>Positive: {rlScores.positive?.toFixed(2) ?? '—'}</div>
-                  <div>Negative: {rlScores.negative?.toFixed(2) ?? '—'}</div>
-                </dd>
-              </div>
-            ) : null}
-            {rlNotes ? (
-              <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion notes</dt>
-                <dd className="mt-1 whitespace-pre-line text-slate-200/80">{rlNotes}</dd>
+                {latestEmotion.rationale ? (
+                  <dd className="mt-1 whitespace-pre-line text-slate-200/80">{latestEmotion.rationale}</dd>
+                ) : null}
               </div>
             ) : null}
           </dl>
