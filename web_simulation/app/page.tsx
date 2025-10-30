@@ -85,7 +85,7 @@ type StreamEvent =
 
 const DEFAULT_PERSONA = `Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute;
 budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos;
-asks clarifying questions and compares trims; intent: actively shopping.`;
+asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305`;
 
 export default function Page() {
   const [persona, setPersona] = useState<string>(DEFAULT_PERSONA);
@@ -107,7 +107,7 @@ export default function Page() {
     setError(null);
     setResult(null);
     setTurns([]);
-    setRlInfo(null);
+    setEmotionInfo(null);
 
     try {
       const response = await fetch('/api/simulate', {
@@ -141,6 +141,15 @@ export default function Page() {
           const event = JSON.parse(line) as StreamEvent;
           switch (event.type) {
             case 'turn':
+              setEmotionInfo((prev) => ({
+                ...(prev ?? {}),
+                value:
+                  typeof event.data.emotion?.value === 'number'
+                    ? event.data.emotion.value
+                    : prev?.value,
+                delta:
+                  typeof event.data.delta === 'number' ? event.data.delta : prev?.delta,
+              }));
               setTurns((prev) => {
                 const nextTurn: SimulationTurn = {
                   step: event.data.step ?? prev.length + 1,
@@ -158,15 +167,6 @@ export default function Page() {
                 };
                 return [...prev, nextTurn];
               });
-              setEmotionInfo((prev) => ({
-                ...(prev ?? {}),
-                value:
-                  typeof event.data.emotion?.value === 'number'
-                    ? event.data.emotion.value
-                    : prev?.value,
-                delta:
-                  typeof event.data.delta === 'number' ? event.data.delta : prev?.delta,
-              }));
               break;
             case 'emotion_init':
               setEmotionInfo({

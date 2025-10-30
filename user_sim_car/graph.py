@@ -385,20 +385,27 @@ class UserAgent:
         last_turn: Optional[Turn],
         last_rationale: Optional[str],
         threshold: EmotionThreshold,
+        ui_after: str,
     ) -> Tuple[EmotionScore, float, str]:
         sys_prompt = (
             "Update the shopper's scalar emotion value before they respond to the assistant. "
             "Emotion value is in [-1, 1]; -1 is furious, 1 is thrilled. "
-            "Use persona facets, the running summary, truncated conversation history, and especially the last assistant/user exchange."
-            "Account for the current emotion value and disengagement threshold ({threshold_lower})."
-            "Return a delta between -0.4 and 0.4."
-            "Explain both (a) why the delta was chosen and (b) how the resulting emotion value will influence the shopper's upcoming message and UI actions."
+            "Focus on whether the assistant satisfied the shopper's most recent request and what the UI now shows. "
+            "Never adjust the score purely because the shopper's words sound positive or negative; treat tone only as a clue to their goals. "
+            "Use persona facets, the running summary, truncated conversation history, and the last user/assistant exchange plus resulting UI actions. "
+            "Account for the current emotion value and disengagement threshold ({threshold_lower}). "
+            "Return a delta between -0.4 and 0.4. "
+            "Explain both (a) why the delta was chosen and (b) how the resulting emotion value will influence the shopper's upcoming message and UI actions. "
             "Return JSON only: {{\"delta\": <float>, \"rationale\": <string>}}"
         )
         history_text = "\n".join(
             f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
         ) or "No prior turns."
         turn_obj = last_turn or {}
+        last_user = str(turn_obj.get("user_text", "")).strip()
+        last_assistant = str(turn_obj.get("assistant_text", "")).strip()
+        actions = turn_obj.get("actions", []) or []
+        actions_text = json.dumps(actions, ensure_ascii=False)
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
             ("human",
@@ -407,7 +414,10 @@ class UserAgent:
              "Conversation summary:\n{summary}\n\n"
              "Conversation history:\n{history}\n\n"
              "Previous emotion value: {prev}\n"
-             "Latest turn (user+assistant): {turn}\n"
+             "Last user request: {last_user}\n"
+             "Assistant reply: {last_assistant}\n"
+             "UI after their actions: {ui_after}\n"
+             "User actions executed: {actions}\n"
              "User agent rationale for that turn: {notes}\n"
              "Disengagement threshold (lower bound): {threshold}\n\n"
              "Return JSON only."),
@@ -420,7 +430,10 @@ class UserAgent:
             "summary": summary or "",
             "history": history_text,
             "prev": prev_score,
-            "turn": turn_obj,
+            "last_user": last_user or "No prior user message.",
+            "last_assistant": last_assistant or "Assistant response unavailable.",
+            "ui_after": ui_after or "UI state unchanged.",
+            "actions": actions_text,
             "notes": last_rationale or "None provided",
             "threshold": threshold,
             "threshold_lower": threshold.get("lower", -0.4),
@@ -980,13 +993,19 @@ class GraphRunner:
 
 
         def n_emotion_update(state: SimState):
-            if not state.get("history"):
+            completed_steps = int(state.get("step") or 0)
+            last_processed = int(state.get("emotion_last_step") or -1)
+            history = state.get("history") or []
+            if completed_steps <= last_processed:
                 return {}
+            if not history:
+                return {"emotion_last_step": completed_steps}
             threshold = state.get("emotion_threshold") or {"lower": -0.4}
             score = state.get("emotion_score") or {"value": 0.0}
-            last_turn = state["history"][-1]
+            last_turn = history[-1]
             summary = state.get("conversation_summary", "")
-            history_messages = build_truncated_history(state.get("history", []))
+            history_messages = build_truncated_history(history)
+            ui_snapshot = describe_ui_state(state["ui"], state.get("vehicles", []))
             new_score, delta, rationale = self.user_agent.update_emotion_score(
                 persona=state["persona"],
                 summary=summary,
@@ -995,6 +1014,7 @@ class GraphRunner:
                 last_turn=last_turn,
                 last_rationale=last_turn.get("notes"),
                 threshold=threshold,
+                ui_after=ui_snapshot,
             )
             completion_review: Optional[Dict[str, Any]] = None
             stop_result: Optional[StopResult] = None
@@ -1031,6 +1051,7 @@ class GraphRunner:
                 "emotion_rationale": rationale,
                 "stop_result": stop_result,
                 "completion_review": completion_review,
+                "emotion_last_step": completed_steps,
             }
             if self.verbose and rationale:
                 print(f"Emotion update: value={new_score.get('value')} delta={delta:+.2f} -> {rationale}")
@@ -1169,6 +1190,7 @@ class GraphRunner:
             "emotion_rationale": None,
             "emotion_delta": None,
             "emotion_delta_rationale": None,
+            "emotion_last_step": -1,
             "goal": {"max_steps": max_steps, "stop_on_selection": False},
             "ui": {
                 "total": 0,

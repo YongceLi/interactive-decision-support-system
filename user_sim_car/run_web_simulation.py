@@ -24,7 +24,7 @@ load_dotenv()
 DEFAULT_PERSONA = (
     "Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute; "
     "budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos; "
-    "asks clarifying questions and compares trims; intent: actively shopping."
+    "asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305"
 )
 
 
