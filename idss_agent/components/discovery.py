@@ -3,9 +3,12 @@ Discovery agent - generates responses with listing summary and elicitation quest
 """
 import json
 from typing import List, Dict, Any, Optional, Callable
+from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.state import VehicleSearchState
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
+from idss_agent.state import VehicleSearchState, AgentResponse
 
 
 def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
@@ -55,41 +58,25 @@ def discovery_agent(
     vehicles = state['recommended_vehicles']
     already_asked = state.get('questions_asked', [])
 
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('discovery')
+    top_limit = config.limits.get('top_vehicles_to_show', 3)
+
     # Format vehicles for LLM
-    vehicles_summary = format_vehicles_for_llm(vehicles, limit=3)
+    vehicles_summary = format_vehicles_for_llm(vehicles, limit=top_limit)
 
-    # Build comprehensive prompt
-    discovery_system_prompt = f"""
-You are a friendly, knowledgeable vehicle shopping assistant helping a user find their ideal car.
+    # Load system prompt from template
+    discovery_system_prompt = render_prompt('discovery.j2')
 
-You will be given the user's preferences, and the current list of vehicles that match the user's filters.
-
-**Your Task:**
-Write a short, friendly response (1 paragraph max) that:
-
-1. **Brief acknowledgment** (1 sentence, not itemized)
-   - Acknowledge their search or latest preference update
-   - create a new line after the acknowledgment
-
-2. **Listing summary & recommendation** (1 concise itemized list, 2-3 items)
-   - Recommend ONLY the first specific vehicle in the listings
-   - Highlight key strengths/pros about why the vehicle is a good fit for the user's preferences
-   - Use ITEMIZED format for clarity
-   - Use specific, concise short phrases for each item
-   - create a new line after each item
-
-3. **Elicitation questions** (1-2 questions, not itemized)
-   - Ask strategic questions to help narrow down their needs
-   - Focus on missing critical info: budget, location, usage patterns, priorities, mileage preferences, etc.
-   - Make questions conversational and bundled together naturally
-   - Avoid topics already asked about
-
-**Important:**
-- Be like a knowledgeable friend who knows cars 
-- not too formal, not too salesy. Keep it under 100 words and make it feel like a real conversation.
-- Reference actual vehicles from the listings
-- Keep the summary concise but helpful
-- Ask 1-2 questions, not more
+    # Check if filters were relaxed (fallback occurred)
+    fallback_message = state.get('fallback_message')
+    fallback_note = ""
+    if fallback_message:
+        fallback_note = f"""
+**IMPORTANT - Fallback Applied:**
+The original filters didn't find vehicles, so we relaxed some constraints.
+Include this message naturally in your response: "{fallback_message}"
 """
 
     prompt = f"""
@@ -99,11 +86,13 @@ Write a short, friendly response (1 paragraph max) that:
 **User's Preferences:**
 {json.dumps(implicit, indent=2)}
 
-**Current Listings ({len(vehicles)} vehicles found, showing top 3 as JSON):**
+**Current Listings ({len(vehicles)} vehicles found, showing top {top_limit} as JSON):**
 {vehicles_summary}
 
 **Topics Already Asked About:** {already_asked}
 (Avoid asking about these topics again)
+
+{fallback_note}
 
 Generate your response:
 """
@@ -112,13 +101,25 @@ Generate your response:
         SystemMessage(content=discovery_system_prompt),
         HumanMessage(content=prompt),
     ]
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
-    response = llm.invoke(messages)
 
-    state['ai_response'] = response.content.strip()
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 800)
+    )
+    structured_llm = llm.with_structured_output(AgentResponse)
+    response: AgentResponse = structured_llm.invoke(messages)
+
+    state['ai_response'] = response.ai_response
+
+    # Apply feature flags for interactive elements
+    state['quick_replies'] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
+    state['suggested_followups'] = response.suggested_followups if config.features.get('enable_suggested_followups', True) else []
+    state['comparison_table'] = None  # Clear comparison table in discovery mode
 
     # Extract and track which topics were asked about
-    state = extract_questions_asked(state, response.content)
+    state = extract_questions_asked(state, response.ai_response)
 
     # Emit progress: Response complete
     if progress_callback:
@@ -175,7 +176,15 @@ Return ONLY a JSON array of topics that were asked about, e.g.:
 If no questions were asked, return an empty array: []
 """
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+    # Get configuration for extraction model
+    config = get_config()
+    model_config = config.get_model_config('discovery_extraction')
+
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 500)
+    )
     result = llm.invoke(extraction_prompt)
 
     try:

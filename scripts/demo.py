@@ -155,6 +155,48 @@ def interactive_demo():
             # Display agent response
             print(f"\n🤖 Agent: {current_state['ai_response']}")
 
+            # Display quick replies if available
+            quick_replies = current_state.get('quick_replies')
+            if quick_replies:
+                print("\n💬 Quick Replies:")
+                for i, reply in enumerate(quick_replies, 1):
+                    print(f"   [{i}] {reply}")
+
+            # Display suggested follow-ups if available
+            suggested_followups = current_state.get('suggested_followups', [])
+            if suggested_followups:
+                print("\n💡 Suggested Follow-ups:")
+                for i, followup in enumerate(suggested_followups, 1):
+                    print(f"   [{i}] {followup}")
+
+            # Display comparison table if available
+            comparison_table = current_state.get('comparison_table')
+            if comparison_table:
+                print("\n📊 Comparison Table:")
+                print("=" * 80)
+
+                headers = comparison_table.get('headers', [])
+                rows = comparison_table.get('rows', [])
+
+                # Calculate column widths
+                col_widths = [len(h) for h in headers]
+                for row in rows:
+                    for i, cell in enumerate(row):
+                        if i < len(col_widths):
+                            col_widths[i] = max(col_widths[i], len(str(cell)))
+
+                # Print header
+                header_line = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+                print(header_line)
+                print("-" * len(header_line))
+
+                # Print rows
+                for row in rows:
+                    row_line = " | ".join(str(cell).ljust(col_widths[i]) for i, cell in enumerate(row))
+                    print(row_line)
+
+                print("=" * 80)
+
             # Display vehicle listings
             if current_state['recommended_vehicles']:
                 print_vehicle_listings(current_state['recommended_vehicles'], limit=10)

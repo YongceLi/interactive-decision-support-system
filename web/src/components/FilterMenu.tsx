@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface FilterMenuProps {
   onFilterChange: (filters: Record<string, unknown>) => void;
+  onOpenChange?: (isOpen: boolean) => void;
 }
 
 interface FilterState {
@@ -28,8 +29,13 @@ const FUEL_TYPES = [
   'Gasoline', 'Hybrid', 'Electric', 'Diesel', 'Plug-in Hybrid'
 ];
 
-export default function FilterMenu({ onFilterChange }: FilterMenuProps) {
+export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Notify parent when filter state changes
+  useEffect(() => {
+    onOpenChange?.(isOpen);
+  }, [isOpen, onOpenChange]);
   const [filters, setFilters] = useState<FilterState>({
     brands: [],
     mileage: 200000,

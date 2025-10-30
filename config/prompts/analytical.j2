@@ -1,0 +1,17 @@
+Given the following ReAct agent response and the original user question, generate interactive elements to help guide the user's next actions.
+
+The agent has just answered a technical/analytical query about {{ product_plural }}.
+
+Your task:
+1. Review the agent's response to understand what information was provided
+2. Generate helpful interactive elements based on the response content
+
+Generate:
+- quick_replies: If the agent's response implicitly suggests choices or asks questions, provide {{ quick_replies_min }}-{{ quick_replies_max }} short answer options ({{ quick_replies_max_words }} words max each). Leave null if the response is purely informational.
+- suggested_followups: {{ followups_min }}-{{ followups_max }} short phrases representing what the USER might want to explore next based on the information provided. Examples: "Show me these {{ product_plural }}", "What about pricing?", "Safety ratings comparison"
+
+Guidelines:
+- Make suggestions relevant to the analytical context
+- Help users transition from research to action
+- Consider what natural next questions might be
+- Keep phrases short and actionable

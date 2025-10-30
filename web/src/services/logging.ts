@@ -91,6 +91,37 @@ export class LoggingService {
   }
 
   /**
+   * Log when user favorites/unfavorites a vehicle
+   */
+  static async logFavoriteToggle(sessionId: string, vehicleId: string, vin: string, isFavorite: boolean): Promise<void> {
+    try {
+      await this.logEvent(sessionId, isFavorite ? 'vehicle_favorited' : 'vehicle_unfavorited', {
+        vehicle_id: vehicleId,
+        vin: vin || 'unknown',
+        action: isFavorite ? 'favorited' : 'unfavorited',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to log favorite toggle:', error);
+    }
+  }
+
+  /**
+   * Log agent response latency
+   */
+  static async logAgentLatency(sessionId: string, latencyMs: number, message: string): Promise<void> {
+    try {
+      await this.logEvent(sessionId, 'agent_latency', {
+        latency_ms: latencyMs,
+        message: message.substring(0, 200), // Truncate message for logging
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Failed to log agent latency:', error);
+    }
+  }
+
+  /**
    * Log custom events
    */
   static async logCustomEvent(sessionId: string, eventType: string, data: Record<string, any> = {}): Promise<void> {

@@ -50,7 +50,7 @@ def run_analytical_mode(
     Workflow:
     1. Parse any filters/entities from question
     2. Conditionally update recommendations:
-       - If filters detected (e.g., "safest SUV"): Update recommendations
+       - If filters detected or user is explicitly asking for recommendations (e.g., "safest SUV", "show me some ..."): Update recommendations
        - If no filters (e.g., "What is ABS?"): Skip recommendations
     3. Use analytical agent to answer question
 
@@ -67,8 +67,6 @@ def run_analytical_mode(
     state = semantic_parser_node(state, progress_callback)
 
     # 2. Decision 2: Conditionally update recommendations
-    # If filters detected (e.g., "safest SUV"), update recommendations
-    # If no filters (e.g., "What is ABS?"), skip recommendations
 
     filters_detected = (
         state["explicit_filters"] != state.get("previous_filters", {})

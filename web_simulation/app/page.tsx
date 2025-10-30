@@ -1,7 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { SimulationTurnCard, type SimulationTurn } from '../components/SimulationTurn';
+import {
+  SimulationTurnCard,
+  type SimulationTurn,
+  type VehicleSummary,
+  type CompletionReview,
+} from '../components/SimulationTurn';
 
 interface JudgePayload {
   score?: number;
@@ -39,6 +44,9 @@ interface SimulationResponse {
   last_judge?: JudgePayload | null;
   persona?: PersonaFacets;
   goal?: Record<string, unknown>;
+  history?: Array<Record<string, unknown>> | null;
+  quick_replies?: string[] | null;
+  completion_review?: CompletionReview | null;
   demo_snapshots?: SimulationTurn[];
 }
 
@@ -51,6 +59,9 @@ type StreamTurnEvent = {
   scores?: Thresholds;
   judge?: JudgePayload | null;
   rationale?: string | null;
+  quick_replies?: string[] | null;
+  completion_review?: CompletionReview | null;
+  vehicles?: VehicleSummary[] | null;
 };
 
 type StreamEvent =
@@ -134,6 +145,9 @@ export default function Page() {
                   scores: event.data.scores,
                   judge: event.data.judge ?? null,
                   rationale: event.data.rationale ?? null,
+                  quick_replies: event.data.quick_replies ?? null,
+                  completion_review: event.data.completion_review ?? null,
+                  vehicles: event.data.vehicles ?? null,
                 };
                 return [...prev, nextTurn];
               });
@@ -264,10 +278,10 @@ export default function Page() {
         <aside className="space-y-6 rounded-2xl border border-slate-700/60 bg-slate-900/60 p-6 shadow-xl">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">Simulation controls</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Adjust the persona narrative or tweak the step budget. Conversations automatically stop when the RL scorer,
-              judge, or UI criteria trigger an ending.
-            </p>
+            {/* <p className="mt-1 text-sm text-slate-400">
+              Adjust the persona narrative or tweak the step budget. Conversations automatically stop when the emotion threshold got passed, 
+              or maximum step is reached.
+            </p> */}
           </div>
 
           <div className="space-y-2">
@@ -321,7 +335,7 @@ export default function Page() {
               <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Steps used</dt>
               <dd className="mt-1 text-slate-100">{stepsUsed}</dd>
             </div>
-            {judgeSummary ? (
+            {/* {judgeSummary ? (
               <div>
                 <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Judge feedback</dt>
                 <dd className="mt-1 text-slate-100">
@@ -329,7 +343,7 @@ export default function Page() {
                   {judgeSummary.feedback}
                 </dd>
               </div>
-            ) : null}
+            ) : null} */}
             {personaFacets.length ? (
               <div>
                 <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Persona facets</dt>
@@ -345,7 +359,7 @@ export default function Page() {
             ) : null}
             {rlThresholds ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL thresholds</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion Score Thresholds</dt>
                 <dd className="mt-1 text-slate-100 space-y-1">
                   <div>Positive: {rlThresholds.positive?.toFixed(2) ?? '—'}</div>
                   <div>Negative: {rlThresholds.negative?.toFixed(2) ?? '—'}</div>
@@ -354,7 +368,7 @@ export default function Page() {
             ) : null}
             {rlScores ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current RL scores</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current Emotion Scores</dt>
                 <dd className="mt-1 text-slate-100 space-y-1">
                   <div>Positive: {rlScores.positive?.toFixed(2) ?? '—'}</div>
                   <div>Negative: {rlScores.negative?.toFixed(2) ?? '—'}</div>
@@ -363,7 +377,7 @@ export default function Page() {
             ) : null}
             {rlNotes ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">RL notes</dt>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion notes</dt>
                 <dd className="mt-1 whitespace-pre-line text-slate-200/80">{rlNotes}</dd>
               </div>
             ) : null}
@@ -384,7 +398,7 @@ export default function Page() {
           ) : null}
 
           <section className="space-y-5 rounded-2xl border border-slate-700/60 bg-slate-900/40 p-6 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-100">Turn-by-turn timeline</h2>
+            <h2 className="text-lg font-semibold text-slate-100">Simulation Timeline</h2>
             {snapshots.length ? (
               snapshots.map((turn, index) => (
                 <SimulationTurnCard key={turn.step ?? index} turn={turn} />

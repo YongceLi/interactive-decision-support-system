@@ -5,8 +5,10 @@ Triggered by "general" intent - greetings, thanks, system questions, unclear que
 """
 from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage
-from idss_agent.state import VehicleSearchState
+from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
+from idss_agent.config import get_config
+from idss_agent.prompt_loader import render_prompt
+from idss_agent.state import VehicleSearchState, AgentResponse
 from idss_agent.logger import get_logger
 
 logger = get_logger("modes.general")
@@ -44,41 +46,37 @@ def run_general_mode(
             "status": "in_progress"
         })
 
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7)
+    # Get configuration
+    config = get_config()
+    model_config = config.get_model_config('general')
 
-    system_prompt = """You are a friendly vehicle shopping assistant.
+    # Create LLM with config parameters
+    llm = ChatOpenAI(
+        model=model_config['name'],
+        temperature=model_config['temperature'],
+        max_tokens=model_config.get('max_tokens', 500)
+    )
+    structured_llm = llm.with_structured_output(AgentResponse)
 
-The user's message is a greeting, general question, or off-topic.
-
-Respond warmly and helpfully:
-- Greetings: Welcome them and briefly explain what you can help with
-- Meta questions: Describe your capabilities (finding vehicles, comparing cars, answering questions)
-- Thanks/acknowledgments: Acknowledge and offer further assistance
-- Off-topic: Politely redirect to vehicle-related topics
-
-Keep your response brief (1-2 sentences), friendly, and conversational.
-
-Your main capabilities:
-1. Help users find and buy vehicles (interview process, recommendations)
-2. Browse and explore vehicles casually
-3. Compare vehicles and analyze safety/MPG/features data
-4. Answer questions about cars and automotive topics"""
+    # Load system prompt from template
+    system_prompt = render_prompt('general.j2')
 
     # Use last 3 messages for context
     recent = state["conversation_history"][-3:] if len(state["conversation_history"]) > 3 else state["conversation_history"]
 
-    messages = [{"role": "system", "content": system_prompt}]
-    for msg in recent:
-        messages.append({
-            "role": "user" if msg.type == "human" else "assistant",
-            "content": msg.content
-        })
+    messages = [SystemMessage(content=system_prompt)]
+    messages.extend(recent)
 
-    response = llm.invoke(messages)
-    state["ai_response"] = response.content
+    response: AgentResponse = structured_llm.invoke(messages)
+    state["ai_response"] = response.ai_response
+
+    # Apply feature flags for interactive elements
+    state["quick_replies"] = response.quick_replies if config.features.get('enable_quick_replies', True) else None
+    state["suggested_followups"] = response.suggested_followups if config.features.get('enable_suggested_followups', True) else []
+    state["comparison_table"] = None  # Clear comparison table in general mode
 
     # Add AI response to conversation history
-    state["conversation_history"].append(AIMessage(content=response.content))
+    state["conversation_history"].append(AIMessage(content=response.ai_response))
 
     # Emit progress: Response complete
     if progress_callback:

@@ -23,6 +23,41 @@ from langgraph.graph import END, START, StateGraph
 from user_sim_car.adapter import ApiClient
 
 
+_HISTORY_TOKEN_LIMIT = 20_000
+_APPROX_CHARS_PER_TOKEN = 4
+
+
+class HistoryMessage(TypedDict):
+    role: str
+    content: str
+
+
+def build_truncated_history(turns: List["Turn"]) -> List[HistoryMessage]:
+    """Return a token-bounded message history using only user/assistant text."""
+    messages: List[HistoryMessage] = []
+    for turn in turns or []:
+        user_text = turn.get("user_text")
+        if user_text:
+            messages.append({"role": "user", "content": str(user_text)})
+        assistant_text = turn.get("assistant_text")
+        if assistant_text:
+            messages.append({"role": "assistant", "content": str(assistant_text)})
+
+    if not messages:
+        return []
+
+    max_chars = _HISTORY_TOKEN_LIMIT * _APPROX_CHARS_PER_TOKEN
+    total_chars = 0
+    trimmed: List[HistoryMessage] = []
+    for message in reversed(messages):
+        total_chars += len(message["content"])
+        trimmed.append(message)
+        if total_chars >= max_chars:
+            break
+    trimmed.reverse()
+    return trimmed
+
+
 # ---------- Helpers & TypedDicts ----------
 
 
@@ -94,7 +129,6 @@ class SimState(TypedDict):
 
     rl_thresholds: Optional[RLThresholds]
     rl_scores: Optional[RLScores]
-    discount_factor: float
     rl_rationale: Optional[str]
 
     goal: Dict[str, Any]
@@ -106,6 +140,7 @@ class SimState(TypedDict):
     backend_response: Dict[str, Any]
     vehicles: List[Dict[str, Any]]
     last_assistant: str
+    quick_replies: Optional[List[str]]
 
     conversation_summary: str
     summary_version: int
@@ -113,6 +148,7 @@ class SimState(TypedDict):
 
     stop_result: Optional[StopResult]
     last_judge: Optional[Dict[str, Any]]
+    completion_review: Optional[Dict[str, Any]]
 
     demo_mode: bool
     demo_snapshots: List[Dict[str, Any]]
@@ -243,6 +279,61 @@ class JudgeAgent:
         return result
 
 
+@dataclass
+class CompletionJudgeAgent:
+    model: BaseChatModel
+
+    def evaluate(
+        self,
+        persona: PersonaDict,
+        goal: Dict[str, Any],
+        summary: str,
+        history: List[HistoryMessage],
+        scores: RLScores,
+        thresholds: RLThresholds,
+    ) -> Dict[str, Any]:
+        sys_prompt = (
+            "You determine if the simulated shopper has achieved their intents and can wrap up the conversation. "
+            "Use the persona facets, running summary, and full conversation history. "
+            "If core needs remain unmet, recommend continuing."
+            "Return JSON only: {{\"should_end\": <bool>, \"confidence\": <float>, \"reason\": <string>}}"
+        )
+        history_text = "\n".join(
+            f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
+        ) or "No conversation yet."
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", sys_prompt),
+            ("human",
+             "Persona facets:\n"
+             "- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}\n\n"
+             "Goal context: {goal}\n\n"
+             "Current satisfaction scores vs thresholds: scores={scores} thresholds={thresholds}\n\n"
+             "Conversation summary:\n{summary}\n\n"
+             "Conversation history:\n{history}\n\n"
+             "Return JSON only."),
+        ])
+        raw = (prompt | self.model).invoke({
+            "family": persona["family"],
+            "writing": persona["writing"],
+            "interaction": persona["interaction"],
+            "intent": persona["intent"],
+            "goal": goal,
+            "scores": scores,
+            "thresholds": thresholds,
+            "summary": summary or "",
+            "history": history_text,
+        }).content.strip()
+        result = {"should_end": False, "confidence": 0.0, "reason": raw}
+        try:
+            data = json.loads(raw)
+            result["should_end"] = bool(data.get("should_end", False))
+            result["confidence"] = float(data.get("confidence", 0.0))
+            result["reason"] = str(data.get("reason", "")).strip()
+        except Exception:
+            result["reason"] = f"Completion judge returned non-JSON; defaulting to continue. Raw: {raw[:200]}"
+        return result
+
+
 # ---------- User Agent (RL scorer + action planner) ----------
 
 
@@ -254,11 +345,14 @@ class UserAgent:
         sys_prompt = (
             "Calibrate a two-channel stop model for a simulated car shopper based on their persona facets. "
             "Positive channel represents satisfaction momentum; negative represents frustration."
+            "The higher the positive channel is, the harder to please the persona, and vice versa. "
+            "The lower the negative channel is, the easier the persona to be disappointed, impatient, likely to disengage. "
             "Thresholds set stopping points for each channel, where higher means harder to stop."
-            "Initial returns reflect starting satisfaction/frustration levels. The initial values are usually on the very low side, only varying slightly by persona."
-            "Discount factor governs how fast a person likely to change their mood over time. The closer to 1, the more persistent the mood."
-            "Positive, negative values range from 0 to 1, discount from 0.9 to 0.99."
-            "Return JSON only: {{\"thresholds\": {{\"positive\": <float>, \"negative\": <float>}}, \"initial_returns\": {{\"positive\": <float>, \"negative\": <float>}}, \"discount\": <float>, \"notes\": <string>}}"
+            "Set these thresholds conservatively. Thresholds usually have positive values around from 0.8 to 1.0 and negative values around from 0.6 to 0.8. "
+            "Initial returns reflect starting satisfaction/frustration levels. The initial values usually have positive and negative values equal to 0, "
+            "unless the persona comes into the conversation with prior satisfaction/frustration."
+            "Positive, negative values range from 0 to 1."
+            "Return JSON only: {{\"thresholds\": {{\"positive\": <float>, \"negative\": <float>}}, \"initial_returns\": {{\"positive\": <float>, \"negative\": <float>}}, \"notes\": <string>}}"
         )
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
@@ -275,7 +369,6 @@ class UserAgent:
         }).content.strip()
         thresholds: RLThresholds = {"positive": 0.85, "negative": 0.65}
         scores: RLScores = {"positive": 0.15, "negative": 0.15}
-        discount = 0.85
         notes = ""
         try:
             data = json.loads(raw)
@@ -285,12 +378,10 @@ class UserAgent:
             if isinstance(data.get("initial_returns"), dict):
                 for k in ("positive", "negative"):
                     scores[k] = _clamp(float(data["initial_returns"].get(k, scores[k])), 0.0, 0.9)
-            if "discount" in data:
-                discount = _clamp(float(data["discount"]), 0.5, 0.99)
             notes = str(data.get("notes", "")).strip()
         except Exception:
             notes = "RL calibration fallback used due to parsing error."
-        return thresholds, scores, discount, notes
+        return thresholds, scores, notes
 
     def update_rl_scores(
         self,
@@ -298,14 +389,17 @@ class UserAgent:
         summary: str,
         turn: Turn,
         prev_scores: RLScores,
-        discount: float,
         visible_vehicles: List[Dict[str, Any]],
+        history: List[HistoryMessage],
     ) -> Tuple[RLScores, str]:
         sys_prompt = (
-            "Act as an RL critic for a simulated shopper. Based on the latest assistant reply, user tone, UI actions, and running summary, "
+            "Act as a critic for a simulated shopper. Based on the latest assistant reply, user response, UI action, and running summary, "
             "Positive delta boosts satisfaction, negative delta boosts frustration. The higher the delta, the stronger the effect. "
+            "Positive delta increases when the latest assistant replies fit with what the user asks, the UI shows relevant results, "
+            "or the information/question shows in the assistant replies are not repetitive with what inside the summary, etc. Vice versa when positive delta decreases."
+            "Negative delta increases when the latest assistant replies are not relevant, gives the user frustration, or repetitive, etc."
             "Consider utility of visible vehicles too."
-            "Positive, negative deltas range from -0.1 to +0.1."
+            "Positive, negative deltas range from -0.1 to 0.1"
             "Return JSON only: {{\"deltas\": {{\"positive\": <float>, \"negative\": <float>}}, \"rationale\": <string>}}"
         )
         vehicles_brief = []
@@ -318,12 +412,16 @@ class UserAgent:
                 "price": listing.get("price"),
                 "miles": listing.get("miles"),
             })
+        history_text = "\n".join(
+            f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
+        ) or "No prior turns."
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
             ("human",
              "Persona facets:\n"
              "- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}\n\n"
              "Conversation summary:\n{summary}\n\n"
+             "Conversation history:\n{history}\n\n"
              "Previous returns: {prev}\n"
              "Latest turn: {turn}\n"
              "Visible vehicles now: {vehicles}\n\n"
@@ -335,6 +433,7 @@ class UserAgent:
             "interaction": persona["interaction"],
             "intent": persona["intent"],
             "summary": summary or "",
+            "history": history_text,
             "prev": prev_scores,
             "turn": turn,
             "vehicles": vehicles_brief,
@@ -350,8 +449,8 @@ class UserAgent:
         except Exception:
             rationale = "RL critic returned non-JSON; applying mild decay."
         new_scores: RLScores = {
-            "positive": _clamp(prev_scores["positive"] * discount + deltas.get("positive", 0.0), 0.0, 1.0),
-            "negative": _clamp(prev_scores["negative"] * discount + deltas.get("negative", 0.0), 0.0, 1.0),
+            "positive": _clamp(prev_scores["positive"] + deltas.get("positive", 0.0), 0.0, 1.0),
+            "negative": _clamp(prev_scores["negative"] + deltas.get("negative", 0.0), 0.0, 1.0),
         }
         return new_scores, rationale
 
@@ -365,24 +464,47 @@ class UserAgent:
         scores: RLScores,
         available_actions: List[str],
         last_assistant: str,
+        history: List[HistoryMessage],
+        quick_replies: Optional[List[str]],
         reminder: Optional[str] = None,
     ) -> Tuple[str, List[Dict[str, Any]], str]:
         sys_prompt = (
             "You simulate a human car shopper. Use natural, varied sentences matching the persona. Incorporate the running summary, "
             "UI state, and last assistant message. When there is no actionable UI element, articulate needs explicitly. Always keep text under 120 words."
         )
+        action_guide = "\n".join([
+            "- CLICK_CARD: open the vehicle detail modal for the given carousel index (0-2).",
+            "- CLOSE_DETAIL: close the currently open vehicle detail modal.",
+            "- TOGGLE_FAVORITE: add/remove the highlighted vehicle from favorites (requires index).",
+            "- CAROUSEL_LEFT / CAROUSEL_RIGHT: move the vehicle carousel backward or forward to see different cars.",
+            "- TOGGLE_FILTER: toggle a shorthand filter token (use the provided id field).",
+            "- REFRESH_FILTERS: apply pending filter adjustments to refresh the listings.",
+            "- SET_MILEAGE / SET_PRICE_BAND: adjust numeric search constraints.",
+            "- OPEN_FILTER_MENU / CLOSE_FILTER_MENU: open or close the filter drawer.",
+            "- SHOW_FAVORITES / HIDE_FAVORITES: switch between favorites-only and all results.",
+            "- SCROLL or STARE: continue browsing without changes (SCROLL implies casually looking through listings).",
+            "- STOP: end the session intentionally once goals are satisfied.",
+        ])
         instructions = (
-            "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, SCROLL, STARE, STOP)."
+            "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, CAROUSEL_LEFT, CAROUSEL_RIGHT, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, SCROLL, STARE, STOP)."
+            "If you choose a quick reply button, set user_text exactly to that text and mention it in the notes."
             "Return JSON only: {{\"user_text\": <string>, \"actions\": <list>, \"notes\": <string>}}"
         )
         reminder_msg = reminder or ""
+        history_text = "\n".join(
+            f"{msg['role'].title()}: {msg['content']}" for msg in (history or [])
+        ) or "No prior turns."
+        quick_reply_text = ", ".join(quick_replies or []) if quick_replies else "None"
         prompt = ChatPromptTemplate.from_messages([
             ("system", sys_prompt),
             ("system", "Persona facets:\n- Family: {family}\n- Writing style: {writing}\n- Interaction style: {interaction}\n- Intent: {intent}"),
             ("system", "Conversation summary so far:\n{summary}"),
+            ("system", "Conversation history (chronological):\n{history}"),
             ("system", "UI context:\n{ui_description}"),
             ("system", "Goal/stop model: thresholds={thresholds} | scores={scores}"),
             ("system", "Available UI actions right now: {available}"),
+            ("system", "UI action guide:\n{action_guide}"),
+            ("system", "Quick reply buttons visible: {quick_replies}. If one fits perfectly, you can click it by echoing the same text."),
             ("system", "Judge reminder: {reminder}"),
             ("human",
              "Assistant just said:\n{assistant}\n\n"
@@ -394,10 +516,13 @@ class UserAgent:
             "interaction": persona["interaction"],
             "intent": persona["intent"],
             "summary": summary or "",
+            "history": history_text,
             "ui_description": ui_description,
             "thresholds": thresholds,
             "scores": scores,
             "available": available_actions,
+            "action_guide": action_guide,
+            "quick_replies": quick_reply_text,
             "assistant": last_assistant or "",
             "reminder": reminder_msg or "None",
         }).content.strip()
@@ -485,6 +610,9 @@ def apply_ui_actions(ui: UIState, actions: List[Dict[str, Any]]) -> UIState:
     favorites = list(new_ui.get("favorites", []))
     mileage_limit = new_ui.get("mileage_limit")
     price_band = new_ui.get("price_band")
+    start_index = int(new_ui.get("start") or 0)
+    total = int(new_ui.get("total") or 0)
+    visible_count = int(new_ui.get("visible_count") or 3) or 3
     for action in actions:
         t = str(action.get("type", "")).upper()
         if t == "CLICK_CARD":
@@ -535,11 +663,21 @@ def apply_ui_actions(ui: UIState, actions: List[Dict[str, Any]]) -> UIState:
                 new_ui["applied_filters"] = filters
                 new_ui["pending_filters"] = filters
                 new_ui["has_unapplied_filters"] = False
+        elif t == "CAROUSEL_LEFT":
+            if total and visible_count:
+                start_index = max(0, start_index - visible_count)
+        elif t == "CAROUSEL_RIGHT":
+            if total and visible_count:
+                max_start = max(0, total - visible_count)
+                start_index = min(max_start, start_index + visible_count)
     new_ui["filter_tokens"] = tokens
     new_ui["favorites"] = favorites
     new_ui["mileage_limit"] = mileage_limit
     new_ui["price_band"] = price_band
     new_ui["pending_filters"] = _compile_filters(tokens, mileage_limit, price_band)
+    max_start = max(0, total - visible_count) if total and visible_count else 0
+    new_ui["visible_count"] = visible_count
+    new_ui["start"] = max(0, min(start_index, max_start))
     new_ui["last_actions"] = actions
     return new_ui
 
@@ -553,8 +691,13 @@ def describe_ui_state(ui: UIState, vehicles: List[Dict[str, Any]]) -> str:
     showing_favorites = ui.get("showing_favorites", False)
     has_unapplied = ui.get("has_unapplied_filters", False)
     filter_menu_open = ui.get("filter_menu_open", False)
+    start = int(ui.get("start") or 0)
+    visible = int(ui.get("visible_count") or 3) or 3
+    total = int(ui.get("total") or len(vehicles or []))
     top_cards = []
-    for idx, v in enumerate((vehicles or [])[:3]):
+    window = (vehicles or [])[start:start + visible]
+    for offset, v in enumerate(window):
+        idx = start + offset
         vehicle = v.get("vehicle", {}) if isinstance(v, dict) else {}
         listing = v.get("retailListing", {}) if isinstance(v, dict) else {}
         label = f"[{idx}] {vehicle.get('make', '')} {vehicle.get('model', '')}"
@@ -565,6 +708,11 @@ def describe_ui_state(ui: UIState, vehicles: List[Dict[str, Any]]) -> str:
         if miles:
             label += f", {miles:,} mi"
         top_cards.append(label)
+    window_end = min(total, start + visible)
+    if window_end <= start:
+        window_range = "none"
+    else:
+        window_range = f"{start}-{window_end - 1}"
     parts = [
         f"Top carousel cards: {top_cards if top_cards else 'None available yet'}.",
         f"Detail modal {'open' if detail else 'closed'} (selection={selection}).",
@@ -572,6 +720,7 @@ def describe_ui_state(ui: UIState, vehicles: List[Dict[str, Any]]) -> str:
         f"Active filter tokens: {tokens if tokens else 'none'}; applied filters: {applied if applied else 'none'}.",
         f"Filter drawer {'open' if filter_menu_open else 'closed'}, pending changes require Refresh button: {has_unapplied}.",
         f"Favorites view {'active' if showing_favorites else 'hidden'}.",
+        f"Carousel window showing indices {window_range} of {total} total.",
     ]
     return " ".join(parts)
 
@@ -584,6 +733,14 @@ def list_available_actions(ui: UIState) -> List[str]:
     else:
         actions.append("CLICK_CARD")
     actions.extend(["TOGGLE_FILTER", "REFRESH_FILTERS", "SET_MILEAGE", "SET_PRICE_BAND", "OPEN_FILTER_MENU", "CLOSE_FILTER_MENU"])
+    total = int(ui.get("total") or 0)
+    visible = int(ui.get("visible_count") or 3) or 3
+    start = int(ui.get("start") or 0)
+    if total and visible:
+        if start > 0:
+            actions.append("CAROUSEL_LEFT")
+        if start + visible < total:
+            actions.append("CAROUSEL_RIGHT")
     actions.extend(["SHOW_FAVORITES", "HIDE_FAVORITES"])
     actions.append("STOP")
     return sorted(set(actions))
@@ -614,6 +771,7 @@ class GraphRunner:
         self.user_agent = UserAgent(chat_model)
         self.summary_agent = SummaryAgent(chat_model)
         self.judge_agent = JudgeAgent(chat_model)
+        self.completion_judge = CompletionJudgeAgent(chat_model)
 
         self.graph = self._build_graph()
 
@@ -657,14 +815,12 @@ class GraphRunner:
             persona = state["persona"]
             thresholds = state.get("rl_thresholds")
             scores = state.get("rl_scores")
-            discount = state.get("discount_factor", 0.85)
             updates: Dict[str, Any] = {}
             if thresholds is None or scores is None:
-                thresholds, scores, discount, init_notes = self.user_agent.derive_rl_model(persona)
+                thresholds, scores, init_notes = self.user_agent.derive_rl_model(persona)
                 updates.update({
                     "rl_thresholds": thresholds,
                     "rl_scores": scores,
-                    "discount_factor": discount,
                     "rl_rationale": init_notes,
                 })
                 if self.verbose:
@@ -677,7 +833,6 @@ class GraphRunner:
                     payload: Dict[str, Any] = {
                         "thresholds": dict(thresholds or {}),
                         "scores": dict(scores or {}),
-                        "discount": discount,
                         "notes": init_notes,
                     }
                     self.event_callback("rl_init", payload)
@@ -685,6 +840,8 @@ class GraphRunner:
             ui_desc = describe_ui_state(state["ui"], state.get("vehicles", []))
             available_actions = list_available_actions(state["ui"])
             last_assistant = state.get("last_assistant", "")
+            history_messages = build_truncated_history(state.get("history", []))
+            quick_replies = state.get("quick_replies")
             reminder = None
             judge_result: Optional[Dict[str, Any]] = None
             user_text, actions, notes = "", [], ""
@@ -698,6 +855,8 @@ class GraphRunner:
                     scores=scores or state.get("rl_scores", {"positive": 0.15, "negative": 0.15}),
                     available_actions=available_actions,
                     last_assistant=last_assistant,
+                    history=history_messages,
+                    quick_replies=quick_replies,
                     reminder=reminder,
                 )
                 judge_result = self.judge_agent.evaluate(persona, state["goal"], summary, user_text, actions)
@@ -745,13 +904,18 @@ class GraphRunner:
             vehicles = resp.get("vehicles") or []
             total = len(vehicles)
             ui_updated: UIState = dict(state["ui"])
+            start_index = int(ui_updated.get("start") or 0)
+            visible_count = int(ui_updated.get("visible_count") or 3) or 3
+            max_start = max(0, total - visible_count)
+            start_index = max(0, min(start_index, max_start))
             ui_updated.update({
                 "total": int(total),
-                "visible_count": 3,
-                "start": 0,
+                "visible_count": visible_count,
+                "start": start_index,
             })
-            visible_indices = list(range(0, min(3, total)))
+            visible_indices = list(range(start_index, min(total, start_index + visible_count)))
             assistant_text = resp.get("response", "")
+            quick_replies = resp.get("quick_replies")
             turn: Turn = {
                 "user_text": user_text,
                 "assistant_text": assistant_text,
@@ -785,6 +949,7 @@ class GraphRunner:
                 "step": state["step"] + 1,
                 "session_id": self.api.session_id,
                 "last_assistant": assistant_text,
+                "quick_replies": quick_replies,
             }
 
         def n_post_backend(state: SimState):
@@ -795,24 +960,34 @@ class GraphRunner:
             summary, summary_notes = self.summary_agent.update(summary_prev, turn, state["ui"], state.get("vehicles", []))
             scores = state.get("rl_scores") or {"positive": 0.15, "negative": 0.15}
             thresholds = state.get("rl_thresholds") or {"positive": 0.85, "negative": 0.65}
-            discount = state.get("discount_factor", 0.85)
+            history_messages = build_truncated_history(state.get("history", []))
             new_scores, rationale = self.user_agent.update_rl_scores(
                 persona=state["persona"],
                 summary=summary,
                 turn=turn,
                 prev_scores=scores,
-                discount=discount,
                 visible_vehicles=state.get("vehicles", []),
+                history=history_messages,
             )
             stop_result: Optional[StopResult] = None
+            completion_review: Optional[Dict[str, Any]] = None
             if new_scores["positive"] >= thresholds["positive"]:
-                stop_result = {
-                    "kind": "positive",
-                    "scores": new_scores,
-                    "thresholds": thresholds,
-                    "rationale": rationale or "Positive satisfaction exceeded threshold.",
-                    "at_step": state["step"],
-                }
+                completion_review = self.completion_judge.evaluate(
+                    persona=state["persona"],
+                    goal=state["goal"],
+                    summary=summary,
+                    history=history_messages,
+                    scores=new_scores,
+                    thresholds=thresholds,
+                )
+                if completion_review.get("should_end"):
+                    stop_result = {
+                        "kind": "positive",
+                        "scores": new_scores,
+                        "thresholds": thresholds,
+                        "rationale": (completion_review.get("reason") or rationale or "Intents satisfied; judge approved completion."),
+                        "at_step": state["step"],
+                    }
             elif new_scores["negative"] >= thresholds["negative"]:
                 stop_result = {
                     "kind": "negative",
@@ -828,6 +1003,7 @@ class GraphRunner:
                 "rl_scores": new_scores,
                 "rl_rationale": rationale,
                 "stop_result": stop_result,
+                "completion_review": completion_review,
             }
             if self.verbose and rationale:
                 print(f"RL rationale: {rationale}")
@@ -837,6 +1013,7 @@ class GraphRunner:
                 "thresholds": thresholds,
                 "rationale": rationale,
                 "judge": state.get("last_judge"),
+                "completion_review": completion_review,
                 "step": state["step"],
             })
             if state.get("demo_mode"):
@@ -849,6 +1026,9 @@ class GraphRunner:
                     "scores": new_scores,
                     "judge": state.get("last_judge"),
                     "rationale": rationale,
+                    "quick_replies": state.get("quick_replies"),
+                    "completion_review": completion_review,
+                    "vehicles": (state.get("vehicles", []) or [])[:3],
                 }
                 updates["demo_snapshots"] = state.get("demo_snapshots", []) + [snapshot]
                 if self.event_callback:
@@ -945,7 +1125,6 @@ class GraphRunner:
             "persona": {"family": "", "writing": "", "interaction": "", "intent": ""},
             "rl_thresholds": None,
             "rl_scores": None,
-            "discount_factor": 0.85,
             "rl_rationale": None,
             "goal": {"max_steps": max_steps, "stop_on_selection": False},
             "ui": {
@@ -973,11 +1152,13 @@ class GraphRunner:
             "backend_response": {},
             "vehicles": [],
             "last_assistant": "",
+            "quick_replies": None,
             "conversation_summary": "",
             "summary_version": 0,
             "summary_notes": None,
             "stop_result": None,
             "last_judge": None,
+            "completion_review": None,
             "demo_mode": demo_mode,
             "demo_snapshots": [],
         }

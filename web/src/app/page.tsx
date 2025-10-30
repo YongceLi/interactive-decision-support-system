@@ -110,6 +110,22 @@ export default function Home() {
   const toggleFavorite = (vehicle: Vehicle) => {
     setFavorites(prev => {
       const isFavorite = prev.some(v => v.id === vehicle.id);
+      const action = isFavorite ? 'unfavorited' : 'favorited';
+      
+      // Log the favorite action
+      console.log(`User ${action} vehicle:`, vehicle);
+      
+      // Log event to agent using event API (non-blocking)
+      if (sessionId) {
+        const willBeFavorite = !isFavorite;
+        LoggingService.logFavoriteToggle(
+          sessionId, 
+          vehicle.id, 
+          vehicle.vin || 'unknown',
+          willBeFavorite
+        ).catch(err => console.error('Error logging favorite to agent:', err));
+      }
+      
       if (isFavorite) {
         return prev.filter(v => v.id !== vehicle.id);
       } else {
@@ -212,6 +228,9 @@ export default function Home() {
     setIsLoading(true);
     start(); // Start verbose loading
 
+    // Track latency
+    const startTime = performance.now();
+
     try {
       // Send message to streaming endpoint
       const response = await fetch('/api/chat/stream', {
@@ -240,11 +259,24 @@ export default function Home() {
 
       // Add assistant response with formatting
       const formattedResponse = formatAgentResponse(data.response);
+      
+      // Track latency and log to internal record
+      const latency = performance.now() - startTime;
+      
+      // Log latency to internal record
+      if (sessionId) {
+        LoggingService.logAgentLatency(sessionId, latency, message).catch(
+          err => console.error('Error logging latency:', err)
+        );
+      }
+      
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,
         content: formattedResponse,
-        timestamp: new Date()
+        timestamp: new Date(),
+        quick_replies: data.quick_replies,
+        suggested_followups: data.suggested_followups || []
       };
       setChatMessages(prev => [...prev, assistantMessage]);
 
@@ -386,7 +418,7 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites) && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[22rem]">
+          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
             <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
@@ -603,18 +635,18 @@ export default function Home() {
         )}
 
         {/* Chat Messages - Only last 3 turns */}
-        <div className="flex-1 overflow-y-auto p-12 relative min-h-0">
+        <div className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}>
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+              <div key={message.id} className="flex flex-col">
+                <div
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
                     className={`max-w-[80%] p-4 rounded-2xl ${
                       message.role === 'user'
                         ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'glass-dark text-slate-100'
+                        : 'glass-dark text-slateensed 100'
                     }`}
                   >
                     <div 
@@ -622,6 +654,25 @@ export default function Home() {
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
                     />
                   </div>
+                </div>
+                
+                {/* Buttons below assistant messages (row format, no headers) */}
+                {message.role === 'assistant' && ((message.quick_replies && message.quick_replies.length > 0) || (message.suggested_followups && message.suggested_followups.length > 0)) && (
+                  <div className="flex justify-start mt-2">
+                    <div className="max-w-[80%] w-full flex flex-wrap gap-2">
+                      {[...(message.suggested_followups || []), ...(message.quick_replies || [])].map((reply, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleChatMessage(reply)}
+                          disabled={isLoading}
+                          className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          {reply}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {isLoading && (
@@ -644,8 +695,8 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className="border-t border-slate-600/30 glass-dark p-8">
-          <div className="max-w-6xl mx-auto">
+        <div className="h-[11%] flex-shrink-0 border-t border-slate-600/30 glass-dark flex items-center px-8 py-6">
+          <div className="w-3/4 mx-auto">
             <ChatBox
               messages={[]}
               onSendMessage={handleChatMessage}
@@ -660,9 +711,9 @@ export default function Home() {
 
       {/* Favorites Button */}
       <button
-        onClick={() => setShowFavorites(true)}
+        onClick={() => setShowFavorites(!showFavorites)}
         className="fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50"
-        title="View Favorites"
+        title={showFavorites ? "Hide Favorites" : "View Favorites"}
       >
         <svg 
           className={`w-6 h-6 ${favorites.length > 0 ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}

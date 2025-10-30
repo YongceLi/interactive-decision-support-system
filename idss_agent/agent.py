@@ -1,22 +1,18 @@
 """
-Complete vehicle search agent with intent-based routing.
+Complete vehicle search agent with SUPERVISOR architecture.
 
 Architecture:
-1. Classify user intent on every message
-2. Route to appropriate mode based on intent:
-   - buying: Interview workflow (if not interviewed) or recommendation updates
-   - browsing: Discovery mode (casual exploration)
-   - research: Analytical mode (data-driven queries)
-   - general: Simple conversational responses
+1. Add user message to history
+2. Supervisor analyzes request (can detect multiple intents)
+3. Supervisor delegates to sub-agents as needed
+4. Supervisor synthesizes unified response
+
 """
 from datetime import datetime
 from typing import Optional, Callable
 from idss_agent.logger import get_logger
 from idss_agent.state import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
-from idss_agent.components.intent_classifier import classify_intent
-from idss_agent.modes import run_buying_mode, run_discovery_mode, run_analytical_mode, run_general_mode
-from idss_agent.workflows.interview_workflow import run_interview_workflow
-from idss_agent.progress_config import initialize_progress, start_step, complete_step
+from idss_agent.supervisor import run_supervisor
 
 logger = get_logger("agent")
 
@@ -27,13 +23,14 @@ def run_agent(
     progress_callback: Optional[Callable[[dict], None]] = None
 ) -> VehicleSearchState:
     """
-    Run the vehicle search agent with intent-based routing.
+    Run the vehicle search agent with SUPERVISOR architecture.
 
     Flow:
     1. Add user message to history
-    2. Classify intent (buying/browsing/research/general)
-    3. Route to appropriate mode
-    4. Return updated state
+    2. Supervisor analyzes request (detects multiple intents)
+    3. Supervisor delegates to sub-agents
+    4. Supervisor synthesizes unified response
+    5. Return updated state
 
     Args:
         user_input: User's message/query
@@ -50,92 +47,32 @@ def run_agent(
     # Add user message to conversation history
     state = add_user_message(state, user_input)
 
-    # ALWAYS classify intent (runs on every user message)
-    logger.info("Classifying user intent...")
-
-    # Emit progress: Starting intent classification
+    # Emit progress: Starting processing
     if progress_callback:
         progress_callback({
-            "step_id": "intent_classification",
+            "step_id": "processing",
             "description": "Understanding your request",
             "status": "in_progress"
         })
 
-    intent_result = classify_intent(state["conversation_history"])
+    # Run supervisor to handle request
+    logger.info("Running supervisor agent...")
+    result = run_supervisor(user_input, state, progress_callback)
 
-    # Emit progress: Intent classification complete
+    # Set mode to 'supervisor' (for backward compatibility tracking)
+    result["current_mode"] = "supervisor"
+
+    # Emit progress: Complete
     if progress_callback:
         progress_callback({
-            "step_id": "intent_classification",
-            "description": f"Routing to {intent_result.intent} mode",
+            "step_id": "processing",
+            "description": "Response ready",
             "status": "completed"
         })
 
-    # Log intent classification
-    intent_record = {
-        "intent": intent_result.intent,
-        "confidence": intent_result.confidence,
-        "reasoning": intent_result.reasoning,
-        "timestamp": datetime.now().isoformat(),
-        "message_index": len(state["conversation_history"]) - 1
-    }
-    state["intent_history"].append(intent_record)
-
-    # Track previous mode for switch detection
-    previous_mode = state.get("current_mode")
-
-    # Update current intent
-    state["current_intent"] = intent_result.intent
-
-    # Initialize progress tracking for this mode
-    interviewed = state.get("interviewed", False)
-    state["execution_progress"] = initialize_progress(
-        mode=intent_result.intent if intent_result.intent != "browsing" else "discovery",
-        interviewed=interviewed if intent_result.intent == "buying" else False
-    )
-
-    # Route to appropriate mode based on intent
-    if intent_result.intent == "buying":
-        # BUYING MODE
-        state["current_mode"] = "buying"
-
-        # Check if interviewed
-        if not state.get("interviewed", False):
-            # NOT interviewed - run interview workflow
-            logger.info("Buying mode: Running interview workflow...")
-            result = run_interview_workflow(user_input, state, progress_callback)
-        else:
-            # ALREADY interviewed - update recommendations
-            logger.info("Buying mode: Interview complete, updating recommendations...")
-            result = run_buying_mode(state, progress_callback)
-
-    elif intent_result.intent == "browsing":
-        # DISCOVERY MODE (browsing)
-        state["current_mode"] = "discovery"
-        logger.info("Discovery mode: Browsing vehicles...")
-        result = run_discovery_mode(state, progress_callback)
-
-    elif intent_result.intent == "research":
-        # ANALYTICAL MODE (research)
-        state["current_mode"] = "analytical"
-        logger.info("Analytical mode: Answering analytical question...")
-        result = run_analytical_mode(state, progress_callback)
-
-    else:  # general
-        # GENERAL MODE
-        state["current_mode"] = "general"
-        logger.info("General mode: Handling general conversation...")
-        result = run_general_mode(state, progress_callback)
-
-    # Track mode switches
-    if previous_mode and previous_mode != result["current_mode"]:
-        result["mode_switch_count"] = result.get("mode_switch_count", 0) + 1
-        logger.info(f"Mode switched: {previous_mode} → {result['current_mode']}")
-
     # Add AI response to conversation history if not already added
-    # (Some modes like general_mode already add it)
     if result.get('ai_response'):
-        # Check if AI message was already added (general mode adds it)
+        # Check if AI message was already added
         last_msg = result["conversation_history"][-1] if result["conversation_history"] else None
         is_ai_msg = hasattr(last_msg, 'type') and last_msg.type == 'ai'
         is_same_content = last_msg.content == result['ai_response'] if last_msg else False
