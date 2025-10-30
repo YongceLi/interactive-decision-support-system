@@ -31,7 +31,7 @@ def main() -> None:
     persona = args.persona.strip() or (
         "Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute; "
         "budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos; "
-        "asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305"
+        "asks clarifying questions and compares trims; intent: actively shopping."
     )
 
     model = ChatOpenAI(model="gpt-4o-mini", temperature=args.temperature)
@@ -53,16 +53,16 @@ def main() -> None:
     print("\n=== STOPPED ===")
     print("Reason:", final_state.get("stop_reason"))
     print("Steps:", final_state.get("step"))
-    print("Final emotion score:", final_state.get("emotion_score"))
-    print("Final threshold:", final_state.get("emotion_threshold"))
-    print("Emotion rationale:", final_state.get("emotion_rationale"))
+    print("Final scores:", final_state.get("rl_scores"))
+    print("Final thresholds:", final_state.get("rl_thresholds"))
+    print("Final RL rationale:", final_state.get("rl_rationale"))
     print("Judge summary:", final_state.get("last_judge"))
     print("Conversation summary (truncated):", (final_state.get("conversation_summary") or "")[:400])
 
     if args.demo:
         print("\n=== Demo snapshots ===")
         for snap in final_state.get("demo_snapshots", []):
-            print(f"Step {snap['step']}: alignment={snap.get('judge', {}).get('score')} emotion={snap.get('emotion')}")
+            print(f"Step {snap['step']}: alignment={snap.get('judge', {}).get('score')} scores={snap['scores']}")
             if snap.get("rationale"):
                 print(f"  Rationale: {snap['rationale']}")
             print("  User:", snap["user_text"])

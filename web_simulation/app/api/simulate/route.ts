@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const resolvedPersona = persona ?? (
       'Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute; '
       + 'budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos; '
-      + 'asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305'
+      + 'asks clarifying questions and compares trims; intent: actively shopping.'
     );
 
     const resolvedSteps = Math.min(Math.max(maxSteps ?? 8, 1), 30);

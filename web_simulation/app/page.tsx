@@ -22,12 +22,9 @@ interface PersonaFacets {
   intent?: string;
 }
 
-interface EmotionState {
-  value?: number;
-}
-
-interface EmotionThreshold {
-  lower?: number;
+interface Thresholds {
+  positive?: number;
+  negative?: number;
 }
 
 interface SimulationResponse {
@@ -40,11 +37,9 @@ interface SimulationResponse {
   conversation_summary?: string;
   summary_version?: number;
   summary_notes?: string;
-  emotion_score?: EmotionState;
-  emotion_threshold?: EmotionThreshold;
-  emotion_rationale?: string;
-  emotion_delta?: number;
-  emotion_delta_rationale?: string;
+  rl_scores?: Thresholds;
+  rl_thresholds?: Thresholds;
+  rl_rationale?: string;
   discount_factor?: number;
   last_judge?: JudgePayload | null;
   persona?: PersonaFacets;
@@ -61,8 +56,7 @@ type StreamTurnEvent = {
   assistant_text: string;
   actions?: Array<Record<string, unknown>>;
   summary?: string;
-  emotion?: EmotionState;
-  delta?: number;
+  scores?: Thresholds;
   judge?: JudgePayload | null;
   rationale?: string | null;
   quick_replies?: string[] | null;
@@ -73,10 +67,11 @@ type StreamTurnEvent = {
 type StreamEvent =
   | { type: 'turn'; data: StreamTurnEvent }
   | {
-      type: 'emotion_init';
+      type: 'rl_init';
       data: {
-        threshold?: EmotionThreshold;
-        score?: EmotionState;
+        thresholds?: Thresholds;
+        scores?: Thresholds;
+        discount?: number;
         notes?: string;
       };
     }
@@ -85,7 +80,7 @@ type StreamEvent =
 
 const DEFAULT_PERSONA = `Married couple in Colorado with a toddler and a medium-sized dog. Mixed city/highway commute;
 budget-conscious but safety-focused. Considering SUVs and hybrids; casually written messages with occasional typos;
-asks clarifying questions and compares trims; intent: actively shopping. Specifically looking for options in zip code 94305`;
+asks clarifying questions and compares trims; intent: actively shopping.`;
 
 export default function Page() {
   const [persona, setPersona] = useState<string>(DEFAULT_PERSONA);
@@ -94,12 +89,11 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SimulationResponse | null>(null);
   const [turns, setTurns] = useState<SimulationTurn[]>([]);
-  const [emotionInfo, setEmotionInfo] = useState<{
-    threshold?: number;
-    value?: number;
+  const [rlInfo, setRlInfo] = useState<{
+    thresholds?: Thresholds;
+    scores?: Thresholds;
+    discount?: number;
     notes?: string;
-    delta?: number;
-    deltaRationale?: string;
   } | null>(null);
 
   const handleRun = async () => {
@@ -107,7 +101,7 @@ export default function Page() {
     setError(null);
     setResult(null);
     setTurns([]);
-    setEmotionInfo(null);
+    setRlInfo(null);
 
     try {
       const response = await fetch('/api/simulate', {
@@ -141,15 +135,6 @@ export default function Page() {
           const event = JSON.parse(line) as StreamEvent;
           switch (event.type) {
             case 'turn':
-              setEmotionInfo((prev) => ({
-                ...(prev ?? {}),
-                value:
-                  typeof event.data.emotion?.value === 'number'
-                    ? event.data.emotion.value
-                    : prev?.value,
-                delta:
-                  typeof event.data.delta === 'number' ? event.data.delta : prev?.delta,
-              }));
               setTurns((prev) => {
                 const nextTurn: SimulationTurn = {
                   step: event.data.step ?? prev.length + 1,
@@ -157,8 +142,7 @@ export default function Page() {
                   assistant_text: event.data.assistant_text,
                   actions: event.data.actions ?? [],
                   summary: event.data.summary ?? '',
-                  emotion: event.data.emotion ?? null,
-                  delta: event.data.delta ?? null,
+                  scores: event.data.scores,
                   judge: event.data.judge ?? null,
                   rationale: event.data.rationale ?? null,
                   quick_replies: event.data.quick_replies ?? null,
@@ -167,11 +151,18 @@ export default function Page() {
                 };
                 return [...prev, nextTurn];
               });
+              if (event.data.scores) {
+                setRlInfo((prev) => ({
+                  ...(prev ?? {}),
+                  scores: event.data.scores,
+                }));
+              }
               break;
-            case 'emotion_init':
-              setEmotionInfo({
-                threshold: event.data.threshold?.lower,
-                value: event.data.score?.value,
+            case 'rl_init':
+              setRlInfo({
+                thresholds: event.data.thresholds,
+                scores: event.data.scores,
+                discount: event.data.discount,
                 notes: event.data.notes,
               });
               break;
@@ -180,14 +171,12 @@ export default function Page() {
               if (event.data.demo_snapshots?.length) {
                 setTurns(event.data.demo_snapshots);
               }
-              setEmotionInfo((prev) => ({
+              setRlInfo((prev) => ({
                 ...(prev ?? {}),
-                threshold:
-                  event.data.emotion_threshold?.lower ?? prev?.threshold,
-                value: event.data.emotion_score?.value ?? prev?.value,
-                notes: event.data.emotion_rationale ?? prev?.notes,
-                delta: event.data.emotion_delta ?? prev?.delta,
-                deltaRationale: event.data.emotion_delta_rationale ?? prev?.deltaRationale,
+                thresholds: event.data.rl_thresholds ?? prev?.thresholds,
+                scores: event.data.rl_scores ?? prev?.scores,
+                discount: event.data.discount_factor ?? prev?.discount,
+                notes: event.data.rl_rationale ?? prev?.notes,
               }));
               break;
             case 'error':
@@ -275,11 +264,9 @@ export default function Page() {
 
   const stopReason = result?.stop_reason ?? (turns.length ? (isRunning ? 'Running…' : 'In progress') : 'Pending');
   const stepsUsed = result?.step ?? turns.length;
-  const emotionValue = emotionInfo?.value ?? result?.emotion_score?.value ?? undefined;
-  const emotionThreshold = emotionInfo?.threshold ?? result?.emotion_threshold?.lower ?? undefined;
-  const emotionNotes = emotionInfo?.notes ?? result?.emotion_rationale ?? undefined;
-  const emotionDelta = emotionInfo?.delta ?? result?.emotion_delta ?? undefined;
-  const emotionDeltaNotes = emotionInfo?.deltaRationale ?? result?.emotion_delta_rationale ?? undefined;
+  const rlThresholds = rlInfo?.thresholds ?? result?.rl_thresholds ?? undefined;
+  const rlScores = rlInfo?.scores ?? result?.rl_scores ?? undefined;
+  const rlNotes = rlInfo?.notes ?? result?.rl_rationale ?? undefined;
 
   return (
     <main className="flex flex-col gap-10 px-6 py-10 lg:px-12">
@@ -370,34 +357,28 @@ export default function Page() {
                 </dd>
               </div>
             ) : null}
-            <div>
-              <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion value</dt>
-              <dd className="mt-1 text-slate-100">
-                {typeof emotionValue === 'number' ? emotionValue.toFixed(2) : '—'}
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Disengagement threshold</dt>
-              <dd className="mt-1 text-slate-100">
-                {typeof emotionThreshold === 'number' ? emotionThreshold.toFixed(2) : '—'}
-              </dd>
-            </div>
-            {typeof emotionDelta === 'number' ? (
+            {rlThresholds ? (
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Latest delta</dt>
-                <dd className="mt-1 text-slate-100">{emotionDelta.toFixed(2)}</dd>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion Score Thresholds</dt>
+                <dd className="mt-1 text-slate-100 space-y-1">
+                  <div>Positive: {rlThresholds.positive?.toFixed(2) ?? '—'}</div>
+                  <div>Negative: {rlThresholds.negative?.toFixed(2) ?? '—'}</div>
+                </dd>
               </div>
             ) : null}
-            {emotionNotes ? (
+            {rlScores ? (
+              <div>
+                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Current Emotion Scores</dt>
+                <dd className="mt-1 text-slate-100 space-y-1">
+                  <div>Positive: {rlScores.positive?.toFixed(2) ?? '—'}</div>
+                  <div>Negative: {rlScores.negative?.toFixed(2) ?? '—'}</div>
+                </dd>
+              </div>
+            ) : null}
+            {rlNotes ? (
               <div>
                 <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Emotion notes</dt>
-                <dd className="mt-1 whitespace-pre-line text-slate-200/80">{emotionNotes}</dd>
-              </div>
-            ) : null}
-            {emotionDeltaNotes ? (
-              <div>
-                <dt className="font-semibold uppercase tracking-wide text-xs text-slate-500">Delta rationale</dt>
-                <dd className="mt-1 whitespace-pre-line text-slate-200/80">{emotionDeltaNotes}</dd>
+                <dd className="mt-1 whitespace-pre-line text-slate-200/80">{rlNotes}</dd>
               </div>
             ) : null}
           </dl>
