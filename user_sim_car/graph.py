@@ -341,11 +341,68 @@ class CompletionJudgeAgent:
 class UserAgent:
     model: BaseChatModel
 
+    def _normalize_actions(
+        self,
+        actions: List[Dict[str, Any]],
+        user_text: str,
+        quick_replies: Optional[List[str]] = None,
+    ) -> Tuple[List[Dict[str, Any]], str]:
+        """Attach reporting labels and enforce quick reply/text alignment."""
+
+        normalized: List[Dict[str, Any]] = []
+        quick_reply_choice: Optional[str] = None
+        quick_lookup = {
+            str(option).strip(): str(option)
+            for option in (quick_replies or [])
+            if isinstance(option, str)
+        }
+
+        for raw in actions:
+            if not isinstance(raw, dict):
+                continue
+            action_type = str(raw.get("type", "")).upper()
+            if not action_type:
+                continue
+            action: Dict[str, Any] = {k: v for k, v in raw.items() if k != "label"}
+            action["type"] = action_type
+
+            if action_type == "QUICK_REPLY":
+                value = raw.get("value")
+                label = str(value).strip() if value is not None else ""
+                trimmed_user = user_text.strip()
+                # if not label and trimmed_user:
+                #     label = trimmed_user
+                # if label in quick_lookup:
+                #     label = quick_lookup[label]
+                # elif trimmed_user in quick_lookup:
+                #     label = quick_lookup[trimmed_user]
+                action["value"] = label
+                action["label"] = label
+                quick_reply_choice = label or quick_reply_choice
+            elif action_type == "CLICK_CARD":
+                try:
+                    idx = int(raw.get("index", 0))
+                except Exception:
+                    idx = 0
+                action["index"] = idx
+                action["label"] = f"#{idx + 1}"
+            else:
+                label_raw = raw.get("label")
+                if isinstance(label_raw, str) and label_raw.strip():
+                    action["label"] = label_raw.strip()
+
+            normalized.append(action)
+
+        if quick_reply_choice:
+            user_text = quick_reply_choice
+
+        return normalized, user_text
+
     def derive_emotion_model(self, persona: PersonaDict) -> Tuple[EmotionThreshold, EmotionScore, str]:
         sys_prompt = (
             "Calibrate the scalar emotion model for a simulated car shopper using their persona facets. "
             "Emotion value ranges from -1 (furious) to 1 (delighted); 0 is neutral. "
-            "Set a single lower-bound disengagement threshold: higher (e.g., -0.1) means they disengage quickly, lower (e.g., -0.7) means they are patient."
+            "Set a single lower-bound disengagement threshold: higher (e.g., -0.4) means they disengage quickly, lower (e.g., -1) means they are patient."
             "Most personas begin at 0 unless the seed implies prior satisfaction or frustration."
             "Return JSON only: {{\"threshold\": <float>, \"initial_value\": <float>, \"notes\": <string>}}"
         )
@@ -394,7 +451,7 @@ class UserAgent:
             "Never adjust the score purely because the shopper's words sound positive or negative; treat tone only as a clue to their goals. "
             "Use persona facets, the running summary, truncated conversation history, and the last user/assistant exchange plus resulting UI actions. "
             "Account for the current emotion value and disengagement threshold ({threshold_lower}). "
-            "Return a delta between -0.4 and 0.4. "
+            "Return a delta between -0.2 and 0.2. "
             "Explain both (a) why the delta was chosen and (b) how the resulting emotion value will influence the shopper's upcoming message and UI actions. "
             "Return JSON only: {{\"delta\": <float>, \"rationale\": <string>}}"
         )
@@ -488,6 +545,8 @@ class UserAgent:
             "Actions must use the available list verbatim when relevant (e.g., CLICK_CARD, CLOSE_DETAIL, TOGGLE_FILTER, REFRESH_FILTERS, SET_MILEAGE, SET_PRICE_BAND, OPEN_FILTER_MENU, CLOSE_FILTER_MENU, CAROUSEL_LEFT, CAROUSEL_RIGHT, SHOW_FAVORITES, HIDE_FAVORITES, TOGGLE_FAVORITE, QUICK_REPLY, STOP_NEGATIVE, STOP_POSITIVE)."
             "Use STOP_NEGATIVE only when the shopper is giving up from low emotion or impatience, and STOP_POSITIVE only when the intent feels completely satisfied and the emotion value is at its peak."
             "If you choose a quick reply, set user_text exactly to that text, include a single QUICK_REPLY action with a value field describing the button label, and avoid conflicting actions."
+            "Quick reply actions must mirror the chip label verbatim so the UI action reads 'QUICK_REPLY <value>'."
+            "When using CLICK_CARD, include an index field (0 for the first visible card) so the UI log can surface which card was opened."
             "Always include a decision_rationale string explaining how the current emotion value, the latest delta, and persona facets shaped the message and UI plan."
             "Return JSON only: {{\"user_text\": <string>, \"actions\": <list>, \"decision_rationale\": <string>}}"
         )
@@ -549,6 +608,7 @@ class UserAgent:
                     actions.append(action)
                 elif isinstance(a, str):
                     actions.append({"type": a.upper()})
+            actions, user_text = self._normalize_actions(actions, user_text, quick_replies)
         except Exception:
             user_text = raw
             notes = "Fallback: non-JSON user action payload; no structured UI actions captured."
@@ -1157,10 +1217,10 @@ class GraphRunner:
         g.add_conditional_edges("merge", route_merge, {"user": "user", "await_more": "await_more"})
 
         g.add_edge("user", "ui")
-        g.add_edge("ui", "backend")
+        g.add_edge("ui", "emotion")
+        g.add_edge("emotion", "backend")
         g.add_edge("backend", "post_backend")
-        g.add_edge("post_backend", "emotion")
-        g.add_edge("emotion", "check_stop")
+        g.add_edge("post_backend", "check_stop")
 
         def route_check(state: SimState) -> str:
             return END if state.get("stop_reason") else "user"
