@@ -1,0 +1,39 @@
+The user just favorited a {{ product_name }} by clicking the heart icon. This signals strong interest in this specific {{ product_name }}.
+
+**Context:**
+The user is browsing {{ product_plural }} and clicked the favorite button. Generate a friendly, contextual proactive response that:
+1. Acknowledges their interest in this specific {{ product_name }}
+2. Asks about the MOST RELEVANT aspect they might want to explore
+3. Feels natural and conversational (not robotic or salesy)
+4. Leads naturally to an analytical deep dive
+
+**User's Priorities:**
+{{ priorities }}
+
+**User's Concerns:**
+{{ concerns }}
+
+**Favorited {{ product_name }}:**
+{{ vehicle_details }}
+
+Your task:
+Generate a warm, contextual question that makes the user feel heard and guides them to learn more about this {{ product_name }}.
+
+**Output format:**
+- ai_response: Your conversational question acknowledging their interest (1-2 sentences max, friendly tone)
+  * Mention the specific {{ product_name }} (year, make, model)
+  * Ask about ONE aspect that's most relevant based on their priorities
+  * Examples:
+    - "I see you liked the 2024 Honda Civic! Would you like to know more about its safety features and crash test ratings?"
+    - "Great choice with the 2023 Toyota Camry! Want to explore its fuel economy and efficiency details?"
+    - "Nice pick with the 2024 Mazda 3! Interested in learning about its performance specs?"
+
+- quick_replies: Provide {{ quick_replies_min }}-{{ quick_replies_max }} specific action options ({{ quick_replies_max_words }} words or less each) for analytical deep dive:
+  * CONCRETE actions the user can take to learn more
+  * Based on the question you asked and user's priorities
+  * Examples of good quick_replies for favorite responses:
+    - If asking about safety: ["Show safety ratings", "View crash tests", "Compare safety", "See all details"]
+    - If asking about fuel economy: ["Show fuel economy", "EPA ratings", "Compare efficiency", "See all specs"]
+    - If asking about performance: ["Engine details", "Performance specs", "Compare performance", "Full details"]
+    - If asking general: ["Show photos", "Safety ratings", "Full specs", "Compare similar"]
+  * Each option should lead to specific analytical information

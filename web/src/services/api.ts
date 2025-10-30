@@ -90,6 +90,59 @@ class IDSSApiService {
     return this.sessionId;
   }
 
+  async sendFavoriteAction(sessionId: string, vehicle: Vehicle, isFavorited: boolean): Promise<ChatResponse> {
+    try {
+      if (!sessionId) {
+        throw new Error('No session ID available');
+      }
+
+      // Clean vehicle object for serialization
+      const vehicleData = {
+        vin: vehicle.vin,
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        price: vehicle.price,
+        mileage: vehicle.mileage,
+        miles: vehicle.mileage,  // Backend might expect 'miles'
+        location: vehicle.location,
+        condition: vehicle.condition,
+        trim: vehicle.trim,
+        body_style: vehicle.body_style,
+        engine: vehicle.engine,
+        transmission: vehicle.transmission,
+        exterior_color: vehicle.exterior_color,
+        features: vehicle.features
+      };
+
+      console.log('Sending to:', `${API_BASE_URL}/session/${sessionId}/favorite`);
+      console.log('Request body:', { vehicle: vehicleData, is_favorited: isFavorited });
+
+      const response = await fetch(`${API_BASE_URL}/session/${sessionId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          vehicle: vehicleData,
+          is_favorited: isFavorited,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error sending favorite action:', error);
+      console.error('Error type:', error instanceof TypeError ? 'TypeError' : error instanceof Error ? 'Error' : 'Unknown');
+      throw error;
+    }
+  }
+
   // Convert API vehicle data to our Vehicle type
   convertVehicle(apiVehicle: Record<string, unknown>): Vehicle {
     // Handle nested auto.dev API structure

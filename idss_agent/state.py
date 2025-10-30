@@ -265,6 +265,7 @@ class VehicleSearchState(TypedDict):
 
     # User interaction tracking
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
+    favorites: List[Dict[str, Any]]  # List of vehicles favorited by user
 
     # Interview phase tracking
     interviewed: bool  # False = in interview workflow, True = interview complete
@@ -296,6 +297,7 @@ def create_initial_state() -> VehicleSearchState:
         questions_asked=[],
         previous_filters=VehicleFilters(),
         interaction_events=[],
+        favorites=[],
         interviewed=False,  # Start in interview workflow
         _interview_should_end=False,
         current_intent="general",  # Initial intent

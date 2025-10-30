@@ -1,7 +1,7 @@
 """
 Pydantic models for API requests and responses.
 """
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -79,3 +79,9 @@ class EventsResponse(BaseModel):
     session_id: str
     events: List[Dict[str, Any]]
     total: int
+
+
+class FavoriteRequest(BaseModel):
+    """Request model when user favorites/unfavorites a vehicle."""
+    vehicle: Dict[str, Any] = Field(description="Full vehicle object that was favorited")
+    is_favorited: bool = Field(description="True if favorited, False if unfavorited")

@@ -7,19 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## 2025-10-29
 
 ### Added
 
-#### Location Features
-- **Automatic location request**: Website now requests user's location on first load via browser geolocation API
-- **Location-aware search**: User's location (latitude/longitude) is automatically passed to the agent with their first message after granting location access
-- **Flexible location handling**: Users can still request cars in other locations even after providing their initial location
-- Added `latitude` and `longitude` optional fields to `ChatRequest` API model
+#### Proactive Favorite Response Feature
+- When user favorites a vehicle (clicks ❤️), system immediately generates contextual question about the vehicle
+- Added `favorites` field to `VehicleSearchState` to track favorited vehicles in session
+- `POST /session/{session_id}/favorite` for handling favorite/unfavorite actions
+- Favorite actions logged to `interaction_events` for analytics
+- Created `idss_agent/components/proactive_responses.py` for LLM-based response generation
+- Created `config/prompts/proactive_favorite.j2` prompt template with detailed instructions
+- Added `FavoriteRequest` Pydantic model to `api/models.py`
+
+#### Interview→Discovery Handoff Improvements
+- Added `questions_asked` field to `ExtractionResult` model to track topics covered during interview
+- Interview extraction now identifies which topics were discussed (budget, location, usage, priorities, etc.)
+- Discovery mode receives list of already-covered topics and avoids re-asking
+- Enhanced `interview_extraction.j2` prompt with explicit instructions for topic extraction
+- Updated `make_initial_recommendation()` to populate `state['questions_asked']` for discovery mode
 
 ### Changed
-- Location is requested via browser permissions instead of asking via chat
-- Location data is seamlessly integrated into the first user message to improve search relevance
+
+- Suggested Followups Disabled for now.
+- Improved prompts for quick reply feature
+
+### Fixed
+
+#### Comparison Table Persistence Bug
+- **Issue**: Comparison tables from previous requests were persisting into subsequent non-comparison responses
+- **Fix**: Added `state['comparison_table'] = None` at start of supervisor request processing
+- Now comparison table only shows when relevant to current response
 
 ## 2025-10-28
 
