@@ -187,43 +187,7 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
           </span>
         ) : null}
       </header>
-
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
-          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
-        </section>
-
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-300">Assistant</h3>
-          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.assistant_text}</p>
-        </section>
-
-        <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-200">UI Actions</h3>
-          {turn.actions && turn.actions.length ? (
-            <ul className="mt-1 space-y-2">{turn.actions.map(formatAction)}</ul>
-          ) : (
-            <p className="mt-1 text-slate-400">No UI changes planned.</p>
-          )}
-        </section>
-
-        <VehicleCardList vehicles={turn.vehicles} />
-
-        <QuickRepliesList options={turn.quick_replies} />
-
-        {/* <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Summary Slice</h3>
-          <p className="mt-1 text-slate-200/90">{turn.summary}</p>
-        </section> */}
-
-        {turn.rationale ? (
-          <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
-            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Emotion Rationale</div>
-            <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
-          </section>
-        ) : null}
-
         <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
           <div>
             <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Positive</div>
@@ -242,6 +206,41 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
             </div>
           </div>
         </section>
+        {turn.rationale ? (
+          <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
+            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Emotion Rationale</div>
+            <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
+          </section>
+        ) : null}
+      </div>
+      <div className="mt-4 space-y-4 text-sm leading-relaxed">
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
+          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
+        </section>
+
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-200">UI Actions</h3>
+          {turn.actions && turn.actions.length ? (
+            <ul className="mt-1 space-y-2">{turn.actions.map(formatAction)}</ul>
+          ) : (
+            <p className="mt-1 text-slate-400">No UI changes planned.</p>
+          )}
+        </section>
+
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-300">Assistant</h3>
+          <p className="mt-1 whitespace-pre-line text-slate-100">{turn.assistant_text}</p>
+        </section>
+
+        <VehicleCardList vehicles={turn.vehicles} />
+
+        <QuickRepliesList options={turn.quick_replies} />
+
+        {/* <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Summary Slice</h3>
+          <p className="mt-1 text-slate-200/90">{turn.summary}</p>
+        </section> */}
 
         <CompletionReviewCard review={turn.completion_review} />
 
