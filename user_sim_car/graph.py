@@ -394,9 +394,7 @@ class UserAgent:
             normalized.append(action)
 
         if quick_reply_choice:
-            trimmed_user = user_text.strip()
-            if quick_reply_choice and trimmed_user != quick_reply_choice:
-                user_text = quick_reply_choice
+            user_text = quick_reply_choice
 
         return normalized, user_text
 
