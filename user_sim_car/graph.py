@@ -370,12 +370,12 @@ class UserAgent:
                 value = raw.get("value")
                 label = str(value).strip() if value is not None else ""
                 trimmed_user = user_text.strip()
-                if not label and trimmed_user:
-                    label = trimmed_user
-                if label in quick_lookup:
-                    label = quick_lookup[label]
-                elif trimmed_user in quick_lookup:
-                    label = quick_lookup[trimmed_user]
+                # if not label and trimmed_user:
+                #     label = trimmed_user
+                # if label in quick_lookup:
+                #     label = quick_lookup[label]
+                # elif trimmed_user in quick_lookup:
+                #     label = quick_lookup[trimmed_user]
                 action["value"] = label
                 action["label"] = label
                 quick_reply_choice = label or quick_reply_choice
@@ -402,7 +402,7 @@ class UserAgent:
         sys_prompt = (
             "Calibrate the scalar emotion model for a simulated car shopper using their persona facets. "
             "Emotion value ranges from -1 (furious) to 1 (delighted); 0 is neutral. "
-            "Set a single lower-bound disengagement threshold: higher (e.g., -0.1) means they disengage quickly, lower (e.g., -0.7) means they are patient."
+            "Set a single lower-bound disengagement threshold: higher (e.g., -0.4) means they disengage quickly, lower (e.g., -1) means they are patient."
             "Most personas begin at 0 unless the seed implies prior satisfaction or frustration."
             "Return JSON only: {{\"threshold\": <float>, \"initial_value\": <float>, \"notes\": <string>}}"
         )
@@ -451,7 +451,7 @@ class UserAgent:
             "Never adjust the score purely because the shopper's words sound positive or negative; treat tone only as a clue to their goals. "
             "Use persona facets, the running summary, truncated conversation history, and the last user/assistant exchange plus resulting UI actions. "
             "Account for the current emotion value and disengagement threshold ({threshold_lower}). "
-            "Return a delta between -0.4 and 0.4. "
+            "Return a delta between -0.2 and 0.2. "
             "Explain both (a) why the delta was chosen and (b) how the resulting emotion value will influence the shopper's upcoming message and UI actions. "
             "Return JSON only: {{\"delta\": <float>, \"rationale\": <string>}}"
         )

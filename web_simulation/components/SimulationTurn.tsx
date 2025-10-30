@@ -193,30 +193,6 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
         ) : null}
       </header>
       <div className="mt-4 space-y-4 text-sm leading-relaxed">
-        <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
-          <div>
-            <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Emotion Value</div>
-            <div className="mt-1 text-lg font-semibold text-emerald-200">
-              {turn.emotion && typeof turn.emotion.value === 'number'
-                ? turn.emotion.value.toFixed(2)
-                : '—'}
-            </div>
-          </div>
-          <div>
-            <div className="font-semibold uppercase tracking-wide text-sky-300/90">Delta</div>
-            <div className="mt-1 text-lg font-semibold text-sky-200">
-              {typeof turn.delta === 'number' ? turn.delta.toFixed(2) : '—'}
-            </div>
-          </div>
-        </section>
-        {turn.rationale ? (
-          <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
-            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Emotion Rationale</div>
-            <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
-          </section>
-        ) : null}
-      </div>
-      <div className="mt-4 space-y-4 text-sm leading-relaxed">
         <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-rose-300">User Agent</h3>
           <p className="mt-1 whitespace-pre-line text-slate-100">{turn.user_text}</p>
@@ -240,12 +216,37 @@ export function SimulationTurnCard({ turn }: { turn: SimulationTurn }) {
 
         <QuickRepliesList options={turn.quick_replies} />
 
+      <div className="mt-4 space-y-4 text-sm leading-relaxed">
+        <section className="grid grid-cols-2 gap-4 text-xs text-slate-300">
+          <div>
+            <div className="font-semibold uppercase tracking-wide text-emerald-300/90">Emotion Value</div>
+            <div className="mt-1 text-lg font-semibold text-emerald-200">
+              {turn.emotion && typeof turn.emotion.value === 'number'
+                ? turn.emotion.value.toFixed(2)
+                : '—'}
+            </div>
+          </div>
+          <div>
+            <div className="font-semibold uppercase tracking-wide text-sky-300/90">Delta</div>
+            <div className="mt-1 text-lg font-semibold text-sky-200">
+              {typeof turn.delta === 'number' ? turn.delta.toFixed(2) : '—'}
+            </div>
+          </div>
+        </section>
+        {turn.rationale ? (
+          <section className="rounded-lg border border-slate-700/80 bg-slate-900/80 p-3 text-xs text-slate-200/90">
+            <div className="font-semibold uppercase tracking-wide text-slate-300/80">Emotion Rationale</div>
+            <p className="mt-1 whitespace-pre-line">{turn.rationale}</p>
+          </section>
+        ) : null}
+      </div>
+
         {/* <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-indigo-200">Summary Slice</h3>
           <p className="mt-1 text-slate-200/90">{turn.summary}</p>
         </section> */}
 
-        <CompletionReviewCard review={turn.completion_review} />
+        {/* <CompletionReviewCard review={turn.completion_review} /> */}
 
         {/* {turn.judge && !turn.judge.passes && turn.judge.reminder ? (
           <section className="rounded-lg border border-rose-400/60 bg-rose-950/50 p-3 text-xs text-rose-100">
