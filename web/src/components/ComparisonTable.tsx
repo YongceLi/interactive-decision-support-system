@@ -53,13 +53,13 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
     <div className="mt-4">
       {/* Field Selector */}
       <div className="mb-3 flex justify-between items-center">
-        <div className="text-xs text-slate-400">
+        <div className="text-sm text-[#8b959e]">
           {selectedFields.length} of {availableFields.length} fields shown
         </div>
         <div className="relative" ref={selectorRef}>
           <button
             onClick={() => setShowFieldSelector(!showFieldSelector)}
-            className="px-3 py-1.5 glass-dark border border-slate-600/30 hover:border-purple-500/50 text-sm text-slate-300 rounded-lg transition-all duration-200 flex items-center gap-2"
+            className="px-4 py-2 bg-white border border-[#8b959e]/40 hover:border-[#750013] text-base text-black rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -68,19 +68,20 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
           </button>
           
           {showFieldSelector && (
-            <div className="absolute right-0 mt-2 glass-dark border border-slate-600/30 rounded-xl p-3 z-50 min-w-[250px] shadow-2xl">
-              <div className="text-xs text-slate-400 mb-2">Select up to 4 fields</div>
+            <div className="absolute right-0 mt-2 bg-white border border-[#8b959e]/30 rounded-xl p-3 z-50 min-w-[250px] shadow-lg">
+              <div className="text-sm text-[#8b959e] mb-2">Select up to 4 fields</div>
               <div className="space-y-1 max-h-64 overflow-y-auto">
                 {availableFields.map(fieldName => (
-                  <label key={fieldName} className="flex items-center p-2 hover:bg-slate-700/30 rounded-lg cursor-pointer group">
+                  <label key={fieldName} className="flex items-center p-2 hover:bg-[#8b959e]/5 rounded-lg cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={selectedFields.includes(fieldName)}
                       onChange={() => toggleField(fieldName)}
                       disabled={!selectedFields.includes(fieldName) && selectedFields.length >= 4}
-                      className="w-4 h-4 text-purple-500 border-slate-600 rounded focus:ring-purple-500 focus:ring-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-4 h-4 text-[#750013] border-[#8b959e] rounded focus:ring-[#750013] focus:ring-2 disabled:opacity-40 disabled:cursor-not-allowed accent-[#750013]"
+                      style={{ accentColor: '#750013' }}
                     />
-                    <span className={`ml-2 text-sm ${selectedFields.includes(fieldName) ? 'text-slate-200' : 'text-slate-400'} group-hover:text-slate-200`}>
+                    <span className={`ml-2 text-base ${selectedFields.includes(fieldName) ? 'text-black' : 'text-[#8b959e]'} group-hover:text-black`}>
                       {fieldName}
                     </span>
                   </label>
@@ -96,10 +97,10 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
         {vehicleNames.map((vehicleName, vehicleIdx) => (
           <div 
             key={vehicleIdx} 
-            className="flex-shrink-0 w-80 glass-dark rounded-xl p-4 border border-slate-600/30 hover:border-purple-500/50 transition-all"
+            className="flex-shrink-0 w-80 bg-white rounded-xl p-4 border border-[#8b959e]/30 hover:border-[#750013] transition-all shadow-sm"
           >
             {/* Vehicle Name Header */}
-            <h3 className="text-lg font-bold text-slate-100 mb-4 text-center pb-3 border-b border-slate-600/30">
+            <h3 className="text-xl font-bold text-black mb-4 text-center pb-3 border-b border-[#8b959e]/30">
               {vehicleName}
             </h3>
             
@@ -107,10 +108,10 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
             <div className="space-y-3">
               {visibleRows.map((row, rowIdx) => (
                 <div key={rowIdx} className="space-y-1">
-                  <div className="text-xs text-slate-400 font-medium">
+                  <div className="text-sm text-[#8b959e] font-medium">
                     {row[0]}
                   </div>
-                  <div className="text-sm text-slate-200 font-semibold">
+                  <div className="text-base text-black font-semibold">
                     {row[vehicleIdx + 1]}
                   </div>
                 </div>
