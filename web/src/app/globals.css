@@ -37,14 +37,14 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #750013, #750013); /* Stanford cardinal red */
+  background: linear-gradient(135deg, #ff1323, #ff1323); /* Stanford bright red */
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
-  background: linear-gradient(135deg, #8b1320, #8b1320); /* darker cardinal red */
+  background: linear-gradient(135deg, #e01120, #e01120); /* darker bright red */
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -52,7 +52,7 @@ html {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #750013, #750013); /* Stanford cardinal red */
+  background: linear-gradient(135deg, #ff1323, #ff1323); /* Stanford bright red */
   cursor: pointer;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -80,7 +80,7 @@ html {
   content: "•";
   position: absolute;
   left: 0;
-  color: #750013; /* Stanford cardinal red */
+  color: #ff1323; /* Stanford bright red */
   font-weight: bold;
 }
 
@@ -107,15 +107,15 @@ html {
   }
 }
 
-/* Custom checkbox styling for Stanford cardinal red */
+/* Custom checkbox styling for Stanford bright red */
 input[type="checkbox"] {
-  accent-color: #750013;
+  accent-color: #ff1323;
 }
 
 input[type="checkbox"]:checked {
-  accent-color: #750013;
-  background-color: #750013;
-  border-color: #750013;
+  accent-color: #ff1323;
+  background-color: #ff1323;
+  border-color: #ff1323;
 }
 
 /* Loading ripple animation */

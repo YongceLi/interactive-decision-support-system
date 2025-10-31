@@ -48,7 +48,7 @@ function parseMarkdown(text: string): string {
   html = html.replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mb-0 mt-0">$1</h1>');
   
   // Convert links [text](url) to <a>
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#750013] hover:text-[#750013]/70 underline" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#ff1323] hover:text-[#ff1323]/70 underline" target="_blank" rel="noopener noreferrer">$1</a>');
   
   // Convert bullet points • to proper list items
   html = html.replace(/^• (.*$)/gm, '<li class="mb-2">$1</li>');
@@ -574,7 +574,7 @@ export default function Home() {
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
-          <div className="flex-shrink-0 overflow-hidden bg-[#750013]/10" style={{ height: `${topSectionHeight}%` }}>
+          <div className="flex-shrink-0 overflow-hidden bg-[#ff1323]/10" style={{ height: `${topSectionHeight}%` }}>
             <div className="p-1 h-full">
               <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
@@ -602,7 +602,7 @@ export default function Home() {
                   {/* Vehicle Details */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pr-8">
                     {/* Image */}
-                    <div className="aspect-video bg-gradient-to-br from-[#750013] to-white rounded-lg flex items-center justify-center overflow-hidden relative">
+                    <div className="aspect-video bg-gradient-to-br from-[#ff1323] to-white rounded-lg flex items-center justify-center overflow-hidden relative">
                       {selectedItem.image_url ? (
                         <img
                           src={selectedItem.image_url}
@@ -619,7 +619,7 @@ export default function Home() {
                       )}
                       
                       {/* Number indicator */}
-                      <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#750013] text-[#750013] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
+                      <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#ff1323] text-[#ff1323] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
                         {getSelectedVehicleIndex()}
                       </div>
                     </div>
@@ -636,16 +636,16 @@ export default function Home() {
                       {/* Key Info Grid */}
                       <div className="grid grid-cols-2 gap-1">
                         {selectedItem.price && (
-                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#ff1323]">
                             <div className="text-[#8b959e] text-base">Price</div>
-                            <div className="text-lg font-bold text-[#750013]">
+                            <div className="text-lg font-bold text-[#ff1323]">
                               ${selectedItem.price.toLocaleString()}
                             </div>
                           </div>
                         )}
                         
                         {selectedItem.mileage && (
-                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#ff1323]">
                             <div className="text-[#8b959e] text-base">Mileage</div>
                             <div className="text-lg font-bold text-black">
                               {typeof selectedItem.mileage === 'number' ? selectedItem.mileage.toLocaleString() : selectedItem.mileage} mi
@@ -657,9 +657,9 @@ export default function Home() {
                       {/* Location & Performance */}
                       <div className="grid grid-cols-1 gap-1">
                         {selectedItem.location && (
-                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#ff1323]">
                             <div className="flex items-center">
-                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#ff1323]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
@@ -671,9 +671,9 @@ export default function Home() {
                         )}
                         
                         {selectedItem.fuel_economy && (
-                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#ff1323]">
                             <div className="flex items-center">
-                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#ff1323]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                               </svg>
                               <div className="text-black text-base">{selectedItem.fuel_economy.combined} MPG combined</div>
@@ -682,9 +682,9 @@ export default function Home() {
                         )}
                         
                         {selectedItem.safety_rating && (
-                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#ff1323]">
                             <div className="flex items-center">
-                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#ff1323]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                               </svg>
                               <div className="text-black text-base">{selectedItem.safety_rating.overall}/5 Safety Rating</div>
@@ -791,7 +791,7 @@ export default function Home() {
             onMouseDown={handleMouseDown}
           >
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-1 w-16 bg-[#8b959e] group-hover:bg-[#750013] rounded-full transition-colors duration-200"></div>
+              <div className="h-1 w-16 bg-[#8b959e] group-hover:bg-[#ff1323] rounded-full transition-colors duration-200"></div>
             </div>
           </div>
         )}
@@ -811,7 +811,7 @@ export default function Home() {
                   <div
                     className={`max-w-[80%] px-3 py-2 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-[#750013] to-[#8b1320] text-white shadow-sm'
+                        ? 'bg-gradient-to-r from-[#ff1323] to-[#ff1323]/70 text-white shadow-sm'
                         : 'bg-white text-black border border-[#8b959e]/30 shadow-sm'
                     }`}
                   >
@@ -852,7 +852,7 @@ export default function Home() {
                                   <button
                                     onClick={() => handleChatMessage(`My budget is $${currentValue.toLocaleString()}`)}
                                     disabled={isLoading}
-                                    className="px-4 py-2 bg-[#750013] text-white text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8b1320]"
+                                    className="px-4 py-2 bg-[#ff1323] text-white text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#e01120]"
                                   >
                                     Submit
                                   </button>
@@ -882,7 +882,7 @@ export default function Home() {
                               key={idx}
                               onClick={() => handleChatMessage(reply)}
                               disabled={isLoading}
-                              className="px-5 py-3 bg-white hover:bg-[#8b959e]/5 border border-[#8b959e]/40 hover:border-[#750013] text-[#750013] hover:text-[#750013] text-base rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap font-medium shadow-sm"
+                              className="px-5 py-3 bg-white hover:bg-[#8b959e]/5 border border-[#8b959e]/40 hover:border-[#ff1323] text-[#ff1323] hover:text-[#ff1323] text-base rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap font-medium shadow-sm"
                             >
                               {reply}
                             </button>
@@ -903,7 +903,7 @@ export default function Home() {
                     </span>
                     <div className="flex space-x-1">
                       <div className="w-2.5 h-2.5 bg-[#8b959e] rounded-full animate-bounce"></div>
-                      <div className="w-2.5 h-2.5 bg-[#750013] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2.5 h-2.5 bg-[#ff1323] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
                       <div className="w-2.5 h-2.5 bg-[#8b959e] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                     </div>
                   </div>
@@ -914,7 +914,7 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className="h-[11%] flex-shrink-0 border-t border-[#8b959e]/30 bg-[#750013]/10 flex items-center px-8 py-6">
+        <div className="h-[11%] flex-shrink-0 border-t border-[#8b959e]/30 bg-[#ff1323]/10 flex items-center px-8 py-6">
           <div className="w-3/4 mx-auto">
             <ChatBox
               messages={[]}

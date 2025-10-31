@@ -59,7 +59,7 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
         <div className="relative" ref={selectorRef}>
           <button
             onClick={() => setShowFieldSelector(!showFieldSelector)}
-            className="px-4 py-2 bg-white border border-[#8b959e]/40 hover:border-[#750013] text-base text-black rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm"
+            className="px-4 py-2 bg-white border border-[#8b959e]/40 hover:border-[#ff1323] text-base text-black rounded-lg transition-all duration-200 flex items-center gap-2 shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
@@ -78,8 +78,8 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
                       checked={selectedFields.includes(fieldName)}
                       onChange={() => toggleField(fieldName)}
                       disabled={!selectedFields.includes(fieldName) && selectedFields.length >= 4}
-                      className="w-4 h-4 text-[#750013] border-[#8b959e] rounded focus:ring-[#750013] focus:ring-2 disabled:opacity-40 disabled:cursor-not-allowed accent-[#750013]"
-                      style={{ accentColor: '#750013' }}
+                      className="w-4 h-4 text-[#ff1323] border-[#8b959e] rounded focus:ring-[#ff1323] focus:ring-2 disabled:opacity-40 disabled:cursor-not-allowed accent-[#ff1323]"
+                      style={{ accentColor: '#ff1323' }}
                     />
                     <span className={`ml-2 text-base ${selectedFields.includes(fieldName) ? 'text-black' : 'text-[#8b959e]'} group-hover:text-black`}>
                       {fieldName}
@@ -97,7 +97,7 @@ export default function ComparisonTable({ comparison }: ComparisonTableProps) {
         {vehicleNames.map((vehicleName, vehicleIdx) => (
           <div 
             key={vehicleIdx} 
-            className="flex-shrink-0 w-80 bg-white rounded-xl p-4 border border-[#8b959e]/30 hover:border-[#750013] transition-all shadow-sm"
+            className="flex-shrink-0 w-80 bg-white rounded-xl p-4 border border-[#8b959e]/30 hover:border-[#ff1323] transition-all shadow-sm"
           >
             {/* Vehicle Name Header */}
             <h3 className="text-xl font-bold text-black mb-4 text-center pb-3 border-b border-[#8b959e]/30">

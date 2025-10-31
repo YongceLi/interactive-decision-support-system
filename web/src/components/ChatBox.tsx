@@ -42,7 +42,7 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
       <button
         type="submit"
         disabled={!inputMessage.trim() || isLoading}
-        className="px-8 py-5 bg-gradient-to-r from-[#750013] to-[#8b1320] text-white rounded-xl hover:from-[#8b1320] hover:to-[#750013] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md text-xl font-semibold"
+        className="px-8 py-5 bg-gradient-to-r from-[#ff1323] to-[#ff1323]/70 text-white rounded-xl hover:from-[#ff1323]/70 hover:to-[#ff1323] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md text-xl font-semibold"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
