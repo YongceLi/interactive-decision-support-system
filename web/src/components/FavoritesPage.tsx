@@ -50,7 +50,7 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
                   className="bg-white rounded-xl p-4 w-[250px] h-full max-h-[300px] border border-[#8b959e]/30 shadow-sm flex flex-col overflow-hidden hover:shadow-md transition-all duration-200"
                 >
                   {/* Image */}
-                  <div className="aspect-[3/2] bg-gradient-to-br from-[#ff1323]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+                  <div className="aspect-[3/2] bg-gradient-to-br from-[#750013]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
                     {hasValidImage(vehicle) ? (
                       <>
                         <img
@@ -112,7 +112,7 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
                     
                     <div className="space-y-1 text-sm">
                       {vehicle.price && (
-                        <div className="flex justify-between border-l-4 border-l-[#ff1323] pl-2">
+                        <div className="flex justify-between border-l-4 border-l-[#750013] pl-2">
                           <span className="text-[#8b959e]">Price:</span>
                           <span className="font-bold text-black">
                             ${vehicle.price.toLocaleString()}
@@ -137,7 +137,7 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
 
                     <button 
                       onClick={() => onItemSelect(vehicle)}
-                      className="w-full bg-[#ff1323] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#e01120] transition-all duration-200 shadow-sm hover:shadow-md mt-3"
+                      className="w-full bg-[#750013] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#8b1320] transition-all duration-200 shadow-sm hover:shadow-md mt-3"
                     >
                       View Details
                     </button>

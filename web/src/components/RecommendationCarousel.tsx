@@ -177,7 +177,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
           className="absolute left-0 z-10 w-12 h-12 rounded-full bg-white border border-[#8b959e]/40 flex items-center justify-center hover:bg-[#8b959e]/5 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
         >
-          <svg className="w-6 h-6 text-[#ff1323]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
@@ -203,7 +203,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
                 {card.isPlaceholder ? (
                   /* Placeholder Card Content */
                   <>
-                            <div className="aspect-[3/2] bg-gradient-to-br from-[#ff1323]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                            <div className="aspect-[3/2] bg-gradient-to-br from-[#750013]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                               <div className="text-[#8b959e] text-base opacity-50 text-center px-2">Future Recommendations</div>
                             </div>
                     <div className="space-y-2">
@@ -254,7 +254,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
           disabled={isAnimating || vehicles.length <= 1 || showPlaceholders}
           className="absolute right-0 z-10 w-12 h-12 rounded-full bg-white border border-[#8b959e]/40 flex items-center justify-center hover:bg-[#8b959e]/5 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
         >
-          <svg className="w-6 h-6 text-[#ff1323]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
@@ -278,7 +278,7 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
 
   return (
       <>
-      <div className="aspect-[3/2] bg-gradient-to-br from-[#ff1323]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
+      <div className="aspect-[3/2] bg-gradient-to-br from-[#750013]/30 to-white rounded-lg mb-3 flex items-center justify-center overflow-hidden relative">
         {hasValidImage ? (
           <>
             <img
@@ -340,7 +340,7 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
         
         {/* Number indicator - show on all cards */}
         {index && (
-          <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#ff1323] text-[#ff1323] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
+          <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#750013] text-[#750013] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
             {index}
           </div>
         )}
@@ -378,7 +378,7 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
 
         <button
           onClick={() => onItemSelect && onItemSelect(vehicle)}
-          className="w-full bg-[#ff1323] text-white py-2 rounded-lg text-base font-medium hover:bg-[#e01120] transition-all duration-200 shadow-sm hover:shadow-md mt-3"
+          className="w-full bg-[#750013] text-white py-2 rounded-lg text-base font-medium hover:bg-[#8b1320] transition-all duration-200 shadow-sm hover:shadow-md mt-3"
         >
           View Details
         </button>

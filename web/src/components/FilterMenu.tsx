@@ -202,7 +202,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-4 h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-black">Filters</h2>
@@ -228,7 +228,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     onClick={() => handleBrandToggle(brand)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       filters.brands.includes(brand)
-                        ? 'bg-[#ff1323] text-white shadow-sm'
+                        ? 'bg-[#750013] text-white shadow-sm'
                         : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
                     }`}
                   >
@@ -248,7 +248,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     onClick={() => handleConditionChange(condition)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       filters.condition === condition
-                        ? 'bg-[#ff1323] text-white shadow-sm'
+                        ? 'bg-[#750013] text-white shadow-sm'
                         : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
                     }`}
                   >
@@ -268,7 +268,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     onClick={() => handleCarTypeToggle(type)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       filters.carTypes.includes(type)
-                        ? 'bg-[#ff1323] text-white shadow-sm'
+                        ? 'bg-[#750013] text-white shadow-sm'
                         : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
                     }`}
                   >
@@ -288,7 +288,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     onClick={() => handleFuelTypeToggle(type)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       filters.fuelTypes.includes(type)
-                        ? 'bg-[#ff1323] text-white shadow-sm'
+                        ? 'bg-[#750013] text-white shadow-sm'
                         : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
                     }`}
                   >
@@ -332,7 +332,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     step="1000"
                     value={filters.priceRange.min}
                     onChange={(e) => handlePriceRangeChange('min', Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#ff1323]/20 focus:border-[#ff1323]"
+                    className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#750013]/20 focus:border-[#750013]"
                     placeholder="0"
                   />
                 </div>
@@ -345,7 +345,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                     step="1000"
                     value={filters.priceRange.max}
                     onChange={(e) => handlePriceRangeChange('max', Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#ff1323]/20 focus:border-[#ff1323]"
+                    className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#750013]/20 focus:border-[#750013]"
                     placeholder="200000"
                   />
                 </div>
@@ -360,7 +360,7 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
               disabled={!hasChanges()}
               className={`w-full py-3 px-4 rounded-xl font-semibold text-base transition-all duration-200 ${
                 hasChanges()
-                  ? 'bg-gradient-to-r from-[#ff1323] to-[#ff1323]/70 text-white hover:from-[#ff1323]/70 hover:to-[#ff1323] shadow-sm hover:shadow-md'
+                  ? 'bg-gradient-to-r from-[#750013] to-[#750013]/70 text-white hover:from-[#750013]/70 hover:to-[#750013] shadow-sm hover:shadow-md'
                   : 'bg-white border border-[#8b959e]/40 text-[#8b959e] cursor-not-allowed'
               }`}
             >
