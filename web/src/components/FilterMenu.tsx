@@ -182,9 +182,9 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
         className="fixed top-6 left-6 z-50 w-14 h-14 bg-white rounded-xl border border-[#8b959e]/40 flex items-center justify-center hover:border-[#8b959e] hover:shadow-md transition-all duration-200 shadow-sm"
       >
         <div className="flex flex-col space-y-1.5">
-          <div className="w-6 h-0.5 bg-[#8b959e] rounded"></div>
-          <div className="w-6 h-0.5 bg-[#8b959e] rounded"></div>
-          <div className="w-6 h-0.5 bg-[#8b959e] rounded"></div>
+          <div className="w-6 h-0.5 bg-[#750013] rounded"></div>
+          <div className="w-6 h-0.5 bg-[#750013] rounded"></div>
+          <div className="w-6 h-0.5 bg-[#750013] rounded"></div>
         </div>
       </button>
 

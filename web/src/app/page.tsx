@@ -936,7 +936,7 @@ export default function Home() {
           title={showFavorites ? "Hide Favorites" : "View Favorites"}
         >
         <svg 
-          className={`w-6 h-6 transition-colors ${favorites.length > 0 ? 'text-[#ff1323] fill-[#ff1323]' : 'text-[#8b959e]'}`}
+          className={`w-6 h-6 transition-colors ${favorites.length > 0 ? 'text-[#ff1323] fill-[#ff1323]' : 'text-[#750013]'}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
