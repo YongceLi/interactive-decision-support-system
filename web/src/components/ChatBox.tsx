@@ -36,13 +36,13 @@ export default function ChatBox({ messages, onSendMessage, isLoading }: ChatBoxP
         value={inputMessage}
         onChange={(e) => setInputMessage(e.target.value)}
         placeholder="What are you looking for?"
-        className="flex-1 px-6 py-4 glass-dark border border-slate-600/30 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100 text-lg"
+        className="flex-1 px-6 py-5 bg-white border border-[#8b959e]/40 rounded-xl focus:ring-2 focus:ring-[#750013]/20 focus:border-[#750013] transition-all duration-200 placeholder-[#8b959e] text-black text-xl shadow-sm"
         disabled={isLoading}
       />
       <button
         type="submit"
         disabled={!inputMessage.trim() || isLoading}
-        className="px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl hover:from-purple-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl text-lg font-semibold"
+        className="px-8 py-5 bg-gradient-to-r from-[#750013] to-[#750013]/70 text-white rounded-xl hover:from-[#750013]/70 hover:to-[#750013] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md text-xl font-semibold"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

@@ -43,12 +43,12 @@ function parseMarkdown(text: string): string {
   html = html.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
   
   // Convert headings ### Heading to <h3>
-  html = html.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-0 mt-0">$1</h3>');
-  html = html.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-0 mt-0">$1</h2>');
-  html = html.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-0 mt-0">$1</h1>');
+  html = html.replace(/^### (.*$)/gm, '<h3 class="text-xl font-bold mb-0 mt-0">$1</h3>');
+  html = html.replace(/^## (.*$)/gm, '<h2 class="text-2xl font-bold mb-0 mt-0">$1</h2>');
+  html = html.replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold mb-0 mt-0">$1</h1>');
   
   // Convert links [text](url) to <a>
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-[#750013] hover:text-[#750013]/70 underline" target="_blank" rel="noopener noreferrer">$1</a>');
   
   // Convert bullet points • to proper list items
   html = html.replace(/^• (.*$)/gm, '<li class="mb-2">$1</li>');
@@ -115,6 +115,7 @@ export default function Home() {
   const [topSectionHeight, setTopSectionHeight] = useState(50); // Percentage
   const [isDragging, setIsDragging] = useState(false);
   const [budgetValue, setBudgetValue] = useState<Record<string, number>>({});
+  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -569,15 +570,15 @@ export default function Home() {
   }, [isDragging]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
+    <div className="min-h-screen bg-white">
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
-          <div className="flex-shrink-0 overflow-hidden" style={{ height: `${topSectionHeight}%` }}>
+          <div className="flex-shrink-0 overflow-hidden bg-[#8C1515]/15" style={{ height: `${topSectionHeight}%` }}>
             <div className="p-1 h-full">
               <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
-                <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
+                <div className="bg-white rounded-xl p-2 relative overflow-hidden h-full border border-[#8b959e]/30 shadow-sm">
                   <FavoritesPage
                     favorites={favorites}
                     onToggleFavorite={toggleFavorite}
@@ -587,13 +588,13 @@ export default function Home() {
                   />
                 </div>
               ) : showDetails && selectedItem ? (
-                <div className="glass-dark rounded-xl p-2 relative overflow-y-auto h-full">
+                <div className="bg-white rounded-xl p-2 relative overflow-y-auto h-full border border-[#8b959e]/30 shadow-sm">
                   {/* Back Button */}
                   <button
                     onClick={handleBackToRecommendations}
-                    className="absolute top-2 right-2 w-6 h-6 glass rounded-lg flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 z-10"
+                    className="absolute top-2 right-2 w-6 h-6 bg-white rounded-lg flex items-center justify-center hover:bg-[#8b959e]/10 transition-all duration-200 z-10 border border-[#8b959e]/40"
                   >
-                    <svg className="w-3 h-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 text-[#8b959e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -601,7 +602,7 @@ export default function Home() {
                   {/* Vehicle Details */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pr-8">
                     {/* Image */}
-                    <div className="aspect-video bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg flex items-center justify-center overflow-hidden relative">
+                    <div className="aspect-video bg-gradient-to-br from-[#750013] to-white rounded-lg flex items-center justify-center overflow-hidden relative">
                       {selectedItem.image_url ? (
                         <img
                           src={selectedItem.image_url}
@@ -609,7 +610,7 @@ export default function Home() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="text-slate-400 text-center">
+                        <div className="text-[#8b959e] text-center">
                           <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
@@ -618,7 +619,7 @@ export default function Home() {
                       )}
                       
                       {/* Number indicator */}
-                      <div className="absolute bottom-0 right-0 w-8 h-8 glass-dark border border-slate-600/30 text-slate-200 rounded-lg flex items-center justify-center text-sm font-bold">
+                      <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#750013] text-[#750013] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
                         {getSelectedVehicleIndex()}
                       </div>
                     </div>
@@ -626,7 +627,7 @@ export default function Home() {
                     {/* Details */}
                     <div className="space-y-1">
                       <div>
-                        <h2 className="text-lg font-bold text-slate-100 mb-1">
+                        <h2 className="text-2xl font-bold text-black mb-1">
                           {selectedItem.year} {selectedItem.make} {selectedItem.model}
                           {selectedItem.trim && ` ${selectedItem.trim}`}
                         </h2>
@@ -635,18 +636,18 @@ export default function Home() {
                       {/* Key Info Grid */}
                       <div className="grid grid-cols-2 gap-1">
                         {selectedItem.price && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Price</div>
-                            <div className="text-sm font-bold text-green-400">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                            <div className="text-[#8b959e] text-base">Price</div>
+                            <div className="text-lg font-bold text-[#750013]">
                               ${selectedItem.price.toLocaleString()}
                             </div>
                           </div>
                         )}
                         
                         {selectedItem.mileage && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Mileage</div>
-                            <div className="text-sm font-bold text-slate-200">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
+                            <div className="text-[#8b959e] text-base">Mileage</div>
+                            <div className="text-lg font-bold text-black">
                               {typeof selectedItem.mileage === 'number' ? selectedItem.mileage.toLocaleString() : selectedItem.mileage} mi
                             </div>
                           </div>
@@ -656,13 +657,13 @@ export default function Home() {
                       {/* Location & Performance */}
                       <div className="grid grid-cols-1 gap-1">
                         {selectedItem.location && (
-                          <div className="glass rounded p-1">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
                             <div className="flex items-center">
-                              <svg className="w-3 h-3 mr-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
-                              <div className="text-slate-200 text-sm">
+                              <div className="text-black text-base">
                                 {selectedItem.location === '00' ? 'Unknown' : selectedItem.location}
                               </div>
                             </div>
@@ -670,23 +671,23 @@ export default function Home() {
                         )}
                         
                         {selectedItem.fuel_economy && (
-                          <div className="glass rounded p-1">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
                             <div className="flex items-center">
-                              <svg className="w-3 h-3 mr-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                               </svg>
-                              <div className="text-slate-200 text-sm">{selectedItem.fuel_economy.combined} MPG combined</div>
+                              <div className="text-black text-base">{selectedItem.fuel_economy.combined} MPG combined</div>
                             </div>
                           </div>
                         )}
                         
                         {selectedItem.safety_rating && (
-                          <div className="glass rounded p-1">
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2 border-l-4 border-l-[#750013]">
                             <div className="flex items-center">
-                              <svg className="w-3 h-3 mr-1 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-4 h-4 mr-1 text-[#750013]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                               </svg>
-                              <div className="text-slate-200 text-sm">{selectedItem.safety_rating.overall}/5 Safety Rating</div>
+                              <div className="text-black text-base">{selectedItem.safety_rating.overall}/5 Safety Rating</div>
                             </div>
                           </div>
                         )}
@@ -695,30 +696,30 @@ export default function Home() {
                       {/* Vehicle Specs Grid */}
                       <div className="grid grid-cols-2 gap-1">
                         {selectedItem.body_style && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Body</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.body_style}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Body</div>
+                            <div className="text-black text-base">{selectedItem.body_style}</div>
                           </div>
                         )}
                         
                         {selectedItem.engine && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Engine</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.engine}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Engine</div>
+                            <div className="text-black text-base">{selectedItem.engine}</div>
                           </div>
                         )}
                         
                         {selectedItem.transmission && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Transmission</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.transmission}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Transmission</div>
+                            <div className="text-black text-base">{selectedItem.transmission}</div>
                           </div>
                         )}
                         
                         {selectedItem.doors && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Doors</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.doors}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Doors</div>
+                            <div className="text-black text-base">{selectedItem.doors}</div>
                           </div>
                         )}
                       </div>
@@ -726,52 +727,42 @@ export default function Home() {
                       {/* Colors & Seating */}
                       <div className="grid grid-cols-2 gap-1">
                         {selectedItem.exterior_color && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Exterior</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.exterior_color}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Exterior</div>
+                            <div className="text-black text-base">{selectedItem.exterior_color}</div>
                           </div>
                         )}
                         
                         {selectedItem.interior_color && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Interior</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.interior_color}</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Interior</div>
+                            <div className="text-black text-base">{selectedItem.interior_color}</div>
                           </div>
                         )}
                         
                         {selectedItem.seating_capacity && (
-                          <div className="glass rounded p-1">
-                            <div className="text-slate-400 text-xs">Seating</div>
-                            <div className="text-slate-200 text-sm">{selectedItem.seating_capacity} seats</div>
+                          <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                            <div className="text-[#8b959e] text-base">Seating</div>
+                            <div className="text-black text-base">{selectedItem.seating_capacity} seats</div>
                           </div>
                         )}
                       </div>
                       
                       {/* Features & Description */}
                       {selectedItem.features && selectedItem.features.length > 0 && (
-                        <div className="glass rounded p-1">
-                          <div className="text-slate-400 text-xs">Features</div>
-                          <div className="text-slate-200 text-sm">{selectedItem.features.slice(0, 3).join(', ')}{selectedItem.features.length > 3 ? '...' : ''}</div>
+                        <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                          <div className="text-[#8b959e] text-base">Features</div>
+                          <div className="text-black text-base">{selectedItem.features.slice(0, 3).join(', ')}{selectedItem.features.length > 3 ? '...' : ''}</div>
                         </div>
                       )}
                       
                       {selectedItem.description && (
-                        <div className="glass rounded p-1">
-                          <div className="text-slate-400 text-xs">Description</div>
-                          <div className="text-slate-200 text-sm">{selectedItem.description}</div>
+                        <div className="bg-white border border-[#8b959e]/30 rounded p-2">
+                          <div className="text-[#8b959e] text-base">Description</div>
+                          <div className="text-black text-base">{selectedItem.description}</div>
                         </div>
                       )}
                       
-                      {/* Dealer Info */}
-                      {selectedItem.dealer_info && (
-                        <div className="glass rounded p-1">
-                          <div className="text-slate-400 text-xs">Dealer</div>
-                          <div className="text-slate-200 text-sm">{selectedItem.dealer_info.name}</div>
-                          {selectedItem.dealer_info.phone && (
-                            <div className="text-slate-300 text-xs">{selectedItem.dealer_info.phone}</div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -796,11 +787,11 @@ export default function Home() {
         {/* Resizable Splitter */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
           <div 
-            className="h-1 bg-slate-600/30 hover:bg-purple-500/50 cursor-row-resize relative group transition-all duration-200"
+            className="h-1 bg-[#8b959e]/20 hover:bg-[#8b959e]/30 cursor-row-resize relative group transition-all duration-200"
             onMouseDown={handleMouseDown}
           >
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-1 w-12 bg-slate-500 group-hover:bg-purple-500 rounded-full transition-colors duration-200"></div>
+              <div className="h-1 w-16 bg-[#8b959e] group-hover:bg-[#750013] rounded-full transition-colors duration-200"></div>
             </div>
           </div>
         )}
@@ -818,14 +809,14 @@ export default function Home() {
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] p-4 rounded-2xl ${
+                    className={`max-w-[80%] px-3 py-2 rounded-2xl ${
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
-                        : 'glass-dark text-slateensed 100'
+                        ? 'bg-gradient-to-r from-[#750013] to-[#750013]/70 text-white shadow-sm'
+                        : 'bg-white text-black border border-[#8b959e]/30 shadow-sm'
                     }`}
                   >
                     <div 
-                      className="text-sm leading-relaxed chat-message prose prose-invert max-w-none"
+                      className="text-lg leading-relaxed chat-message prose prose-invert max-w-none"
                       dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
                     />
                     
@@ -855,13 +846,13 @@ export default function Home() {
                             const currentValue = budgetValue[replyKey] ?? 50000;
                             
                             return (
-                              <div key={idx} className="bg-white/10 border border-white/20 rounded-lg p-3 min-w-[200px]">
+                              <div key={idx} className="bg-white border border-[#8b959e]/40 rounded-lg p-3 min-w-[200px] shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
-                                  <span className="text-slate-300 text-sm font-medium">Budget: ${currentValue.toLocaleString()}</span>
+                                  <span className="text-black text-base font-medium">Budget: ${currentValue.toLocaleString()}</span>
                                   <button
                                     onClick={() => handleChatMessage(`My budget is $${currentValue.toLocaleString()}`)}
                                     disabled={isLoading}
-                                    className="px-3 py-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-blue-600"
+                                    className="px-4 py-2 bg-[#750013] text-white text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8b1320]"
                                   >
                                     Submit
                                   </button>
@@ -876,9 +867,9 @@ export default function Home() {
                                     const newValue = parseInt(e.target.value);
                                     setBudgetValue(prev => ({ ...prev, [replyKey]: newValue }));
                                   }}
-                                  className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                                  className="w-full h-2 bg-[#8b959e]/30 rounded-lg appearance-none cursor-pointer slider"
                                 />
-                                <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                <div className="flex justify-between text-sm text-[#8b959e] mt-1">
                                   <span>$0</span>
                                   <span>$200K</span>
                                 </div>
@@ -891,7 +882,7 @@ export default function Home() {
                               key={idx}
                               onClick={() => handleChatMessage(reply)}
                               disabled={isLoading}
-                              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                              className="px-5 py-3 bg-white hover:bg-[#8b959e]/5 border border-[#8b959e]/40 hover:border-[#750013] text-[#750013] hover:text-[#750013] text-base rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap font-medium shadow-sm"
                             >
                               {reply}
                             </button>
@@ -905,15 +896,15 @@ export default function Home() {
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="glass-dark p-4 rounded-2xl">
+                <div className="bg-white p-4 rounded-2xl border border-[#8b959e]/30 shadow-sm">
                   <div className="flex items-center space-x-3">
-                    <span className="text-sm text-slate-300/80 backdrop-blur-sm relative overflow-hidden">
+                    <span className="text-base text-black backdrop-blur-sm relative overflow-hidden">
                       <span className="loading-ripple">{currentMessage}</span>
                     </span>
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      <div className="w-2.5 h-2.5 bg-[#8b959e] rounded-full animate-bounce"></div>
+                      <div className="w-2.5 h-2.5 bg-[#750013] rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2.5 h-2.5 bg-[#8b959e] rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                     </div>
                   </div>
                 </div>
@@ -923,7 +914,7 @@ export default function Home() {
         </div>
 
         {/* Chat Input */}
-        <div className="h-[11%] flex-shrink-0 border-t border-slate-600/30 glass-dark flex items-center px-8 py-6">
+        <div className="h-[11%] flex-shrink-0 border-t border-[#8b959e]/30 bg-[#8C1515]/15 flex items-center px-8 py-6">
           <div className="w-3/4 mx-auto">
             <ChatBox
               messages={[]}
@@ -935,16 +926,17 @@ export default function Home() {
       </div>
 
       {/* Filter Menu */}
-      <FilterMenu onFilterChange={handleFilterChange} />
+      <FilterMenu onFilterChange={handleFilterChange} onOpenChange={setIsFilterMenuOpen} />
 
       {/* Favorites Button */}
-      <button
-        onClick={() => setShowFavorites(!showFavorites)}
-        className="fixed top-20 left-6 w-12 h-12 glass-dark border border-slate-600/30 rounded-xl flex items-center justify-center hover:bg-slate-700/50 transition-all duration-200 shadow-lg z-50"
-        title={showFavorites ? "Hide Favorites" : "View Favorites"}
-      >
+      {!isFilterMenuOpen && (
+        <button
+          onClick={() => setShowFavorites(!showFavorites)}
+          className="fixed top-24 left-6 w-14 h-14 bg-white border border-[#8b959e]/40 rounded-xl flex items-center justify-center hover:border-[#8b959e] hover:shadow-md transition-all duration-200 shadow-sm z-50"
+          title={showFavorites ? "Hide Favorites" : "View Favorites"}
+        >
         <svg 
-          className={`w-6 h-6 ${favorites.length > 0 ? 'text-red-500 fill-red-500' : 'text-slate-300'}`}
+          className={`w-6 h-6 transition-colors ${favorites.length > 0 ? 'text-[#ff1323] fill-[#ff1323]' : 'text-[#750013]'}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
@@ -952,6 +944,7 @@ export default function Home() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
         </svg>
       </button>
+      )}
 
     </div>
   );
