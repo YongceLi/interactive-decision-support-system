@@ -68,10 +68,16 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
                               parent.appendChild(fallback);
                             }
                           }}
+                          onLoad={(e) => {
+                            // Hide fallback text when image loads successfully
+                            const target = e.target as HTMLImageElement;
+                            const parent = target.parentElement;
+                            const fallback = parent?.querySelector('.fallback-text');
+                            if (fallback) {
+                              fallback.remove();
+                            }
+                          }}
                         />
-                        <div className="fallback-text text-slate-400 text-sm absolute inset-0 flex items-center justify-center text-center px-2">
-                          No Image Found
-                        </div>
                       </>
                     ) : (
                       <div className="text-slate-400 text-sm flex items-center justify-center text-center px-2">

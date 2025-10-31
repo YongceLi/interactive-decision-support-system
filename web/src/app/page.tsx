@@ -63,7 +63,11 @@ function parseMarkdown(text: string): string {
   // This targets the first line that doesn't start with '<' (i.e., not an HTML tag)
   html = html.replace(/^([^\n<].*?)\n/, '<p class="mb-2">$1</p>\n');
   
-  // Convert line breaks to <br> for non-list content
+  // Convert single line breaks to <br>, but preserve paragraph structure
+  // First, wrap paragraphs separated by blank lines
+  html = html.replace(/\n\n+/g, '</p><p class="mb-2">');
+  
+  // Convert remaining single line breaks to <br> for non-list content
   html = html.replace(/\n(?!<)/g, '<br>');
   
   // Remove extra <br> tags immediately before <ul> tags (to remove blank lines before bullet lists)
@@ -72,6 +76,19 @@ function parseMarkdown(text: string): string {
   // Remove extra <br> tags immediately after </ul> tags (to remove blank lines after bullet lists)
   // Handle cases with whitespace and multiple <br> tags
   html = html.replace(/<\/ul>\s*(<br>)+/g, '</ul>');
+  
+  // Clean up any empty paragraphs
+  html = html.replace(/<p class="mb-2"><\/p>/g, '');
+  
+  // Ensure all content is wrapped in paragraphs if not already
+  if (!html.includes('<p') && !html.includes('<ul') && !html.includes('<h')) {
+    html = `<p class="mb-2">${html}</p>`;
+  } else {
+    // Wrap any leading content not in a tag
+    html = html.replace(/^(?!<)([^<]+)/, '<p class="mb-2">$1</p>');
+    // Wrap any trailing content not in a tag
+    html = html.replace(/([^>]+)$(?!<\/)/, '<p class="mb-2">$1</p>');
+  }
   
   return html;
 }
@@ -95,6 +112,9 @@ export default function Home() {
   const [locationGranted, setLocationGranted] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const chatMessagesContainerRef = useRef<HTMLDivElement>(null);
+  const [topSectionHeight, setTopSectionHeight] = useState(50); // Percentage
+  const [isDragging, setIsDragging] = useState(false);
+  const [budgetValue, setBudgetValue] = useState<Record<string, number>>({});
   
   const { currentMessage, start, stop, setProgressMessage } = useVerboseLoading();
 
@@ -516,13 +536,46 @@ export default function Home() {
 
   const recentMessages = getLastThreeTurns();
 
+  // Handle drag for resizable splitter
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const containerHeight = window.innerHeight;
+      const newHeight = (e.clientY / containerHeight) * 100;
+      
+      // Constrain between 20% and 80%
+      const constrainedHeight = Math.max(20, Math.min(80, newHeight));
+      setTopSectionHeight(constrainedHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700">
       <div className="h-screen flex flex-col">
         {/* Recommendations at the top or Details View or Favorites */}
         {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
-          <div className="flex-shrink-0 p-1 border-b border-slate-600/30 h-[50%]">
-            <div className="max-w-6xl mx-auto h-full">
+          <div className="flex-shrink-0 overflow-hidden" style={{ height: `${topSectionHeight}%` }}>
+            <div className="p-1 h-full">
+              <div className="max-w-6xl mx-auto h-full">
               {showFavorites ? (
                 <div className="glass-dark rounded-xl p-2 relative overflow-hidden h-full">
                   <FavoritesPage
@@ -723,7 +776,7 @@ export default function Home() {
                   </div>
                 </div>
               ) : (
-                <div className="h-full">
+                <div className="h-full overflow-y-auto">
                   <RecommendationCarousel 
                     vehicles={vehicles} 
                     onItemSelect={handleItemSelectSync}
@@ -735,6 +788,19 @@ export default function Home() {
                   />
                 </div>
               )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Resizable Splitter */}
+        {(hasReceivedRecommendations || showFavorites || (showDetails && selectedItem)) && (
+          <div 
+            className="h-1 bg-slate-600/30 hover:bg-purple-500/50 cursor-row-resize relative group transition-all duration-200"
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-1 w-12 bg-slate-500 group-hover:bg-purple-500 rounded-full transition-colors duration-200"></div>
             </div>
           </div>
         )}
@@ -742,7 +808,8 @@ export default function Home() {
         {/* Chat Messages - Only last 3 turns */}
         <div 
           ref={chatMessagesContainerRef}
-          className={`${(hasReceivedRecommendations || showFavorites) ? 'h-[39%]' : 'flex-1'} flex-shrink-0 overflow-y-auto p-12 relative min-h-0`}
+          className={`overflow-y-auto p-12 relative min-h-0`}
+          style={(hasReceivedRecommendations || showFavorites) ? { height: `${100 - topSectionHeight - 11}%` } : { flex: 1 }}
         >
           <div className="max-w-6xl mx-auto flex flex-col justify-end min-h-full space-y-6">
             {recentMessages.map((message) => (
@@ -780,16 +847,56 @@ export default function Home() {
                           ? (message.quick_replies || [])
                           : (message.suggested_followups || []);
                         
-                        return buttonsToShow.map((reply, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => handleChatMessage(reply)}
-                            disabled={isLoading}
-                            className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                          >
-                            {reply}
-                          </button>
-                        ));
+                        return buttonsToShow.map((reply, idx) => {
+                          const isBudgetReply = reply.toLowerCase().includes('budget');
+                          const replyKey = `${message.id}-${idx}`;
+                          
+                          if (isBudgetReply) {
+                            const currentValue = budgetValue[replyKey] ?? 50000;
+                            
+                            return (
+                              <div key={idx} className="bg-white/10 border border-white/20 rounded-lg p-3 min-w-[200px]">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-slate-300 text-sm font-medium">Budget: ${currentValue.toLocaleString()}</span>
+                                  <button
+                                    onClick={() => handleChatMessage(`My budget is $${currentValue.toLocaleString()}`)}
+                                    disabled={isLoading}
+                                    className="px-3 py-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-600 hover:to-blue-600"
+                                  >
+                                    Submit
+                                  </button>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="200000"
+                                  step="5000"
+                                  value={currentValue}
+                                  onChange={(e) => {
+                                    const newValue = parseInt(e.target.value);
+                                    setBudgetValue(prev => ({ ...prev, [replyKey]: newValue }));
+                                  }}
+                                  className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer slider"
+                                />
+                                <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                  <span>$0</span>
+                                  <span>$200K</span>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleChatMessage(reply)}
+                              disabled={isLoading}
+                              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-slate-200 text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              {reply}
+                            </button>
+                          );
+                        });
                       })()}
                     </div>
                   </div>
