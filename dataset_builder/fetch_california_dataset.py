@@ -1,12 +1,12 @@
 """
-Fetch California vehicle dataset from Auto.dev API and store in SQLite.
+Fetch California Bay Area vehicle dataset from Auto.dev API and store in SQLite.
 
 This script:
-1. Reads all unique make/model combinations from safety_data.db
-2. Fetches every available Bay Area listing for each combination from California
+1. Loads Bay Area zip codes from bay_area_zip.csv
+2. Fetches every available listing for those zip codes from California
 3. Saves data to SQLite database with indexed columns for fast filtering
 4. Handles rate limits and errors gracefully
-5. Supports resume functionality
+5. Supports resume functionality per zip code
 """
 
 import os
@@ -183,69 +183,48 @@ class DatasetFetcher:
 
         return inserted
 
-    def mark_progress(self, make: str, model: str, count: int, error: Optional[str] = None):
-        """Mark fetch progress for a make/model.
+    def mark_progress(self, zip_code: str, count: int, error: Optional[str] = None):
+        """Mark fetch progress for a Bay Area zip code.
 
         Args:
-            make: Vehicle make
-            model: Vehicle model
+            zip_code: Zip code processed
             count: Number of vehicles fetched
             error: Error message if failed
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR REPLACE INTO fetch_progress (make, model, vehicles_fetched, fetched_at, status, error_message)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                make,
-                model,
-                count,
-                datetime.now().isoformat(),
-                'failed' if error else 'completed',
-                error
-            ))
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO zip_fetch_progress (
+                    zip_code,
+                    vehicles_fetched,
+                    fetched_at,
+                    status,
+                    error_message
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    zip_code,
+                    count,
+                    datetime.now().isoformat(),
+                    'failed' if error else 'completed',
+                    error,
+                ),
+            )
             conn.commit()
 
-    def get_completed_models(self) -> set:
-        """Get set of already completed make/model combinations.
+    def get_completed_zips(self) -> set:
+        """Get set of already completed Bay Area zip codes.
 
         Returns:
-            Set of strings in format "MAKE|MODEL"
+            Set of zip codes that were successfully fetched
         """
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT make, model FROM fetch_progress WHERE status = 'completed'")
-            return {f"{row[0]}|{row[1]}" for row in cursor.fetchall()}
-
-    def get_make_model_list(self, db_path: str = "data/safety_data.db") -> List[Dict[str, str]]:
-        """Get all unique make/model combinations from safety_data.db.
-
-        Args:
-            db_path: Path to safety_data.db
-
-        Returns:
-            List of dicts with 'make' and 'model' keys, sorted by popularity
-        """
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        query = """
-        SELECT make, model, COUNT(*) as count
-        FROM safety_data
-        WHERE make IS NOT NULL AND model IS NOT NULL
-        GROUP BY make, model
-        ORDER BY count DESC
-        """
-
-        cursor.execute(query)
-        results = cursor.fetchall()
-        conn.close()
-
-        return [
-            {"make": row[0], "model": row[1], "count": row[2]}
-            for row in results
-        ]
+            cursor.execute(
+                "SELECT zip_code FROM zip_fetch_progress WHERE status = 'completed'"
+            )
+            return {row[0] for row in cursor.fetchall()}
 
     def _fetch_with_params(
         self,
@@ -298,20 +277,18 @@ class DatasetFetcher:
 
         return []
 
-    def fetch_vehicles_for_model(
+    def fetch_vehicles_for_zip(
         self,
-        make: str,
-        model: str,
+        zip_code: str,
         limit: Optional[int] = None,
         retry_count: int = 3,
         require_photos: bool = True,
         mix_new_used: bool = True
     ) -> List[Dict[str, Any]]:
-        """Fetch vehicles for a specific make/model from California.
+        """Fetch vehicles for a specific Bay Area zip code from California.
 
         Args:
-            make: Vehicle make
-            model: Vehicle model
+            zip_code: Bay Area zip code
             limit: Maximum number of vehicles to fetch. If None, fetches all available.
             retry_count: Number of retries on failure
             require_photos: If True, only return vehicles with photos
@@ -321,12 +298,8 @@ class DatasetFetcher:
             List of vehicle dictionaries, sorted by year descending (newest first)
         """
         base_params = {
-            "vehicle.make": make,
-            "vehicle.model": model,
-            "vehicle.year": "2023-2026",
             "retailListing.state": "CA",
-            "retailListing.miles": "0-150000",
-            "retailListing.price": "5000-1000000",
+            "retailListing.zip": zip_code,
             "page": 1,
         }
 
@@ -334,11 +307,11 @@ class DatasetFetcher:
         seen_vins: set[str] = set()
         limit_per_request = 100
 
-        def collect_for_zip(zip_params: Dict[str, Any], used_filter: Optional[str]):
+        def collect_for_condition(used_filter: Optional[str]):
             page = 1
             while True:
                 params = {
-                    **zip_params,
+                    **base_params,
                     "limit": limit_per_request,
                     "page": page,
                 }
@@ -375,21 +348,13 @@ class DatasetFetcher:
 
                 page += 1
 
-        for zip_code in self.bay_area_zips:
-            if limit is not None and len(all_vehicles) >= limit:
-                break
+        if mix_new_used:
+            collect_for_condition("false")
+            if limit is None or len(all_vehicles) < limit:
+                collect_for_condition("true")
+        else:
+            collect_for_condition(None)
 
-            zip_params = {**base_params, "retailListing.zip": zip_code}
-
-            if mix_new_used:
-                collect_for_zip(zip_params, "false")
-                if limit is not None and len(all_vehicles) >= limit:
-                    break
-                collect_for_zip(zip_params, "true")
-            else:
-                collect_for_zip(zip_params, None)
-
-        # Sort by year descending (newest first: 2026 -> 2018)
         all_vehicles.sort(key=lambda v: v.get('vehicle', {}).get('year', 0), reverse=True)
 
         if limit is not None:
@@ -397,38 +362,36 @@ class DatasetFetcher:
 
         return all_vehicles
 
-    def fetch_all(self, limit_per_model: Optional[int] = None, rate_limit_delay: float = 0.2):
-        """Fetch vehicles for all make/model combinations.
+    def fetch_all(self, limit_per_zip: Optional[int] = None, rate_limit_delay: float = 0.2):
+        """Fetch vehicles for all Bay Area zip codes.
 
         Args:
-            limit_per_model: Number of vehicles to fetch per model. If None, fetch all available.
+            limit_per_zip: Number of vehicles to fetch per zip code. If None, fetch all available.
             rate_limit_delay: Delay between API calls in seconds
         """
-        make_model_list = self.get_make_model_list()
-        total_models = len(make_model_list)
+        total_zips = len(self.bay_area_zips)
 
         print(f"\n{'='*70}")
-        print(f"California Dataset Fetcher (SQLite)")
+        print(f"California Bay Area Dataset Fetcher (SQLite)")
         print(f"{'='*70}")
-        print(f"Total make/model combinations: {total_models}")
-        target_display = limit_per_model if limit_per_model is not None else "Unlimited"
-        print(f"Target vehicles per model: {target_display}")
+        print(f"Total Bay Area zip codes: {total_zips}")
+        target_display = limit_per_zip if limit_per_zip is not None else "Unlimited"
+        print(f"Target vehicles per zip: {target_display}")
         print(f"Database: {self.db_path}")
         print(f"{'='*70}\n")
 
         # Resume from where we left off
-        completed_set = self.get_completed_models()
+        completed_set = self.get_completed_zips()
         remaining = [
-            item for item in make_model_list
-            if f"{item['make']}|{item['model']}" not in completed_set
+            zip_code for zip_code in self.bay_area_zips
+            if zip_code not in completed_set
         ]
 
         if completed_set:
             print(f"Resuming from previous session...")
-            print(f"Already completed: {len(completed_set)}/{total_models}")
+            print(f"Already completed: {len(completed_set)}/{total_zips}")
             print(f"Remaining: {len(remaining)}\n")
 
-        start_time = time.time()
         total_vehicles_added = 0
 
         # Create progress bar
@@ -436,40 +399,37 @@ class DatasetFetcher:
             remaining,
             desc="Fetching vehicles",
             initial=len(completed_set),
-            total=total_models,
-            unit="model",
+            total=total_zips,
+            unit="zip",
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
         )
 
-        for idx, item in enumerate(pbar, start=len(completed_set) + 1):
-            make = item['make']
-            model = item['model']
-
+        for idx, zip_code in enumerate(pbar, start=len(completed_set) + 1):
             # Update progress bar description
-            pbar.set_description(f"Fetching {make} {model}")
+            pbar.set_description(f"Fetching zip {zip_code}")
 
             # Fetch vehicles
-            vehicles = self.fetch_vehicles_for_model(make, model, limit=limit_per_model)
+            vehicles = self.fetch_vehicles_for_zip(zip_code, limit=limit_per_zip)
 
             # Save to database
             if vehicles:
                 inserted = self.save_vehicles(vehicles)
                 total_vehicles_added += inserted
-                pbar.write(f"  ✓ {make} {model}: Saved {inserted} vehicles (Total: {total_vehicles_added:,})")
+                pbar.write(f"  ✓ {zip_code}: Saved {inserted} vehicles (Total: {total_vehicles_added:,})")
             else:
-                pbar.write(f"  ⚠ {make} {model}: No vehicles found")
+                pbar.write(f"  ⚠ {zip_code}: No vehicles found")
 
             # Mark progress
-            self.mark_progress(make, model, len(vehicles))
+            self.mark_progress(zip_code, len(vehicles))
 
             # Rate limiting
-            if idx < total_models:
+            if idx < total_zips:
                 time.sleep(rate_limit_delay)
 
             # Update progress bar postfix with stats
             pbar.set_postfix({
                 'vehicles': f"{total_vehicles_added:,}",
-                'avg/model': f"{total_vehicles_added/idx:.0f}" if idx > 0 else "0"
+                'avg/zip': f"{total_vehicles_added/idx:.0f}" if idx > 0 else "0"
             })
 
         pbar.close()
@@ -480,7 +440,7 @@ class DatasetFetcher:
         print(f"\n{'='*70}")
         print(f"Dataset Collection Complete!")
         print(f"{'='*70}")
-        print(f"Total models processed: {total_models}")
+        print(f"Total zip codes processed: {total_zips}")
         print(f"Total vehicles in database: {stats['total_vehicles']}")
         print(f"Unique VINs: {stats['unique_vins']}")
         print(f"Database file: {self.db_path}")
@@ -560,7 +520,7 @@ class DatasetFetcher:
 def main():
     """Main entry point."""
     fetcher = DatasetFetcher()
-    fetcher.fetch_all(limit_per_model=None, rate_limit_delay=1.0)  # Fetch all available listings per model
+    fetcher.fetch_all(limit_per_zip=None, rate_limit_delay=1.0)  # Fetch all available listings per zip
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@ Build a comprehensive local SQLite database of California vehicle listings for t
 
 ## Overview
 
-This module fetches vehicle listings from California's Bay Area (zip codes listed in `bay_area_zip.csv`) across all 2,479 make/model combinations found in `safety_data.db` and stores them in a fast, queryable SQLite database.
+This module fetches every vehicle listing available from California's Bay Area (zip codes listed in `bay_area_zip.csv`) and stores them in a fast, queryable SQLite database.
 
 ## Why SQLite?
 
@@ -43,13 +43,13 @@ Full schema: `dataset_builder/schema.sql`
 
 - **Source**: Auto.dev Listings API
 - **Location**: California Bay Area zip codes (`bay_area_zip.csv`)
-- **Years**: 2018-2026
-- **Mileage Range**: 0-150,000 miles
-- **Vehicles per Model**: All available Bay Area listings (new and used when present)
-- **Total Make/Model Combinations**: 2,479
-- **Expected API Calls**: Dependent on available inventory in Bay Area (fewer than statewide)
-- **Estimated Runtime**: 8-12 minutes (varies with API responses)
-- **Database Size**: Dependent on available inventory (smaller than statewide dataset)
+- **Years**: All available model years (no filter applied)
+- **Mileage Range**: All available odometer readings (no filter applied)
+- **Listings per Zip**: All available Bay Area listings (new and used when present)
+- **Total Zip Codes**: Matches entries in `bay_area_zip.csv`
+- **Expected API Calls**: Dependent on inventory volume across Bay Area zip codes
+- **Estimated Runtime**: Varies with API responses and available inventory
+- **Database Size**: Dependent on available inventory
 
 ## Files
 
@@ -79,8 +79,8 @@ python dataset_builder/fetch_california_dataset.py
 The script automatically:
 
 1. Loads Bay Area zip codes from `dataset_builder/bay_area_zip.csv`
-2. Iterates over all make/model combinations in `data/safety_data.db`
-3. Fetches every available Bay Area listing per model, balancing new and used requests
+2. Iterates over every zip code in the Bay Area list
+3. Fetches every available Bay Area listing per zip, balancing new and used requests
 4. Restricts all API requests to the Bay Area zip codes
 5. Stores the deduplicated (by VIN) results in `data/california_vehicles.db`
 
@@ -88,7 +88,7 @@ The script automatically:
 
 Creates `data/california_vehicles.db` with:
 - `vehicle_listings` table: All vehicles with indexed fields
-- `fetch_progress` table: Progress tracking for resume support
+- `zip_fetch_progress` table: Progress tracking for resume support
 
 ### Resume Interrupted Runs
 
@@ -117,8 +117,8 @@ The output includes total vehicles, unique VINs, top makes, and price distributi
 - Timeouts with retry logic
 
 ### Progress Tracking
-- Database tracks completed make/model combinations
-- Real-time progress updates every 50 models
+- Database tracks completed Bay Area zip codes
+- Real-time progress updates per zip code processed
 - Final statistics with database size
 
 ## Querying the Database
@@ -178,15 +178,14 @@ Edit parameters in `fetch_california_dataset.py`:
 # In main() function
 fetcher = DatasetFetcher(db_path="data/california_vehicles.db")
 fetcher.fetch_all(
-    limit_per_model=None,    # Fetch all available vehicles per make/model
-    rate_limit_delay=0.2     # Seconds between API calls
+    limit_per_zip=None,    # Fetch all available vehicles per Bay Area zip code
+    rate_limit_delay=0.2   # Seconds between API calls
 )
 
-# In fetch_vehicles_for_model()
+# In fetch_vehicles_for_zip()
 params = {
-    "vehicle.year": "2018-2026",           # Customize year range
-    "retailListing.state": "CA",           # Change state
-    "retailListing.miles": "0-150000",     # Customize mileage
+    "retailListing.state": "CA",  # Change state if needed
+    "retailListing.zip": zip_code, # Replace or expand with other filters
 }
 ```
 
@@ -228,7 +227,7 @@ After building the dataset:
 **Check progress during run**
 ```bash
 sqlite3 data/california_vehicles.db \
-  "SELECT COUNT(*) as completed FROM fetch_progress WHERE status='completed'"
+  "SELECT COUNT(*) as completed FROM zip_fetch_progress WHERE status='completed'"
 ```
 
 ## Database Maintenance
