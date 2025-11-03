@@ -45,7 +45,7 @@ Full schema: `dataset_builder/schema.sql`
 - **Location**: California Bay Area zip codes (`bay_area_zip.csv`)
 - **Years**: 2018-2026
 - **Mileage Range**: 0-150,000 miles
-- **Vehicles per Model**: Up to 50 (even split between new/used when available)
+- **Vehicles per Model**: All available Bay Area listings (new and used when present)
 - **Total Make/Model Combinations**: 2,479
 - **Expected API Calls**: Dependent on available inventory in Bay Area (fewer than statewide)
 - **Estimated Runtime**: 8-12 minutes (varies with API responses)
@@ -80,7 +80,7 @@ The script automatically:
 
 1. Loads Bay Area zip codes from `dataset_builder/bay_area_zip.csv`
 2. Iterates over all make/model combinations in `data/safety_data.db`
-3. Fetches up to 50 vehicles per model, balanced between new and used listings when possible
+3. Fetches every available Bay Area listing per model, balancing new and used requests
 4. Restricts all API requests to the Bay Area zip codes
 5. Stores the deduplicated (by VIN) results in `data/california_vehicles.db`
 
@@ -178,7 +178,7 @@ Edit parameters in `fetch_california_dataset.py`:
 # In main() function
 fetcher = DatasetFetcher(db_path="data/california_vehicles.db")
 fetcher.fetch_all(
-    limit_per_model=50,      # Vehicles to fetch per make/model
+    limit_per_model=None,    # Fetch all available vehicles per make/model
     rate_limit_delay=0.2     # Seconds between API calls
 )
 

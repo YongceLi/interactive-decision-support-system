@@ -3,7 +3,7 @@ Fetch California vehicle dataset from Auto.dev API and store in SQLite.
 
 This script:
 1. Reads all unique make/model combinations from safety_data.db
-2. Fetches up to 50 vehicles per combination from California
+2. Fetches every available Bay Area listing for each combination from California
 3. Saves data to SQLite database with indexed columns for fast filtering
 4. Handles rate limits and errors gracefully
 5. Supports resume functionality
@@ -302,7 +302,7 @@ class DatasetFetcher:
         self,
         make: str,
         model: str,
-        limit: int = 50,
+        limit: Optional[int] = None,
         retry_count: int = 3,
         require_photos: bool = True,
         mix_new_used: bool = True
@@ -312,10 +312,10 @@ class DatasetFetcher:
         Args:
             make: Vehicle make
             model: Vehicle model
-            limit: Maximum number of vehicles to fetch
+            limit: Maximum number of vehicles to fetch. If None, fetches all available.
             retry_count: Number of retries on failure
             require_photos: If True, only return vehicles with photos
-            mix_new_used: If True, fetch 50/50 mix of new and used vehicles
+            mix_new_used: If True, fetch new and used listings separately
 
         Returns:
             List of vehicle dictionaries, sorted by year descending (newest first)
@@ -331,80 +331,77 @@ class DatasetFetcher:
         }
 
         all_vehicles: List[Dict[str, Any]] = []
+        seen_vins: set[str] = set()
+        limit_per_request = 100
 
-        if mix_new_used:
-            target_new = limit // 2
-            target_used = limit - target_new
-            collected_new: List[Dict[str, Any]] = []
-            collected_used: List[Dict[str, Any]] = []
-
-            for zip_code in self.bay_area_zips:
-                if len(collected_new) >= target_new and len(collected_used) >= target_used:
-                    break
-
-                zip_params = {**base_params, "retailListing.zip": zip_code}
-
-                if len(collected_new) < target_new:
-                    new_params = {
-                        **zip_params,
-                        "limit": 100,
-                        "retailListing.used": "false",
-                    }
-                    new_results = self._fetch_with_params(new_params, retry_count)
-                    if require_photos:
-                        new_results = [
-                            v for v in new_results
-                            if v.get('retailListing', {}).get('photoCount', 0) > 0
-                        ]
-                    needed = target_new - len(collected_new)
-                    collected_new.extend(new_results[:needed])
-
-                if len(collected_used) < target_used:
-                    used_params = {
-                        **zip_params,
-                        "limit": 100,
-                        "retailListing.used": "true",
-                    }
-                    used_results = self._fetch_with_params(used_params, retry_count)
-                    if require_photos:
-                        used_results = [
-                            v for v in used_results
-                            if v.get('retailListing', {}).get('photoCount', 0) > 0
-                        ]
-                    needed = target_used - len(collected_used)
-                    collected_used.extend(used_results[:needed])
-
-            all_vehicles = collected_new + collected_used
-
-        else:
-            for zip_code in self.bay_area_zips:
-                if len(all_vehicles) >= limit:
-                    break
-
+        def collect_for_zip(zip_params: Dict[str, Any], used_filter: Optional[str]):
+            page = 1
+            while True:
                 params = {
-                    **base_params,
-                    "retailListing.zip": zip_code,
-                    "limit": 100 if require_photos else limit,
+                    **zip_params,
+                    "limit": limit_per_request,
+                    "page": page,
                 }
+                if used_filter is not None:
+                    params["retailListing.used"] = used_filter
+
                 results = self._fetch_with_params(params, retry_count)
+
                 if require_photos:
                     results = [
                         v for v in results
                         if v.get('retailListing', {}).get('photoCount', 0) > 0
                     ]
-                remaining = limit - len(all_vehicles)
-                all_vehicles.extend(results[:remaining])
+
+                if not results:
+                    break
+
+                for listing in results:
+                    if limit is not None and len(all_vehicles) >= limit:
+                        return
+
+                    vin = listing.get('vehicle', {}).get('vin')
+                    if vin and vin in seen_vins:
+                        continue
+                    if vin:
+                        seen_vins.add(vin)
+                    all_vehicles.append(listing)
+
+                if limit is not None and len(all_vehicles) >= limit:
+                    return
+
+                if len(results) < limit_per_request:
+                    break
+
+                page += 1
+
+        for zip_code in self.bay_area_zips:
+            if limit is not None and len(all_vehicles) >= limit:
+                break
+
+            zip_params = {**base_params, "retailListing.zip": zip_code}
+
+            if mix_new_used:
+                collect_for_zip(zip_params, "false")
+                if limit is not None and len(all_vehicles) >= limit:
+                    break
+                collect_for_zip(zip_params, "true")
+            else:
+                collect_for_zip(zip_params, None)
 
         # Sort by year descending (newest first: 2026 -> 2018)
         all_vehicles.sort(key=lambda v: v.get('vehicle', {}).get('year', 0), reverse=True)
 
+        if limit is not None:
+            return all_vehicles[:limit]
+
         return all_vehicles
 
-    def fetch_all(self, limit_per_model: int = 100, rate_limit_delay: float = 0.2):
+    def fetch_all(self, limit_per_model: Optional[int] = None, rate_limit_delay: float = 0.2):
         """Fetch vehicles for all make/model combinations.
 
         Args:
-            limit_per_model: Number of vehicles to fetch per model
+            limit_per_model: Number of vehicles to fetch per model. If None, fetch all available.
             rate_limit_delay: Delay between API calls in seconds
         """
         make_model_list = self.get_make_model_list()
@@ -414,7 +411,8 @@ class DatasetFetcher:
         print(f"California Dataset Fetcher (SQLite)")
         print(f"{'='*70}")
         print(f"Total make/model combinations: {total_models}")
-        print(f"Target vehicles per model: {limit_per_model}")
+        target_display = limit_per_model if limit_per_model is not None else "Unlimited"
+        print(f"Target vehicles per model: {target_display}")
         print(f"Database: {self.db_path}")
         print(f"{'='*70}\n")
 
@@ -562,7 +560,7 @@ class DatasetFetcher:
 def main():
     """Main entry point."""
     fetcher = DatasetFetcher()
-    fetcher.fetch_all(limit_per_model=100, rate_limit_delay=1.0)  # Increased from 0.2 to 1.0 second
+    fetcher.fetch_all(limit_per_model=None, rate_limit_delay=1.0)  # Fetch all available listings per model
 
 
 if __name__ == "__main__":
