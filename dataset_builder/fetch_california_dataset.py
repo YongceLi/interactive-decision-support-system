@@ -45,8 +45,30 @@ class DatasetFetcher:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Load Bay Area zip codes for filtering
+        self.bay_area_zips = self._load_bay_area_zips()
+        if not self.bay_area_zips:
+            raise ValueError("No Bay Area zip codes found. Check bay_area_zip.csv")
+
         # Initialize database
         self._init_database()
+
+    def _load_bay_area_zips(self) -> List[str]:
+        """Load Bay Area zip codes from CSV file."""
+        zip_file = Path(__file__).parent / "bay_area_zip.csv"
+
+        if not zip_file.exists():
+            raise FileNotFoundError(f"Bay Area zip code file not found: {zip_file}")
+
+        zips: List[str] = []
+        with open(zip_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.lower() == "zip":
+                    continue
+                zips.append(line.zfill(5))
+
+        return zips
 
     def _init_database(self):
         """Initialize SQLite database with schema."""
@@ -308,53 +330,70 @@ class DatasetFetcher:
             "page": 1,
         }
 
-        all_vehicles = []
+        all_vehicles: List[Dict[str, Any]] = []
 
         if mix_new_used:
-            # Fetch new vehicles (50% of target)
-            half_limit = limit // 2
-            new_params = {**base_params, "limit": 100, "retailListing.used": "false"}
-            new_vehicles = self._fetch_with_params(new_params, retry_count)
+            target_new = limit // 2
+            target_used = limit - target_new
+            collected_new: List[Dict[str, Any]] = []
+            collected_used: List[Dict[str, Any]] = []
 
-            # Filter for photos
-            if require_photos:
-                new_vehicles = [
-                    v for v in new_vehicles
-                    if v.get('retailListing', {}).get('photoCount', 0) > 0
-                ]
-            new_vehicles = new_vehicles[:half_limit]
+            for zip_code in self.bay_area_zips:
+                if len(collected_new) >= target_new and len(collected_used) >= target_used:
+                    break
 
-            # Fetch used vehicles (50% of target)
-            used_params = {**base_params, "limit": 100, "retailListing.used": "true"}
-            used_vehicles = self._fetch_with_params(used_params, retry_count)
+                zip_params = {**base_params, "retailListing.zip": zip_code}
 
-            # Filter for photos
-            if require_photos:
-                used_vehicles = [
-                    v for v in used_vehicles
-                    if v.get('retailListing', {}).get('photoCount', 0) > 0
-                ]
-            used_vehicles = used_vehicles[:half_limit]
+                if len(collected_new) < target_new:
+                    new_params = {
+                        **zip_params,
+                        "limit": 100,
+                        "retailListing.used": "false",
+                    }
+                    new_results = self._fetch_with_params(new_params, retry_count)
+                    if require_photos:
+                        new_results = [
+                            v for v in new_results
+                            if v.get('retailListing', {}).get('photoCount', 0) > 0
+                        ]
+                    needed = target_new - len(collected_new)
+                    collected_new.extend(new_results[:needed])
 
-            all_vehicles = new_vehicles + used_vehicles
+                if len(collected_used) < target_used:
+                    used_params = {
+                        **zip_params,
+                        "limit": 100,
+                        "retailListing.used": "true",
+                    }
+                    used_results = self._fetch_with_params(used_params, retry_count)
+                    if require_photos:
+                        used_results = [
+                            v for v in used_results
+                            if v.get('retailListing', {}).get('photoCount', 0) > 0
+                        ]
+                    needed = target_used - len(collected_used)
+                    collected_used.extend(used_results[:needed])
 
-            # Quiet mode - tqdm will handle output
-            # print(f"  ✓ {make} {model}: Found {len(new_vehicles)} new + {len(used_vehicles)} used = {len(all_vehicles)} vehicles")
+            all_vehicles = collected_new + collected_used
 
         else:
-            # Fetch all vehicles without used/new filter
-            params = {**base_params, "limit": 100 if require_photos else limit}
-            all_vehicles = self._fetch_with_params(params, retry_count)
+            for zip_code in self.bay_area_zips:
+                if len(all_vehicles) >= limit:
+                    break
 
-            # Filter for photos
-            if require_photos:
-                all_vehicles = [
-                    v for v in all_vehicles
-                    if v.get('retailListing', {}).get('photoCount', 0) > 0
-                ]
-                all_vehicles = all_vehicles[:limit]
-
-            print(f"  ✓ {make} {model}: Found {len(all_vehicles)} vehicles")
+                params = {
+                    **base_params,
+                    "retailListing.zip": zip_code,
+                    "limit": 100 if require_photos else limit,
+                }
+                results = self._fetch_with_params(params, retry_count)
+                if require_photos:
+                    results = [
+                        v for v in results
+                        if v.get('retailListing', {}).get('photoCount', 0) > 0
+                    ]
+                remaining = limit - len(all_vehicles)
+                all_vehicles.extend(results[:remaining])
 
         # Sort by year descending (newest first: 2026 -> 2018)
         all_vehicles.sort(key=lambda v: v.get('vehicle', {}).get('year', 0), reverse=True)

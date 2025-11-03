@@ -4,7 +4,7 @@ Build a comprehensive local SQLite database of California vehicle listings for t
 
 ## Overview
 
-This module fetches vehicle listings from California across all 2,479 make/model combinations found in `safety_data.db` and stores them in a fast, queryable SQLite database.
+This module fetches vehicle listings from California's Bay Area (zip codes listed in `bay_area_zip.csv`) across all 2,479 make/model combinations found in `safety_data.db` and stores them in a fast, queryable SQLite database.
 
 ## Why SQLite?
 
@@ -42,15 +42,14 @@ Full schema: `dataset_builder/schema.sql`
 ## Dataset Specifications
 
 - **Source**: Auto.dev Listings API
-- **Location**: California only (`retailListing.state=CA`)
+- **Location**: California Bay Area zip codes (`bay_area_zip.csv`)
 - **Years**: 2018-2026
 - **Mileage Range**: 0-150,000 miles
-- **Vehicles per Model**: Up to 50
+- **Vehicles per Model**: Up to 50 (even split between new/used when available)
 - **Total Make/Model Combinations**: 2,479
-- **Expected Total Vehicles**: 60,000-100,000 (unique VINs)
-- **Expected API Calls**: ~2,500
-- **Estimated Runtime**: 8-12 minutes
-- **Database Size**: ~100-200 MB
+- **Expected API Calls**: Dependent on available inventory in Bay Area (fewer than statewide)
+- **Estimated Runtime**: 8-12 minutes (varies with API responses)
+- **Database Size**: Dependent on available inventory (smaller than statewide dataset)
 
 ## Files
 
@@ -77,6 +76,14 @@ From project root:
 python dataset_builder/fetch_california_dataset.py
 ```
 
+The script automatically:
+
+1. Loads Bay Area zip codes from `dataset_builder/bay_area_zip.csv`
+2. Iterates over all make/model combinations in `data/safety_data.db`
+3. Fetches up to 50 vehicles per model, balanced between new and used listings when possible
+4. Restricts all API requests to the Bay Area zip codes
+5. Stores the deduplicated (by VIN) results in `data/california_vehicles.db`
+
 ### Output
 
 Creates `data/california_vehicles.db` with:
@@ -86,6 +93,16 @@ Creates `data/california_vehicles.db` with:
 ### Resume Interrupted Runs
 
 If the script stops, simply re-run it - it automatically resumes from where it left off.
+
+### View Dataset Statistics
+
+Statistics are printed at the end of the run and can be regenerated without refetching:
+
+```bash
+python -c "from dataset_builder.fetch_california_dataset import DatasetFetcher; DatasetFetcher().generate_stats()"
+```
+
+The output includes total vehicles, unique VINs, top makes, and price distribution.
 
 ## Features
 
