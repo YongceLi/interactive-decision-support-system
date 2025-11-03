@@ -1,17 +1,15 @@
 """
-General mode - Handle greetings, meta questions, off-topic conversations.
-
-Triggered by "general" intent - greetings, thanks, system questions, unclear queries.
+General conversation agent - handles greetings, thanks, meta questions.
 """
 from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage, SystemMessage, HumanMessage
-from idss_agent.config import get_config
-from idss_agent.prompt_loader import render_prompt
-from idss_agent.state import VehicleSearchState, AgentResponse
-from idss_agent.logger import get_logger
+from langchain_core.messages import AIMessage, SystemMessage
+from idss_agent.state.schema import VehicleSearchState, AgentResponse
+from idss_agent.utils.config import get_config
+from idss_agent.utils.prompts import render_prompt
+from idss_agent.utils.logger import get_logger
 
-logger = get_logger("modes.general")
+logger = get_logger("agents.general")
 
 
 def run_general_mode(

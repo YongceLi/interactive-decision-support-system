@@ -9,19 +9,19 @@ from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, END
-from idss_agent.logger import get_logger
-from idss_agent.config import get_config
-from idss_agent.prompt_loader import render_prompt
-from idss_agent.state import (
+from idss_agent.utils.logger import get_logger
+from idss_agent.utils.config import get_config
+from idss_agent.utils.prompts import render_prompt
+from idss_agent.state.schema import (
     VehicleSearchState,
     get_latest_user_message,
     VehicleFiltersPydantic,
     ImplicitPreferencesPydantic,
     AgentResponse
 )
-from idss_agent.components.semantic_parser import semantic_parser_node
-from idss_agent.components.recommendation import update_recommendation_list
-from idss_agent.components.discovery import discovery_agent
+from idss_agent.processing.semantic_parser import semantic_parser_node
+from idss_agent.processing.recommendation import update_recommendation_list
+from idss_agent.agents.discovery import discovery_agent
 
 logger = get_logger("workflows.interview")
 
@@ -288,7 +288,19 @@ def decide_next_step(state: VehicleSearchState) -> str:
 
 # Create wrapper for semantic_parser_node that extracts callback from state
 def semantic_parser_wrapper(state: VehicleSearchState) -> VehicleSearchState:
-    """Wrapper to pass progress_callback from state to semantic_parser_node."""
+    """
+    Wrapper to pass progress_callback from state to semantic_parser_node.
+
+    Optimization: Skip parsing if already done by supervisor to avoid duplicate LLM calls.
+    """
+    # Check if semantic parsing was already done by supervisor
+    if state.get("_semantic_parsing_done", False):
+        logger.info("Skipping duplicate semantic parsing (already done by supervisor)")
+        # Clear the flag so next turn will parse normally
+        state['_semantic_parsing_done'] = False
+        return state
+
+    # Otherwise, do semantic parsing
     progress_callback = state.get("_progress_callback")
     return semantic_parser_node(state, progress_callback)
 

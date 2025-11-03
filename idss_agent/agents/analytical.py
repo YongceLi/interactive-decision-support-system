@@ -10,12 +10,12 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
-from idss_agent.config import get_config
-from idss_agent.prompt_loader import render_prompt
-from idss_agent.state import VehicleSearchState, AgentResponse, ComparisonTable
-from idss_agent.components.autodev_apis import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
-from idss_agent.components.vehicle_database import get_vehicle_database_tools
-from idss_agent.logger import get_logger
+from idss_agent.utils.config import get_config
+from idss_agent.utils.prompts import render_prompt
+from idss_agent.state.schema import VehicleSearchState, AgentResponse, ComparisonTable
+from idss_agent.tools.autodev_api import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
+from idss_agent.tools.vehicle_database import get_vehicle_database_tools
+from idss_agent.utils.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
 
@@ -84,31 +84,24 @@ def web_search(query: str) -> str:
     """
     Search the web for current information about vehicles.
 
-    Use this tool when local databases don't have the information you need.
-    This is especially useful for:
-    - Recent model years not yet in databases
-    - Current pricing and availability
-    - Latest specifications and features
-    - Recent safety ratings or reviews
-
     Args:
-        query: Search query string (e.g., "2025 Honda Accord specifications")
+        query: Search query string
 
     Returns:
-        Search results with relevant information
+        Search results
     """
     try:
-        # Import WebSearch here to avoid circular imports
         from langchain_community.tools.tavily_search import TavilySearchResults
 
-        # Create Tavily search tool (requires TAVILY_API_KEY environment variable)
-        search = TavilySearchResults(max_results=3)
+        config = get_config()
+        max_results = config.limits.get('web_search_max_results', 3)
+        search = TavilySearchResults(max_results=max_results)
         results = search.invoke({"query": query})
 
         # Format results
         if isinstance(results, list) and results:
             formatted = []
-            for i, result in enumerate(results[:3], 1):
+            for i, result in enumerate(results[:max_results], 1):
                 content = result.get('content', '')
                 url = result.get('url', '')
                 formatted.append(f"[Result {i}]\n{content}\nSource: {url}\n")
@@ -130,8 +123,6 @@ class InteractiveElements(BaseModel):
         description=(
             "Short answer options (5 words or less each) if the response asks a direct question. "
             "Provide 2-4 CONCRETE, ACTIONABLE options that directly answer the question. "
-            "Examples: ['Vehicle #1', 'Vehicle #2', 'Compare both'], ['Show photos', 'Compare pricing', 'Safety ratings'], "
-            "['Yes, show me', 'No, skip it', 'Not sure']. "
             "Leave null if no direct question asked."
         )
     )
@@ -176,7 +167,7 @@ Generate the interactive elements now.
     return result
 
 
-# System prompt for analytical agent (cached for efficiency)
+# System prompt for analytical agent
 ANALYTICAL_SYSTEM_PROMPT = """
 You are an expert vehicle research analyst with access to comprehensive automotive databases and listing information.
 
@@ -354,7 +345,7 @@ def analytical_agent(
     tools = [
         get_vehicle_listing_by_vin,
         get_vehicle_photos_by_vin,
-        web_search  # Add web search as fallback tool
+        web_search 
     ] + db_tools
 
     # Build vehicle context from state

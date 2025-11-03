@@ -32,7 +32,7 @@ class AgentConfig:
         """Load configuration from YAML file."""
         # Get project root (parent of idss_agent directory)
         current_file = Path(__file__)
-        project_root = current_file.parent.parent
+        project_root = current_file.parent.parent.parent
         config_path = project_root / "config" / "agent_config.yaml"
 
         if not config_path.exists():

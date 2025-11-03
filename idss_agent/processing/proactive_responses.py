@@ -9,10 +9,10 @@ from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
-from idss_agent.state import VehicleSearchState
-from idss_agent.config import get_config
-from idss_agent.prompt_loader import render_prompt
-from idss_agent.logger import get_logger
+from idss_agent.state.schema import VehicleSearchState
+from idss_agent.utils.config import get_config
+from idss_agent.utils.prompts import render_prompt
+from idss_agent.utils.logger import get_logger
 
 logger = get_logger("components.proactive_responses")
 

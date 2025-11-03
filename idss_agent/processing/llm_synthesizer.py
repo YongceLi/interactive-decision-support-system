@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.logger import get_logger
+from idss_agent.utils.logger import get_logger
 
 logger = get_logger("llm_synthesizer")
 
@@ -198,31 +198,3 @@ Please synthesize these into ONE smooth, conversational response that:
         )
 
 
-def format_vehicle_summary_simple(vehicles: List[Dict[str, Any]], max_count: int = 3) -> str:
-    """
-    Format vehicles into simple text summary (for single-mode search).
-
-    Args:
-        vehicles: List of vehicle dicts
-        max_count: Max number to show
-
-    Returns:
-        Formatted vehicle listing
-    """
-    if not vehicles:
-        return "No vehicles found matching your criteria."
-
-    summary_lines = []
-    for i, vehicle in enumerate(vehicles[:max_count], 1):
-        v = vehicle.get('vehicle', {})
-        r = vehicle.get('retailListing', {})
-        summary_lines.append(
-            f"{i}. **{v.get('year')} {v.get('make')} {v.get('model')}** - "
-            f"${r.get('price', 0):,} ({r.get('miles', 0):,} miles)"
-        )
-
-    total = len(vehicles)
-    if total > max_count:
-        summary_lines.append(f"\n...and {total - max_count} more vehicles available")
-
-    return "\n".join(summary_lines)

@@ -51,7 +51,7 @@ def search_vehicle_listings(
     # Vehicle filters
     vehicle_make: Optional[str] = None,
     vehicle_model: Optional[str] = None,
-    vehicle_year: Optional[str] = "2022-2026",
+    vehicle_year: Optional[str] = "2020-2026",
     vehicle_trim: Optional[str] = None,
     vehicle_body_style: Optional[str] = None,
     vehicle_engine: Optional[str] = None,
@@ -63,7 +63,7 @@ def search_vehicle_listings(
     # Retail listing filters
     retail_price: Optional[str] = None,
     retail_state: Optional[str] = None,
-    retail_miles: Optional[str] = "0-50000",
+    retail_miles: Optional[str] = "0-80000",
     # Wholesale listing filters
     wholesale_buy_now_price: Optional[str] = None,
     wholesale_state: Optional[str] = None,
