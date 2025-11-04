@@ -178,6 +178,7 @@ class DatasetFetcher:
                 except sqlite3.Error as e:
                     print(f"    ✗ Error inserting VIN {data.get('vin', 'unknown')}: {e}")
                     continue
+                inserted += 1
 
             conn.commit()
 
@@ -281,9 +282,9 @@ class DatasetFetcher:
         self,
         zip_code: str,
         limit: Optional[int] = None,
-        retry_count: int = 3,
-        require_photos: bool = True,
-        mix_new_used: bool = True
+        retry_count: int = 10,
+        require_photos: bool = False,
+        mix_new_used: bool = False
     ) -> List[Dict[str, Any]]:
         """Fetch vehicles for a specific Bay Area zip code from California.
 
@@ -298,14 +299,14 @@ class DatasetFetcher:
             List of vehicle dictionaries, sorted by year descending (newest first)
         """
         base_params = {
-            "retailListing.state": "CA",
-            "retailListing.zip": zip_code,
+            "zip": zip_code,
+            "distance": 200,
             "page": 1,
         }
 
         all_vehicles: List[Dict[str, Any]] = []
         seen_vins: set[str] = set()
-        limit_per_request = 100
+        limit_per_request = 500
 
         def collect_for_condition(used_filter: Optional[str]):
             page = 1
