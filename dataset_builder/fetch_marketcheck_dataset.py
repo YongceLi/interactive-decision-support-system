@@ -265,6 +265,22 @@ class MarketcheckDatasetFetcher:
             )
             return {row[0] for row in cursor.fetchall()}
 
+    def get_latest_progress(self) -> Optional[tuple[str, str]]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT zip_code, status
+                FROM marketcheck_zip_progress
+                ORDER BY fetched_at DESC
+                LIMIT 1
+                """
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return row[0], row[1]
+
     def _request_listings(self, zip_code: str, start: int) -> Dict[str, Any]:
         params = {
             "api_key": self.api_key,
@@ -293,6 +309,8 @@ class MarketcheckDatasetFetcher:
         consecutive_failures = 0
 
         while True:
+            if start >= 500:
+                break
             try:
                 payload = self._request_listings(zip_code, start)
             except requests.HTTPError as exc:
@@ -337,7 +355,27 @@ class MarketcheckDatasetFetcher:
     ) -> None:
         total_zips = len(self.zip_codes)
         completed = self.get_completed_zips() if resume else set()
-        remaining = [z for z in self.zip_codes if z not in completed]
+        resume_zip: Optional[str] = None
+        resume_status: Optional[str] = None
+
+        start_index = 0
+        if resume:
+            latest = self.get_latest_progress()
+            if latest:
+                resume_zip, resume_status = latest
+                if resume_zip in self.zip_codes:
+                    start_index = self.zip_codes.index(resume_zip)
+                    if resume_status == "completed":
+                        start_index += 1
+
+        remaining_sequence = self.zip_codes[start_index:]
+        remaining = []
+        for zip_code in remaining_sequence:
+            if zip_code in completed and not (
+                resume_zip == zip_code and resume_status != "completed"
+            ):
+                continue
+            remaining.append(zip_code)
 
         print(f"\n{'=' * 70}")
         print("Marketcheck Dataset Fetcher")
