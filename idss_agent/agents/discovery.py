@@ -6,9 +6,9 @@ from typing import List, Dict, Any, Optional, Callable
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.config import get_config
-from idss_agent.prompt_loader import render_prompt
-from idss_agent.state import VehicleSearchState, AgentResponse
+from idss_agent.utils.config import get_config
+from idss_agent.utils.prompts import render_prompt
+from idss_agent.state.schema import VehicleSearchState, AgentResponse
 
 
 def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:

@@ -63,6 +63,7 @@ limits:
   max_interview_questions: 3         # Maximum interview turns before forcing recommendation
   max_vehicle_summary_chars: 4000    # Maximum characters for vehicle JSON summary
   top_vehicles_to_show: 3            # Number of top vehicles to include in prompts
+  web_search_max_results: 3          # Maximum Tavily search results returned per query
 
 # Interactive elements configuration
 interactive:

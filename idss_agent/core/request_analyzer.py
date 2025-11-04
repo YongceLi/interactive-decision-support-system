@@ -10,8 +10,8 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.state import VehicleSearchState
-from idss_agent.logger import get_logger
+from idss_agent.state.schema import VehicleSearchState
+from idss_agent.utils.logger import get_logger
 
 logger = get_logger("request_analyzer")
 
@@ -50,7 +50,7 @@ class RequestAnalysis(BaseModel):
 
     has_filter_update: bool = Field(
         description=(
-            "True if user mentioned new vehicle criteria (make, model, color, price, etc.)"
+            "True if user mentioned new vehicle criteria or change some of the existing filters (make, model, color, price, etc.)"
         )
     )
 
@@ -84,7 +84,7 @@ def analyze_request(
     # Get context
     interviewed = state.get('interviewed', False)
     has_filters = bool(state.get('explicit_filters', {}))
-    has_preferences = bool(state.get('implicit_preferences', {}).get('priorities'))
+    has_preferences = bool(state.get('implicit_preferences', {}))
     has_vehicles = len(state.get('recommended_vehicles', [])) > 0
 
     # Build context for LLM
@@ -119,7 +119,7 @@ Analyze the user's request and detect what they need:
    - Make, model, color, price, features, etc.
 
 6. **is_general_conversation**: Just chatting, not searching
-   - Greetings, thank you, how does this work, etc.
+   - Greetings, thank you, What can you do?, etc.
 
 **Important**: A request can have MULTIPLE needs simultaneously!
 Example: "I want a black one, what's the maintenance cost?"

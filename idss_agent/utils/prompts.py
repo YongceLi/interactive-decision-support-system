@@ -8,7 +8,7 @@ import os
 from typing import Dict, Any, Optional
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, Template, TemplateNotFound
-from idss_agent.config import get_config
+from idss_agent.utils.config import get_config
 
 
 class PromptLoader:
@@ -34,7 +34,7 @@ class PromptLoader:
         """Setup Jinja2 environment with template directory."""
         # Get project root (parent of idss_agent directory)
         current_file = Path(__file__)
-        project_root = current_file.parent.parent
+        project_root = current_file.parent.parent.parent
         template_dir = project_root / "config" / "prompts"
 
         # Create prompts directory if it doesn't exist
@@ -173,7 +173,7 @@ def render_prompt(
         Rendered prompt string
 
     Example:
-        from idss_agent.prompt_loader import render_prompt
+        from idss_agent.utils.prompts import render_prompt
 
         prompt = render_prompt('interview_system.j2')
         # or with extra context:

@@ -10,9 +10,9 @@ Architecture:
 """
 from datetime import datetime
 from typing import Optional, Callable
-from idss_agent.logger import get_logger
-from idss_agent.state import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
-from idss_agent.supervisor import run_supervisor
+from idss_agent.utils.logger import get_logger
+from idss_agent.state.schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
+from idss_agent.core.supervisor import run_supervisor
 
 logger = get_logger("agent")
 

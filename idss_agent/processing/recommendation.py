@@ -4,14 +4,15 @@ Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 import concurrent.futures
 import math
 import json
+from copy import deepcopy
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
-from idss_agent.state import VehicleSearchState
-from idss_agent.components.autodev_apis import search_vehicle_listings, get_vehicle_photos_by_vin
-from idss_agent.logger import get_logger
+from idss_agent.state.schema import VehicleSearchState
+from idss_agent.tools.autodev_api import search_vehicle_listings, get_vehicle_photos_by_vin
+from idss_agent.utils.logger import get_logger
 
 
 logger = get_logger("components.recommendation")

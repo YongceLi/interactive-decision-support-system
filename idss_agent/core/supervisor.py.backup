@@ -5,23 +5,18 @@ Architecture:
 1. Analyze request → detect multiple needs
 2. Delegate to sub-agents (they return structured data)
 3. Synthesize unified response
-
-Handles scenarios like:
-- "I want a black one, what's the maintenance cost?" (search + analytical)
-- "Compare Honda Accord vs Toyota Camry" (analytical comparison)
-- "Show me vehicles under $30k" (search only)
 """
 from typing import Optional, Callable, Dict, Any, List
-from idss_agent.state import VehicleSearchState
-from idss_agent.request_analyzer import analyze_request, RequestAnalysis
-from idss_agent.components.semantic_parser import semantic_parser_node
-from idss_agent.components.recommendation import update_recommendation_list
-from idss_agent.components.analytical import analytical_agent
-from idss_agent.components.discovery import discovery_agent
-from idss_agent.workflows.interview_workflow import run_interview_workflow
-from idss_agent.modes.general_mode import run_general_mode
-from idss_agent.llm_synthesizer import llm_synthesize_multi_mode, format_vehicle_summary_simple
-from idss_agent.logger import get_logger
+from idss_agent.state.schema import VehicleSearchState
+from idss_agent.core.request_analyzer import analyze_request, RequestAnalysis
+from idss_agent.processing.semantic_parser import semantic_parser_node
+from idss_agent.processing.recommendation import update_recommendation_list
+from idss_agent.agents.analytical import analytical_agent
+from idss_agent.agents.discovery import discovery_agent
+from idss_agent.agents.general import run_general_mode
+from idss_agent.workflows.interview import run_interview_workflow
+from idss_agent.processing.llm_synthesizer import llm_synthesize_multi_mode
+from idss_agent.utils.logger import get_logger
 
 logger = get_logger("supervisor")
 
@@ -118,39 +113,6 @@ def run_interview_sub_agent(
         'suggested_followups': result_state.get('suggested_followups', []),
         'updated_state': result_state
     }
-
-
-def format_vehicle_summary(vehicles: List[Dict[str, Any]], max_count: int = 3) -> str:
-    """
-    Format top vehicles into a concise summary.
-
-    Args:
-        vehicles: List of vehicle dicts
-        max_count: Maximum number to show
-
-    Returns:
-        Formatted string with vehicle summaries
-    """
-    if not vehicles:
-        return "No vehicles found matching your criteria."
-
-    summary_lines = []
-    for i, vehicle in enumerate(vehicles[:max_count], 1):
-        v = vehicle.get('vehicle', {})
-        r = vehicle.get('retailListing', {})
-        price = r.get('price', 0)
-        miles = r.get('miles', 0)
-
-        summary_lines.append(
-            f"{i}. **{v.get('year')} {v.get('make')} {v.get('model')}** - "
-            f"${price:,} ({miles:,} miles)"
-        )
-
-    total = len(vehicles)
-    if total > max_count:
-        summary_lines.append(f"\n...and {total - max_count} more vehicles available")
-
-    return "\n".join(summary_lines)
 
 
 def synthesize_response(
@@ -316,7 +278,6 @@ def run_supervisor(
         return general_state
 
     # Priority 2: Handle interview + analytical/search (can be multiple)
-    # NEW: Don't return early if interview + other needs detected
     filters_changed = state['explicit_filters'] != state.get('previous_filters', {})
     has_vehicles = len(state.get('recommended_vehicles', [])) > 0
 
@@ -349,7 +310,7 @@ def run_supervisor(
                 if search_result.get('suggestion_reasoning'):
                     state['suggestion_reasoning'] = search_result['suggestion_reasoning']
 
-    # Run interview sub-agent if needed (but DON'T return early)
+    # Run interview sub-agent if needed 
     if analysis.needs_interview and not state.get('interviewed', False):
         logger.info("Running interview sub-agent")
         interview_result = run_interview_sub_agent(user_input, state, progress_callback)

@@ -4,7 +4,7 @@ Progress tracking configuration for each execution mode.
 Defines the standard execution steps for each mode (buying, discovery, analytical, general).
 """
 from typing import List, Dict
-from idss_agent.state import ProgressStep
+from idss_agent.state.schema import ProgressStep
 import time
 
 

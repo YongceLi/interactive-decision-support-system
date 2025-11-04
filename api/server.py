@@ -491,7 +491,7 @@ async def handle_favorite(
             logger.info(f"Session {session_id}: Added vehicle {vin} to favorites. Total: {len(state['favorites'])}")
 
         # Generate proactive response using LLM
-        from idss_agent.components.proactive_responses import generate_favorite_response
+        from idss_agent.processing.proactive_responses import generate_favorite_response
 
         try:
             proactive_response = generate_favorite_response(request.vehicle, state)

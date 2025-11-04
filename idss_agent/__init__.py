@@ -3,8 +3,8 @@ IDSS Vehicle Search Agent
 
 A conversational vehicle shopping assistant built with LangGraph.
 """
-from idss_agent.agent import run_agent
-from idss_agent.state import (
+from idss_agent.core.agent import run_agent
+from idss_agent.state.schema import (
     VehicleSearchState,
     VehicleFilters,
     ImplicitPreferences,

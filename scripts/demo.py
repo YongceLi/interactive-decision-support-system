@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 from idss_agent import run_agent, create_initial_state
-from idss_agent.components.semantic_parser import format_state_summary
+from idss_agent.processing.semantic_parser import format_state_summary
 from langchain_core.messages import HumanMessage, AIMessage
 import json
 
