@@ -1,180 +1,416 @@
-# IDSS
+# Interactive Decision Support System (IDSS)
 
-A conversational product decision support assistant built with LangGraph that helps users find and evaluate vehicles through natural dialogue.
+An intelligent conversational AI assistant designed to help users discover and evaluate vehicles through natural dialogue. The system employs a supervisor-based multi-agent architecture built on LangGraph, orchestrating specialized agents to deliver personalized vehicle recommendations.
 
-## 📐 Complete System Architecture
+---
 
-**🎨 [View Complete Visual System Architecture →](IDSS_workflow.png)**
+## Installation and Deployment
 
-## Architecture Overview
-
-The agent uses an **intent-based routing architecture** that classifies user intent on every message and routes to the appropriate mode:
-
-## State Variables
-
-```python
-VehicleSearchState = {
-    # Core data
-    "explicit_filters": VehicleFilters,           # Extracted search criteria
-    "conversation_history": List[BaseMessage],    # Full chat history (with prompt caching)
-    "implicit_preferences": ImplicitPreferences,  # Inferred preferences
-    "recommended_vehicles": List[Dict],           # Top 20 matches
-
-    # Intent-based routing (NEW)
-    "current_intent": str,                        # Latest intent (buying/browsing/research/general)
-    "current_mode": str,                          # Current mode (buying/discovery/analytical/general)
-    "intent_history": List[IntentRecord],         # All intent classifications
-    "mode_switch_count": int,                     # Number of mode switches
-
-    # Tracking
-    "previous_filters": VehicleFilters,           # Previous filters for change detection
-    "interviewed": bool,                          # Interview completion status
-
-    # Note: Discovery agent determines what to ask by checking missing filters/preferences
-    # rather than tracking abstract question topics
-
-    # Output
-    "ai_response": str                            # Latest response
-}
-```
-
-**VehicleFilters** (extracted from user input):
-- Basic: make, model, year, body_style, transmission, fuel_type, drivetrain
-- Pricing: price_min, price_max, miles_max
-- Appearance: exterior_color, interior_color
-- Physical: seating_capacity, doors
-- Location: state, zip, distance
-
-**ImplicitPreferences** (inferred):
-- priorities, lifestyle, budget_sensitivity, concerns, brand_affinity
-
-## Component Descriptions
-
-### 1. Intent Classifier (`intent_classifier.py`)
-- Classifies user intent on every message using GPT-4o-mini
-- Returns intent, confidence score, and reasoning
-- Uses full conversation history with prompt caching for efficiency
-- Intents: buying, browsing, research, general
-
-### 2. Mode Handlers
-
-#### Buying Mode (`modes/buying_mode.py`)
-- Routes to interview workflow if not interviewed
-- Updates recommendations if already interviewed
-- Preserves interview state across mode switches
-
-#### Discovery Mode (`modes/discovery_mode.py`)
-- Semantic parser extracts filters
-- Updates recommendations when filters change
-- Discovery agent shows vehicles and asks elicitation questions
-- No interview required
-
-#### Analytical Mode (`modes/analytical_mode.py`)
-- Semantic parser extracts vehicle mentions
-- Conditionally updates recommendations (only if vehicle filters detected)
-- ReAct agent with tools answers data-driven questions
-
-#### General Mode (`modes/general_mode.py`)
-- Simple conversational responses
-- Handles greetings, thanks, meta questions
-- Uses last 3 messages for context
-
-### 3. Semantic Parser (`semantic_parser.py`)
-- Extracts structured filters from natural language
-- Merges new filters with existing state
-- Updates implicit preferences throughout conversation
-- Handles ranges, multiple values, and complex queries
-
-### 4. Discovery Agent (`discovery.py`)
-- Generates friendly vehicle summaries
-- Highlights top vehicle with bullet points
-- Intelligently asks 1-2 strategic questions based on missing filters/preferences
-- Questions focus on what's unknown in the current state (budget, location, usage, priorities)
-- Self-correcting: always asks about missing information, never redundant
-
-### 5. Analytical Agent (`analytical.py`)
-- ReAct agent with multiple tools:
-  - `get_vehicle_listing_by_vin`: Detailed listing by VIN
-  - `get_vehicle_photos_by_vin`: Photos by VIN
-  - `sql_db_query`, `sql_db_schema`, `sql_db_list_tables`: Database queries
-- Can query safety_data (NHTSA ratings) and feature_data (EPA fuel economy) databases
-
-### 6. Recommendation Engine (`recommendation.py`)
-- Searches Auto.dev API for matching vehicles
-- Deduplicates by VIN (keeps lowest price)
-- Fetches photos in parallel (up to 8 workers)
-- Returns up to 20 vehicles
-
-## Tools & Data Sources
-
-### Auto.dev API
-- `search_vehicle_listings`: Search millions of active vehicle listings
-- `get_vehicle_listing_by_vin`: Get detailed info for specific VIN
-- `get_vehicle_photos_by_vin`: Get photos for specific VIN
-
-### SQL Databases
-- **safety_data.db**: NHTSA crash tests, safety ratings, features (query by make, model, model_yr)
-- **feature_data.db**: EPA MPG ratings, fuel economy, emissions, engine specs (query by Make, Model, Year)
-
-Both databases combined using SQLite ATTACH for unified querying.
-
-## Installation
-
-### 1. Create Conda Environment
+### Setup Instructions
 
 ```bash
+# Clone repository
+git clone https://github.com/YongceLi/interactive-decision-support-system.git
+cd interactive-decision-support-system
+
+# Create conda environment
 conda create -n idss python=3.10
 conda activate idss
-```
 
-### 2. Install Dependencies
-
-```bash
+# Install Python dependencies
 pip install -r requirements.txt
+
+# Create .env file in project root
+cat > .env << EOF
+OPENAI_API_KEY=your-openai-api-key-here
+TAVILY_API_KEY=your-tavily-api-key-here  # for analytical agent web search
+AUTODEV_API_KEY=your-autodev-api-key-here  # if using Auto.dev API instead of local DB
+EOF
+
+# Start API server
+python -m api.server
+
+# In separate terminal, start web interface
+cd web
+npm install
+npm run dev
 ```
 
-### 3. Set Environment Variables
-
-Create a `.env` file in the project root:
-```bash
-OPENAI_API_KEY=your_openai_key_here
-AUTODEV_API_KEY=your_autodev_key_here
-
-# Optional: Prioritize vehicles with photos in recommendations (default: false)
-REQUIRE_PHOTOS_IN_RECOMMENDATIONS=true
-```
-
-## Usage
-
-### Interactive CLI Demo
-
-```bash
-python scripts/demo.py
-```
-
-Commands: `state` (view filters), `reset`, `quit`/`exit`
-
-### API Server
-
-Start the server:
-```bash
-python api/server.py
-```
-
-Stop the server:
-```bash
-# Press Ctrl+C for graceful shutdown
-```
-
-API Documentation: http://localhost:8000/docs
+**Note**: The application will be available at:
+- API: `http://localhost:8000`
+- Web Interface: `http://localhost:3000`
 
 ### API Endpoints
 
-- `GET /` - Health check
-- `POST /chat` - Main conversation endpoint
-  - Request: `{"message": "I want a Jeep", "session_id": "optional"}`
-  - Response: `{"response": "...", "vehicles": [...], "filters": {...}, "preferences": {...}, "session_id": "..."}`
-- `GET /session/{session_id}` - Get session state
-- `POST /session/reset` - Reset session
-- `DELETE /session/{session_id}` - Delete session
-- `GET /sessions` - List all active sessions (debug)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chat` | POST | Main conversation interface |
+| `/session/{id}/event` | POST | Server-Sent Events stream |
+| `/session/{id}/favorite` | POST | Mark vehicle as favorite |
+| `/session/{id}/history` | GET | Retrieve conversation history |
+
+---
+
+## Project Structure
+
+```
+interactive-decision-support-system/
+│
+├── idss_agent/                     # Core agent system
+│   ├── core/
+│   │   ├── agent.py                # Main entry point
+│   │   ├── supervisor.py           # Supervisor orchestration
+│   │   └── request_analyzer.py     # Mode delegation
+│   │
+│   ├── workflows/
+│   │   └── interview.py            # Interview workflow
+│   │
+│   ├── agents/
+│   │   ├── analytical.py           # Analytical ReAct agent
+│   │   ├── discovery.py            # Vehicle presentation
+│   │   └── general.py              # General conversation
+│   │
+│   ├── processing/
+│   │   ├── semantic_parser.py      # Filter extraction
+│   │   ├── recommendation.py       # Vehicle search engine
+│   │   └── vector_ranker.py        # Similarity ranking
+│   │
+│   ├── tools/
+│   │   ├── local_vehicle_store.py  # SQLite interface
+│   │   ├── zipcode_lookup.py       # Geographic lookup
+│   │   └── autodev_api.py          # External API client
+│   │
+│   ├── state/
+│   │   └── schema.py               # State type definitions
+│   │
+│   └── utils/
+│       ├── config.py               # Configuration management
+│       ├── logger.py               # Logging utilities
+│       └── prompts.py              # Template rendering
+│
+├── api/                            # FastAPI backend
+│   ├── server.py                   # API server
+│   └── models.py                   # Request/response models
+│
+├── web/                            # Next.js frontend
+│   └── src/
+│       ├── app/
+│       └── components/
+│
+├── config/
+│   ├── agent_config.yaml           # System configuration
+│   └── prompts/                    # Jinja2 templates
+│
+├── data/
+│   ├── california_vehicles.db      # Vehicle database (22,623 vehicles)
+│   ├── feature_data.db             # Vehicle features database
+│   ├── safety_data.db              # Safety ratings database
+│   └── zip_code_database.csv       # ZIP coordinate data (41,695 ZIP codes)
+│
+├── tests/                          # Test suites
+│   └── test_location_system.py
+│
+└── scripts/                        # Utility scripts
+    ├── convert_zipcode_to_sqlite.py  # Convert ZIP CSV to SQLite (optional)
+    └── demo.py                       # Demo/testing script
+```
+
+---
+
+## System Architecture
+
+### Supervisor Agent
+
+The supervisor agent serves as the central orchestrator, analyzing each user message to determine appropriate agent activation and response coordination.
+
+```
+User Message
+    ↓
+Request Analyzer
+    │ - Intent Classification
+    │ - Mode Detection
+    │ - Analytical Question Extracting 
+    ↓
+Semantic Parser
+    │ - Filter/State Extraction
+    ↓
+Supervisor Decision Engine
+    │ - Agent Selection
+    │ - Sub-Agent/Mode Delegation
+    ↓
+Sub-Agent Execution
+    │ - Interview Workflow
+    │ - Analytical Agent
+    │ - Search/Recommendation
+    │ - General Conversation
+    ↓
+Response Synthesis
+    │ - Multi-Mode Integration
+    │ - Output Formatting
+    ↓
+Unified Response to User
+```
+
+### Sub-Agent Components
+
+#### Interview Workflow
+**Purpose**: Systematic requirement gathering through guided conversation
+
+**Implementation**: `workflows/interview.py`
+
+**Capabilities**:
+- Context-aware question generation based on missing information
+- Structured preference extraction (budget, usage patterns, priorities)
+- Automatic recommendation trigger upon completion
+- Configurable question limit (default: 3 turns)
+
+**Output**: Extracted filters and implicit preferences stored in state
+
+---
+
+#### Analytical Agent
+**Purpose**: Research-backed insights and vehicle comparisons
+
+**Implementation**: `agents/analytical.py`
+
+**Architecture**: ReAct agent with web search integration (Tavily API)
+
+**Capabilities**:
+- Comparative analysis between vehicle models
+- Market research and reliability data
+- Structured comparison table generation
+- Safety ratings and feature comparisons
+
+**Output**: Analytical insights with source citations
+
+---
+
+#### Discovery Agent
+**Purpose**: Conversational presentation of vehicle recommendations
+
+**Implementation**: `agents/discovery.py`
+
+**Capabilities**:
+- Natural language vehicle presentation
+- Context-aware follow-up questions
+- Avoids redundant questions from interview phase
+- Personalized recommendations based on user preferences
+
+**Output**: Engaging vehicle descriptions with actionable questions
+
+---
+
+#### Search/Recommendation Engine
+**Purpose**: Vehicle discovery through semantic matching
+
+**Implementation**: `processing/recommendation.py`
+
+**Pipeline**:
+1. SQL-based filtering with user constraints
+2. Vehicle deduplication by VIN
+3. Photo enrichment (parallel fetching, 8 workers)
+4. Vector similarity ranking
+5. Multi-dimensional sorting
+
+**Features**:
+- Progressive fallback strategy (model → make → open search)
+- Geographic filtering via haversine distance
+- Configurable result limits (default: 20 vehicles)
+
+---
+
+## State Management
+
+### VehicleSearchState Schema
+
+The system maintains comprehensive state across conversation turns:
+
+```python
+{
+    # Core Data Structures
+    "explicit_filters": VehicleFilters,        # User-specified search criteria
+    "conversation_history": List[BaseMessage], # Complete dialogue history
+    "implicit_preferences": ImplicitPreferences, # Inferred user preferences
+    "recommended_vehicles": List[Dict],        # Current recommendation set
+
+    # Location Data
+    "user_latitude": Optional[float],          # From browser geolocation
+    "user_longitude": Optional[float],         # From browser geolocation
+
+    # Session Tracking
+    "previous_filters": VehicleFilters,        # Change detection
+    "interviewed": bool,                       # Interview completion flag
+    "questions_asked": List[str],              # Covered topics
+    "favorites": List[Dict],                   # User-favorited vehicles
+    "interaction_events": List[Dict],          # User interaction log
+
+    # Response Components
+    "ai_response": str,                        # Generated response text
+    "quick_replies": Optional[List[str]],      # Suggested quick replies
+    "comparison_table": Optional[Dict]         # Structured comparison data
+}
+```
+
+### Filter System
+
+The system supports 17 distinct vehicle filters organized into semantic categories:
+
+| Category | Filters | Type | Example |
+|----------|---------|------|---------|
+| **Vehicle Specifications** | `make`, `model`, `year`, `trim`, `body_style` | String/Range | `"Honda"`, `"2020-2023"` |
+| **Powertrain** | `engine`, `transmission`, `drivetrain`, `fuel_type` | Multi-value | `"Electric,Hybrid"` |
+| **Appearance** | `exterior_color`, `interior_color` | Multi-value | `"Red,Blue,White"` |
+| **Physical Attributes** | `doors`, `seating_capacity` | Integer | `4`, `7` |
+| **Pricing** | `price`, `mileage` | Range | `"20000-30000"`, `"0-50000"` |
+| **Location** | `state`, `zip`, `search_radius` | String/Integer | `"CA"`, `"94043"`, `50` |
+
+### Implicit Preference System
+
+The system infers and tracks user preferences beyond explicit filters:
+
+- **Priorities**: Safety, fuel efficiency, reliability, luxury, performance
+- **Lifestyle Indicators**: Family-oriented, urban commuter, outdoor enthusiast
+- **Usage Patterns**: Daily commuter, weekend trips, family transportation
+- **Financial Sensitivity**: Budget-conscious, moderate, luxury-focused
+- **Brand Affinity**: Preferred manufacturers based on conversation
+- **Concerns**: Maintenance costs, resale value, insurance costs
+
+---
+
+## Data Layer
+
+### Local Vehicle Database
+
+**Technology**: SQLite
+**Location**: `data/california_vehicles.db`
+**Size**: 22,623 vehicles in California
+
+### Query Construction
+
+Example SQL query generation:
+
+```sql
+SELECT raw_json, price, mileage, primary_image_url, photo_count
+FROM vehicle_listings
+WHERE
+    UPPER(make) IN ('HONDA', 'TOYOTA')
+    AND year >= 2020 AND year <= 2023
+    AND price >= 20000 AND price <= 30000
+    AND UPPER(fuel_type) IN ('ELECTRIC', 'HYBRID')
+    AND (
+        (3959.0 * 2 * ASIN(SQRT(
+            POW(SIN((RADIANS(latitude) - RADIANS(37.41)) / 2), 2) +
+            COS(RADIANS(37.41)) * COS(RADIANS(latitude)) *
+            POW(SIN((RADIANS(longitude) - RADIANS(-122.05)) / 2), 2)
+        ))) <= 50.0
+    )
+    AND (COALESCE(photo_count, 0) > 0 OR primary_image_url IS NOT NULL)
+ORDER BY price ASC, vin ASC
+LIMIT 60
+```
+
+### Vector Similarity Ranking
+
+**Implementation**: `processing/vector_ranker.py`
+
+**Algorithm**:
+
+1. **User Vector Construction**
+   - Tokenize explicit filters with semantic weighting
+   - Integrate implicit preferences
+   - Apply category-specific weights (make: 3.0, color: 1.0)
+
+2. **Vehicle Embedding**
+   - Generate per-vehicle token vectors
+   - Cache embeddings for performance
+   - Include price and mileage bins
+
+3. **Similarity Computation**
+   - Calculate cosine similarity between user vector and vehicle embeddings
+   - Rank vehicles by similarity score
+   - Apply multi-factor sorting (similarity, photos, value ratio)
+
+---
+
+## Location System
+
+### Dual-Mode Architecture
+
+The system implements a two-tier location strategy to maximize geographic search capabilities:
+
+#### Primary Mode: Browser Geolocation
+
+When users grant location permissions, the system directly captures coordinates via the browser's Geolocation API:
+
+```javascript
+navigator.geolocation.getCurrentPosition((position) => {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude
+});
+```
+
+#### Fallback Mode: ZIP Code Lookup
+
+When browser geolocation is unavailable or denied:
+
+1. System prompts user for ZIP code
+2. Lookup performed against cached dictionary (41,695 US ZIP codes)
+3. ZIP code converted to geocoordinates
+4. Same geographic search applied as primary mode
+
+**Implementation**: `tools/zipcode_lookup.py`
+
+### Geographic Distance Calculation
+
+All location-based searches utilize the haversine formula for great-circle distance:
+
+```python
+earth_radius = 3959.0  # miles
+distance = earth_radius * 2 * ASIN(SQRT(
+    POW(SIN((RADIANS(lat1) - RADIANS(lat2)) / 2), 2) +
+    COS(RADIANS(lat1)) * COS(RADIANS(lat2)) *
+    POW(SIN((RADIANS(lon1) - RADIANS(lon2)) / 2), 2)
+))
+```
+
+**Default Search Radius**: 100 miles (configurable)
+
+---
+
+## Configuration
+
+### System Configuration (`config/agent_config.yaml`)
+
+#### Model Selection
+
+```yaml
+models:
+  intent_classifier: gpt-4o-mini
+  semantic_parser: gpt-4o-mini
+  interview: gpt-4o
+  discovery: gpt-4o
+  analytical: gpt-4o
+  general: gpt-4o-mini
+```
+
+#### System Limits
+
+```yaml
+limits:
+  max_recommended_items: 20
+  max_conversation_history: 10
+  max_interview_questions: 3
+  default_search_radius: 100
+  top_vehicles_to_show: 3
+  web_search_max_results: 3
+```
+
+#### Feature Flags
+
+```yaml
+features:
+  use_local_vehicle_store: true
+  require_photos: true
+  enable_quick_replies: true
+  enable_streaming: true
+```

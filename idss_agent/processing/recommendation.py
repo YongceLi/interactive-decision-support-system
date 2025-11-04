@@ -4,7 +4,6 @@ Recommendation agent node - uses ReAct to build a list of 20 vehicles.
 import concurrent.futures
 import math
 import json
-from copy import deepcopy
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -12,10 +11,25 @@ from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
 from idss_agent.state.schema import VehicleSearchState
 from idss_agent.tools.autodev_api import search_vehicle_listings, get_vehicle_photos_by_vin
+from idss_agent.tools.local_vehicle_store import LocalVehicleStore, VehicleStoreError
+from idss_agent.tools.zipcode_lookup import get_location_from_zip_or_coords
+from idss_agent.processing.vector_ranker import rank_local_vehicles_by_similarity
+from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
 
 logger = get_logger("components.recommendation")
+
+_LOCAL_STORE_CACHE: Dict[bool, LocalVehicleStore] = {}
+
+
+def _get_local_vehicle_store(require_photos: bool) -> LocalVehicleStore:
+    """Return cached LocalVehicleStore instance keyed by photo requirement."""
+    store = _LOCAL_STORE_CACHE.get(require_photos)
+    if store is None:
+        store = LocalVehicleStore(require_photos=require_photos)
+        _LOCAL_STORE_CACHE[require_photos] = store
+    return store
 
 
 class VehicleSuggestion(BaseModel):
@@ -275,6 +289,75 @@ def enrich_vehicles_with_photos(vehicles: List[Dict[str, Any]], max_workers: int
     return vehicles
 
 
+def _search_local_listings(
+    store: LocalVehicleStore,
+    filters: Dict[str, Any],
+    user_latitude: Optional[float] = None,
+    user_longitude: Optional[float] = None,
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    """Execute local database searches with retry and fallback strategy."""
+    def run_query(active_filters: Dict[str, Any]) -> List[Dict[str, Any]]:
+        try:
+            return store.search_listings(
+                active_filters,
+                limit=60,
+                order_by="price",
+                user_latitude=user_latitude,
+                user_longitude=user_longitude
+            )
+        except (VehicleStoreError, FileNotFoundError) as exc:
+            logger.error("Local vehicle query failed: %s", exc)
+            return []
+
+    fallback_message = None
+    vehicles = run_query(filters)
+
+    if not vehicles and filters.get("model"):
+        logger.info("Local fallback: removing model filter")
+        fallback_filters = filters.copy()
+        fallback_filters.pop("model", None)
+        vehicles = run_query(fallback_filters)
+
+        if vehicles:
+            fallback_message = (
+                f"Showing {fallback_filters.get('make', 'available')} vehicles matching your other criteria"
+            )
+
+    if not vehicles and filters.get("make"):
+        logger.info("Local fallback: removing make filter")
+        fallback_filters = filters.copy()
+        fallback_filters.pop("model", None)
+        fallback_filters.pop("make", None)
+        vehicles = run_query(fallback_filters)
+
+        if vehicles:
+            fallback_message = (
+                "Showing the closest matches available based on your other criteria"
+            )
+
+    if not vehicles:
+        logger.warning("Local search returned no vehicles after all fallback steps")
+
+    return vehicles, fallback_message
+
+
+def _attach_local_photo_stubs(vehicles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Attach simple photo payloads for locally sourced vehicles based on primary image.
+    """
+    for vehicle in vehicles:
+        if vehicle.get("photos") is not None:
+            continue
+
+        retail_listing = vehicle.get("retailListing", {})
+        primary_image = retail_listing.get("primaryImage")
+        if primary_image:
+            vehicle["photos"] = {"retail": [{"url": primary_image}]}
+        else:
+            vehicle["photos"] = None
+    return vehicles
+
+
 def update_recommendation_list(
     state: VehicleSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
@@ -307,8 +390,13 @@ def update_recommendation_list(
     filters = state['explicit_filters'].copy()  # Make a copy to avoid modifying original
     implicit = state['implicit_preferences']
 
+    config = get_config()
+    require_photos = config.features.get('require_photos', True)
+    use_local_store = config.features.get('use_local_vehicle_store', False)
+    max_items = config.limits.get('max_recommended_items', 20)
+
     #If no make/model specified but has preferences, suggest vehicles
-    if not filters.get('make') and not filters.get('model'):
+    if not use_local_store and not filters.get('make') and not filters.get('model'):
         suggestions = suggest_vehicles_from_preferences(implicit, filters)
 
         if suggestions:
@@ -322,14 +410,59 @@ def update_recommendation_list(
 
             # Store suggestion reasoning in state for potential use in response
             state['suggestion_reasoning'] = suggestions.reasoning
+    else:
+        state.pop('suggestion_reasoning', None)
 
     # Normalize model name (remove hyphens/underscores) to match Auto.dev API format
     if filters.get('model'):
         filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
         logger.info(f"Normalized model name: {filters['model']}")
 
-    # Build prompt for recommendation agent
-    recommendation_prompt = f"""
+    local_store: Optional[LocalVehicleStore] = None
+    if use_local_store:
+        try:
+            local_store = _get_local_vehicle_store(require_photos=require_photos)
+        except FileNotFoundError as exc:
+            logger.error(
+                "Local vehicle store unavailable (%s). Falling back to Auto.dev pipeline.",
+                exc,
+            )
+            use_local_store = False
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Failed to initialize local vehicle store: %s", exc)
+            use_local_store = False
+
+    used_local_pipeline = use_local_store and local_store is not None
+
+    # Get user location coordinates (browser location OR ZIP lookup)
+    user_coords = get_location_from_zip_or_coords(
+        zipcode=filters.get('zip'),
+        latitude=state.get('user_latitude'),
+        longitude=state.get('user_longitude')
+    )
+
+    user_lat = user_coords[0] if user_coords else None
+    user_lon = user_coords[1] if user_coords else None
+
+    # Apply default search_radius if user provided location but no explicit radius
+    if user_coords and not filters.get('search_radius'):
+        default_radius = config.limits.get('default_search_radius', 100)
+        filters['search_radius'] = default_radius
+        logger.info(f"Applied default search_radius: {default_radius} miles (user provided location but no explicit radius)")
+
+    vehicles: List[Dict[str, Any]] = []
+    fallback_message: Optional[str] = None
+
+    if used_local_pipeline:
+        vehicles, fallback_message = _search_local_listings(
+            local_store,
+            filters,
+            user_latitude=user_lat,
+            user_longitude=user_lon,
+        )
+    else:
+        # Build prompt for recommendation agent
+        recommendation_prompt = f"""
 You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles for the user.
 
 **Current Filters:**
@@ -351,80 +484,73 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 - Do NOT try to list all vehicles in your response
 """
 
-    # Create ReAct agent with search tool
-    tools = [search_vehicle_listings]
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-    agent = create_react_agent(llm, tools)
+        # Create ReAct agent with search tool
+        tools = [search_vehicle_listings]
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        agent = create_react_agent(llm, tools)
 
-    # Run the agent
-    result = agent.invoke({"messages": [HumanMessage(content=recommendation_prompt)]})
+        # Run the agent
+        result = agent.invoke({"messages": [HumanMessage(content=recommendation_prompt)]})
 
-    # Parse the search results from the agent's tool calls
-    # Look through messages for tool results
-    vehicles = []
-    for msg in result['messages']:
-        # Check if this is a tool message with search results
-        if hasattr(msg, 'content') and isinstance(msg.content, str):
-            try:
-                # Try to parse as JSON
-                data = json.loads(msg.content)
-
-                # Check if it's a list of vehicles or has a data field
-                if isinstance(data, list):
-                    vehicles = data
-                    logger.info(f"Found {len(vehicles)} vehicles from search (list format)")
-                    break
-                elif isinstance(data, dict):
-                    if 'data' in data and isinstance(data['data'], list):
-                        vehicles = data['data']
-                        logger.info(f"Found {len(vehicles)} vehicles from search (data field)")
+        # Parse the search results from the agent's tool calls
+        for msg in result['messages']:
+            if hasattr(msg, 'content') and isinstance(msg.content, str):
+                try:
+                    data = json.loads(msg.content)
+                    if isinstance(data, list):
+                        vehicles = data
+                        logger.info("Found %d vehicles from search (list format)", len(vehicles))
                         break
-                    elif 'vehicles' in data and isinstance(data['vehicles'], list):
-                        vehicles = data['vehicles']
-                        logger.info(f"Found {len(vehicles)} vehicles from search (vehicles field)")
-                        break
-            except (json.JSONDecodeError, AttributeError):
-                continue
+                    if isinstance(data, dict):
+                        if 'data' in data and isinstance(data['data'], list):
+                            vehicles = data['data']
+                            logger.info("Found %d vehicles from search (data field)", len(vehicles))
+                            break
+                        if 'vehicles' in data and isinstance(data['vehicles'], list):
+                            vehicles = data['vehicles']
+                            logger.info("Found %d vehicles from search (vehicles field)", len(vehicles))
+                            break
+                except (json.JSONDecodeError, AttributeError):
+                    continue
 
-    # If no vehicles found, try iterative search with more makes/models
-    retry_count = 0
-    max_retries = 2  # Try up to 2 additional times (3 total attempts)
-    all_suggested_makes = set(filters.get('make', '').split(',')) if filters.get('make') else set()
-    all_suggested_models = set(filters.get('model', '').split(',')) if filters.get('model') else set()
+        # If no vehicles found, try iterative search with more makes/models
+        retry_count = 0
+        max_retries = 2  # Try up to 2 additional times (3 total attempts)
+        all_suggested_makes = set(filters.get('make', '').split(',')) if filters.get('make') else set()
+        all_suggested_models = set(filters.get('model', '').split(',')) if filters.get('model') else set()
 
-    while not vehicles and retry_count < max_retries:
-        retry_count += 1
-        logger.warning(f"No vehicles found from search (attempt {retry_count}/{max_retries + 1}) - trying more makes/models")
+        while not vehicles and retry_count < max_retries:
+            retry_count += 1
+            logger.warning(
+                "No vehicles found from search (attempt %d/%d) - trying more makes/models",
+                retry_count,
+                max_retries + 1,
+            )
 
-        # Ask LLM for MORE vehicle suggestions (different from what we already tried)
-        retry_suggestions = suggest_more_vehicles(
-            implicit,
-            filters,
-            already_tried_makes=list(all_suggested_makes),
-            already_tried_models=list(all_suggested_models)
-        )
+            retry_suggestions = suggest_more_vehicles(
+                implicit,
+                filters,
+                already_tried_makes=list(all_suggested_makes),
+                already_tried_models=list(all_suggested_models)
+            )
 
-        if not retry_suggestions:
-            logger.warning("No additional vehicle suggestions available - stopping retry")
-            break
+            if not retry_suggestions:
+                logger.warning("No additional vehicle suggestions available - stopping retry")
+                break
 
-        # Append new suggestions to existing ones (cumulative)
-        all_suggested_makes.update(retry_suggestions.makes)
-        all_suggested_models.update(retry_suggestions.models)
+            all_suggested_makes.update(retry_suggestions.makes)
+            all_suggested_models.update(retry_suggestions.models)
 
-        # Update filters with accumulated makes/models
-        filters['make'] = ','.join(all_suggested_makes)
-        filters['model'] = ','.join(all_suggested_models)
+            filters['make'] = ','.join(all_suggested_makes)
+            filters['model'] = ','.join(all_suggested_models)
 
-        logger.info(f"Retry {retry_count}: Accumulated makes/models")
-        logger.info(f"  Makes: {filters['make']}")
-        logger.info(f"  Models: {filters['model']}")
+            logger.info("Retry %d: Accumulated makes/models", retry_count)
+            logger.info("  Makes: %s", filters['make'])
+            logger.info("  Models: %s", filters['model'])
 
-        # Normalize model name
-        filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
+            filters['model'] = filters['model'].replace('-', ' ').replace('_', ' ')
 
-        # Build new prompt for retry
-        retry_prompt = f"""
+            retry_prompt = f"""
 You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles for the user.
 
 **Current Filters (with accumulated makes/models):**
@@ -440,39 +566,33 @@ You are a vehicle recommendation agent. Your goal is to find up to 20 vehicles f
 - After you see the tool results, immediately finish
 """
 
-        # Run the agent again with updated filters
-        result = agent.invoke({"messages": [HumanMessage(content=retry_prompt)]})
+            result = agent.invoke({"messages": [HumanMessage(content=retry_prompt)]})
 
-        # Parse results again
-        for msg in result['messages']:
-            if hasattr(msg, 'content') and isinstance(msg.content, str):
-                try:
-                    data = json.loads(msg.content)
-                    if isinstance(data, list):
-                        vehicles = data
-                        logger.info(f"Retry {retry_count}: Found {len(vehicles)} vehicles (list format)")
-                        break
-                    elif isinstance(data, dict):
-                        if 'data' in data and isinstance(data['data'], list):
-                            vehicles = data['data']
-                            logger.info(f"Retry {retry_count}: Found {len(vehicles)} vehicles (data field)")
+            for msg in result['messages']:
+                if hasattr(msg, 'content') and isinstance(msg.content, str):
+                    try:
+                        data = json.loads(msg.content)
+                        if isinstance(data, list):
+                            vehicles = data
+                            logger.info("Retry %d: Found %d vehicles (list format)", retry_count, len(vehicles))
                             break
-                except (json.JSONDecodeError, AttributeError):
-                    continue
+                        if isinstance(data, dict):
+                            if 'data' in data and isinstance(data['data'], list):
+                                vehicles = data['data']
+                                logger.info("Retry %d: Found %d vehicles (data field)", retry_count, len(vehicles))
+                                break
+                    except (json.JSONDecodeError, AttributeError):
+                        continue
 
-    # Final fallback: Progressive filter relaxation if still no vehicles
-    fallback_message = None
+        if not vehicles:
+            logger.warning("No vehicles found after all retry attempts - applying progressive filter relaxation")
 
-    if not vehicles:
-        logger.warning("No vehicles found after all retry attempts - applying progressive filter relaxation")
+            if filters.get('model'):
+                logger.info("Fallback 1: Removing model filter, keeping make")
+                fallback_filters = filters.copy()
+                fallback_filters.pop('model')
 
-        # Fallback 1: Remove MODEL filter (keep make + other filters)
-        if filters.get('model'):
-            logger.info("Fallback 1: Removing model filter, keeping make")
-            fallback_filters = filters.copy()
-            removed_models = fallback_filters.pop('model')
-
-            fallback_prompt = f"""
+                fallback_prompt = f"""
 You are a vehicle recommendation agent. Find up to 20 vehicles with relaxed filters.
 
 **Relaxed Filters (model filter removed):**
@@ -484,33 +604,32 @@ You are a vehicle recommendation agent. Find up to 20 vehicles with relaxed filt
 3. Respond with a simple summary
 """
 
-            result = agent.invoke({"messages": [HumanMessage(content=fallback_prompt)]})
+                result = agent.invoke({"messages": [HumanMessage(content=fallback_prompt)]})
 
-            for msg in result['messages']:
-                if hasattr(msg, 'content') and isinstance(msg.content, str):
-                    try:
-                        data = json.loads(msg.content)
-                        if isinstance(data, list):
-                            vehicles = data
-                            logger.info(f"Fallback 1: Found {len(vehicles)} vehicles (removed model filter)")
-                            fallback_message = f"Showing {fallback_filters.get('make', 'available')} vehicles matching your other criteria"
-                            break
-                        elif isinstance(data, dict) and 'data' in data:
-                            vehicles = data['data']
-                            logger.info(f"Fallback 1: Found {len(vehicles)} vehicles (removed model filter)")
-                            fallback_message = f"Showing {fallback_filters.get('make', 'available')} vehicles matching your other criteria"
-                            break
-                    except (json.JSONDecodeError, AttributeError):
-                        continue
+                for msg in result['messages']:
+                    if hasattr(msg, 'content') and isinstance(msg.content, str):
+                        try:
+                            data = json.loads(msg.content)
+                            if isinstance(data, list):
+                                vehicles = data
+                                logger.info("Fallback 1: Found %d vehicles (removed model filter)", len(vehicles))
+                                fallback_message = f"Showing {fallback_filters.get('make', 'available')} vehicles matching your other criteria"
+                                break
+                            if isinstance(data, dict) and 'data' in data:
+                                vehicles = data['data']
+                                logger.info("Fallback 1: Found %d vehicles (removed model filter)", len(vehicles))
+                                fallback_message = f"Showing {fallback_filters.get('make', 'available')} vehicles matching your other criteria"
+                                break
+                        except (json.JSONDecodeError, AttributeError):
+                            continue
 
-        # Fallback 2: Remove MAKE filter as well (keep body_style, price, etc.)
-        if not vehicles and filters.get('make'):
-            logger.info("Fallback 2: Removing make filter as well")
-            fallback_filters = filters.copy()
-            fallback_filters.pop('model', None)
-            fallback_filters.pop('make', None)
+            if not vehicles and filters.get('make'):
+                logger.info("Fallback 2: Removing make filter as well")
+                fallback_filters = filters.copy()
+                fallback_filters.pop('model', None)
+                fallback_filters.pop('make', None)
 
-            fallback_prompt = f"""
+                fallback_prompt = f"""
 You are a vehicle recommendation agent. Find up to 20 vehicles with minimal filters.
 
 **Minimal Filters (make/model removed):**
@@ -522,24 +641,24 @@ You are a vehicle recommendation agent. Find up to 20 vehicles with minimal filt
 3. Respond with a simple summary
 """
 
-            result = agent.invoke({"messages": [HumanMessage(content=fallback_prompt)]})
+                result = agent.invoke({"messages": [HumanMessage(content=fallback_prompt)]})
 
-            for msg in result['messages']:
-                if hasattr(msg, 'content') and isinstance(msg.content, str):
-                    try:
-                        data = json.loads(msg.content)
-                        if isinstance(data, list):
-                            vehicles = data
-                            logger.info(f"Fallback 2: Found {len(vehicles)} vehicles (removed make/model filters)")
-                            fallback_message = "Showing the closest matches available based on your other criteria"
-                            break
-                        elif isinstance(data, dict) and 'data' in data:
-                            vehicles = data['data']
-                            logger.info(f"Fallback 2: Found {len(vehicles)} vehicles (removed make/model filters)")
-                            fallback_message = "Showing the closest matches available based on your other criteria"
-                            break
-                    except (json.JSONDecodeError, AttributeError):
-                        continue
+                for msg in result['messages']:
+                    if hasattr(msg, 'content') and isinstance(msg.content, str):
+                        try:
+                            data = json.loads(msg.content)
+                            if isinstance(data, list):
+                                vehicles = data
+                                logger.info("Fallback 2: Found %d vehicles (removed make/model filters)", len(vehicles))
+                                fallback_message = "Showing the closest matches available based on your other criteria"
+                                break
+                            if isinstance(data, dict) and 'data' in data:
+                                vehicles = data['data']
+                                logger.info("Fallback 2: Found %d vehicles (removed make/model filters)", len(vehicles))
+                                fallback_message = "Showing the closest matches available based on your other criteria"
+                                break
+                        except (json.JSONDecodeError, AttributeError):
+                            continue
 
     if not vehicles:
         logger.warning("No vehicles found even after progressive filter relaxation")
@@ -549,9 +668,22 @@ You are a vehicle recommendation agent. Find up to 20 vehicles with minimal filt
     logger.info(f"After deduplication: {len(vehicles)} unique vehicles")
 
     vehicles = vehicles[:50]
-    vehicles = enrich_vehicles_with_photos(vehicles)
+    if used_local_pipeline:
+        vehicles = _attach_local_photo_stubs(vehicles)
+    else:
+        vehicles = enrich_vehicles_with_photos(vehicles)
 
-    def vehicle_sort_key(vehicle: Dict[str, Any]) -> Tuple[int, float, float, float]:
+    if used_local_pipeline and local_store:
+        vehicles = rank_local_vehicles_by_similarity(
+            vehicles,
+            state['explicit_filters'],
+            implicit,
+            local_store.db_path,
+            top_k=max_items,
+        )
+
+    def vehicle_sort_key(vehicle: Dict[str, Any]) -> Tuple[float, int, float, float, float]:
+        vector_score = float(vehicle.get("_vector_score", 0.0))
         has_photos = 0 if vehicle.get("photos") else 1
 
         miles_raw = vehicle.get("retailListing", {}).get("miles")
@@ -573,11 +705,11 @@ You are a vehicle recommendation agent. Find up to 20 vehicles with minimal filt
             else float("inf")
         )
 
-        return (has_photos, ratio, miles_value, price_value)
+        return (-vector_score, has_photos, ratio, miles_value, price_value)
 
     vehicles.sort(key=vehicle_sort_key)
 
-    state['recommended_vehicles'] = vehicles[:20]
+    state['recommended_vehicles'] = vehicles[:max_items]
 
     # Store fallback message if filters were relaxed
     if fallback_message:

@@ -21,6 +21,8 @@ class VehicleFilters(TypedDict, total=False):
     body_style: Optional[str]  # e.g., "sedan" or "suv,truck"
     engine: Optional[str]  # e.g., "2.0L" or "2.0L,3.5L"
     transmission: Optional[str]  # e.g., "automatic" or "automatic,manual"
+    drivetrain: Optional[str]  # e.g., "AWD" or "AWD,4WD" (comma-separated for multiple)
+    fuel_type: Optional[str]  # e.g., "Gasoline" or "Electric,Hybrid" (comma-separated for multiple)
 
     # Color filters
     exterior_color: Optional[str]  # e.g., "white" or "white,black,silver"
@@ -33,14 +35,11 @@ class VehicleFilters(TypedDict, total=False):
     # Retail listing filters
     price: Optional[str]  # e.g., "10000-30000" (range format)
     state: Optional[str]  # e.g., "CA", "NY"
-    miles: Optional[str]  # e.g., "0-50000" (range format)
+    mileage: Optional[str]  # Vehicle's odometer reading, e.g., "0-50000" (range format)
 
     # Location filters
-    zip: Optional[str]  # 5-digit ZIP code
-    distance: Optional[int]  # Search radius in miles from ZIP
-
-    # Additional features
-    features: Optional[List[str]]  # e.g., ["sunroof", "leather seats", "navigation"]
+    zip: Optional[str]  # 5-digit ZIP code (only as fallback if browser location denied; gets converted to lat/long)
+    search_radius: Optional[int]  # Max distance in miles to travel to dealer location
 
 
 class ImplicitPreferences(TypedDict, total=False):
@@ -66,6 +65,8 @@ class VehicleFiltersPydantic(BaseModel):
     body_style: Optional[str] = Field(None, description="e.g., 'sedan' or 'suv,truck'")
     engine: Optional[str] = Field(None, description="e.g., '2.0L' or '2.0L,3.5L'")
     transmission: Optional[str] = Field(None, description="e.g., 'automatic' or 'automatic,manual'")
+    drivetrain: Optional[str] = Field(None, description="e.g., 'AWD' or 'AWD,4WD' (comma-separated)")
+    fuel_type: Optional[str] = Field(None, description="e.g., 'Gasoline' or 'Electric,Hybrid' (comma-separated)")
 
     # Color filters
     exterior_color: Optional[str] = Field(None, description="e.g., 'white' or 'white,black,silver'")
@@ -78,14 +79,11 @@ class VehicleFiltersPydantic(BaseModel):
     # Retail listing filters
     price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
     state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
-    miles: Optional[str] = Field(None, description="e.g., '0-50000' (range format)")
+    mileage: Optional[str] = Field(None, description="Vehicle's odometer reading in miles (e.g., '0-50000' for cars with under 50k miles on odometer)")
 
     # Location filters
-    zip: Optional[str] = Field(None, description="5-digit ZIP code")
-    distance: Optional[int] = Field(None, description="Search radius in miles from ZIP")
-
-    # Additional features
-    features: Optional[List[str]] = Field(None, description="e.g., ['sunroof', 'leather seats', 'navigation']")
+    zip: Optional[str] = Field(None, description="5-digit US ZIP code (only used as fallback if browser geolocation is denied; automatically converted to coordinates for distance search)")
+    search_radius: Optional[int] = Field(None, description="Maximum distance in miles you're willing to travel to pick up the vehicle from dealer (e.g., 50 for within 50 miles of your location)")
 
 
 class ImplicitPreferencesPydantic(BaseModel):
@@ -214,8 +212,12 @@ class VehicleSearchState(TypedDict):
     """
     # Core data
     explicit_filters: VehicleFilters
-    conversation_history: Annotated[List[BaseMessage], add_messages] 
+    conversation_history: Annotated[List[BaseMessage], add_messages]
     implicit_preferences: ImplicitPreferences
+
+    # User location (from browser geolocation)
+    user_latitude: Optional[float]  # User's latitude for distance calculations
+    user_longitude: Optional[float]  # User's longitude for distance calculations
 
     # Results (up to MAX_RECOMMENDED_VEHICLES vehicles, updated each turn)
     recommended_vehicles: List[Dict[str, Any]]
@@ -249,6 +251,8 @@ def create_initial_state() -> VehicleSearchState:
         explicit_filters=VehicleFilters(),
         conversation_history=[],
         implicit_preferences=ImplicitPreferences(),
+        user_latitude=None,
+        user_longitude=None,
         recommended_vehicles=[],
         questions_asked=[],
         previous_filters=VehicleFilters(),
