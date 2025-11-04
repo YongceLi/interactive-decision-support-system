@@ -105,9 +105,17 @@ Creates `data/marketcheck_vehicles.db` with:
 - `marketcheck_listings` table: Marketcheck inventory search results (all listing fields + raw JSON)
 - `marketcheck_zip_progress` table: Bay Area zip code progress tracker
 
+### Explore California Dataset Statistics
+
+Summarize make/model distribution, inventory mix, pricing buckets, and dealer hotspots for the Auto.dev dataset without re-running the fetcher:
+
+```bash
+python dataset_builder/california_stats.py
+```
+
 ### Explore Marketcheck Statistics
 
-Generate distribution summaries for make, model, inventory type, and pricing buckets without refetching data:
+Generate distribution summaries for make, model, inventory type, pricing buckets, and dealer coverage without refetching data:
 
 ```bash
 python dataset_builder/marketcheck_stats.py

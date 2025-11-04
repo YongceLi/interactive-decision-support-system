@@ -1,4 +1,4 @@
-"""Generate summary statistics for the Marketcheck dataset."""
+"""Generate summary statistics for the California Auto.dev dataset."""
 
 from __future__ import annotations
 
@@ -55,20 +55,43 @@ def new_vs_used(cursor: sqlite3.Cursor) -> None:
     rows = _fetchall(
         cursor,
         """
-        SELECT COALESCE(inventory_type, 'unknown') AS type, COUNT(*)
-        FROM marketcheck_listings
-        GROUP BY COALESCE(inventory_type, 'unknown')
+        SELECT CASE
+                 WHEN is_used = 1 THEN 'Used'
+                 WHEN is_used = 0 THEN 'New'
+                 ELSE 'Unknown'
+               END AS inventory_type,
+               COUNT(*)
+        FROM vehicle_listings
+        GROUP BY inventory_type
         ORDER BY COUNT(*) DESC
         """,
     )
     _print_table("Inventory Type Distribution", rows)
 
 
+def cpo_mix(cursor: sqlite3.Cursor) -> None:
+    rows = _fetchall(
+        cursor,
+        """
+        SELECT CASE
+                 WHEN is_cpo = 1 THEN 'CPO'
+                 WHEN is_cpo = 0 THEN 'Non-CPO'
+                 ELSE 'Unknown'
+               END AS certification,
+               COUNT(*)
+        FROM vehicle_listings
+        GROUP BY certification
+        ORDER BY COUNT(*) DESC
+        """,
+    )
+    _print_table("Certified Pre-Owned Mix", rows)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate statistics for Marketcheck dataset")
+    parser = argparse.ArgumentParser(description="Generate statistics for California Auto.dev dataset")
     parser.add_argument(
         "--db-path",
-        default="data/marketcheck_vehicles.db",
+        default="data/california_vehicles.db",
         help="SQLite database path",
     )
     args = parser.parse_args()
@@ -80,17 +103,17 @@ def main() -> None:
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
 
-        total = _fetchall(cursor, "SELECT COUNT(*) FROM marketcheck_listings")[0][0]
-        unique_vins = _fetchall(cursor, "SELECT COUNT(DISTINCT vin) FROM marketcheck_listings")[0][0]
+        total = _fetchall(cursor, "SELECT COUNT(*) FROM vehicle_listings")[0][0]
+        unique_vins = _fetchall(cursor, "SELECT COUNT(DISTINCT vin) FROM vehicle_listings")[0][0]
         print(f"Total listings: {total:,}")
         print(f"Unique VINs: {unique_vins:,}")
 
         top_makes = _fetchall(
             cursor,
             """
-            SELECT COALESCE(build_make, 'Unknown') AS make, COUNT(*)
-            FROM marketcheck_listings
-            GROUP BY COALESCE(build_make, 'Unknown')
+            SELECT COALESCE(make, 'Unknown') AS make, COUNT(*)
+            FROM vehicle_listings
+            GROUP BY COALESCE(make, 'Unknown')
             ORDER BY COUNT(*) DESC
             LIMIT 15
             """,
@@ -100,40 +123,41 @@ def main() -> None:
         top_models = _fetchall(
             cursor,
             """
-            SELECT COALESCE(build_model, 'Unknown') AS model, COUNT(*)
-            FROM marketcheck_listings
-            GROUP BY COALESCE(build_model, 'Unknown')
+            SELECT COALESCE(model, 'Unknown') AS model, COUNT(*)
+            FROM vehicle_listings
+            GROUP BY COALESCE(model, 'Unknown')
             ORDER BY COUNT(*) DESC
             LIMIT 15
             """,
         )
         _print_table("Top Models", top_models)
 
-        price_rows = _fetchall(cursor, "SELECT price FROM marketcheck_listings WHERE price IS NOT NULL")
+        body_styles = _fetchall(
+            cursor,
+            """
+            SELECT COALESCE(body_style, 'Unknown') AS body_style, COUNT(*)
+            FROM vehicle_listings
+            GROUP BY COALESCE(body_style, 'Unknown')
+            ORDER BY COUNT(*) DESC
+            LIMIT 10
+            """,
+        )
+        _print_table("Top Body Styles", body_styles)
+
+        price_rows = _fetchall(cursor, "SELECT price FROM vehicle_listings WHERE price IS NOT NULL")
         prices = [row[0] for row in price_rows if isinstance(row[0], (int, float))]
         price_distribution = price_buckets(prices)
         if price_distribution:
             _print_table("Price Distribution", price_distribution)
 
         new_vs_used(cursor)
-
-        state_rows = _fetchall(
-            cursor,
-            """
-            SELECT COALESCE(dealer_state, 'Unknown') AS state, COUNT(*)
-            FROM marketcheck_listings
-            GROUP BY COALESCE(dealer_state, 'Unknown')
-            ORDER BY COUNT(*) DESC
-            LIMIT 10
-            """,
-        )
-        _print_table("Top Dealer States", state_rows)
+        cpo_mix(cursor)
 
         city_rows = _fetchall(
             cursor,
             """
             SELECT COALESCE(dealer_city, 'Unknown') AS city, COUNT(*)
-            FROM marketcheck_listings
+            FROM vehicle_listings
             GROUP BY COALESCE(dealer_city, 'Unknown')
             ORDER BY COUNT(*) DESC
             LIMIT 10
@@ -145,7 +169,7 @@ def main() -> None:
             cursor,
             """
             SELECT COALESCE(dealer_zip, 'Unknown') AS zip, COUNT(*)
-            FROM marketcheck_listings
+            FROM vehicle_listings
             GROUP BY COALESCE(dealer_zip, 'Unknown')
             ORDER BY COUNT(*) DESC
             LIMIT 10
@@ -156,10 +180,10 @@ def main() -> None:
         avg_price_rows = _fetchall(
             cursor,
             """
-            SELECT build_make, AVG(price)
-            FROM marketcheck_listings
-            WHERE price IS NOT NULL AND build_make IS NOT NULL
-            GROUP BY build_make
+            SELECT make, AVG(price)
+            FROM vehicle_listings
+            WHERE price IS NOT NULL AND make IS NOT NULL
+            GROUP BY make
             ORDER BY AVG(price) DESC
             LIMIT 10
             """,
