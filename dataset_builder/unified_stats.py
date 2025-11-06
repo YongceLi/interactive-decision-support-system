@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
-DEFAULT_DB = Path("data/unified_vehicles.db")
+DEFAULT_DB = Path("data/uni_vehicles.db")
 
 
 def fetch_one(conn: sqlite3.Connection, query: str, params: Iterable = ()) -> int:
@@ -112,6 +112,9 @@ def main() -> None:
     with sqlite3.connect(args.db) as conn:
         conn.row_factory = sqlite3.Row
         total = fetch_one(conn, "SELECT COUNT(*) FROM unified_vehicle_listings")
+        distinct_vins = fetch_one(conn, "SELECT COUNT(DISTINCT vin) FROM unified_vehicle_listings")
+        print(f"Total listings: {total:,}")
+        print(f"Total distinct VINs: {distinct_vins:,}")
         if not total:
             print("No records in unified_vehicle_listings")
             return
@@ -132,9 +135,9 @@ def main() -> None:
         inventory = fetch_pairs(
             conn,
             """
-            SELECT inventory_type, COUNT(*)
+            SELECT is_used, COUNT(*)
             FROM unified_vehicle_listings
-            GROUP BY inventory_type
+            GROUP BY is_used
             ORDER BY COUNT(*) DESC
             """,
         )

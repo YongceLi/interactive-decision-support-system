@@ -2,6 +2,10 @@
 
 The `unified_vehicle_listings` table combines the most complete attributes from the Auto.dev and Marketcheck listing APIs so that both feeds can be queried with the same column set. Every record keeps a `source` flag (`autodev` or `marketcheck`) together with the raw JSON response, making it possible to trace fields back to the original payloads.
 
+## Dataset GDrive Link: https://drive.google.com/drive/folders/17TqIRStI9mwEvcshx4jjzqiN9rLfTcZZ?usp=sharing
+uni_vehicles.db: Marketcheck + Autodev vehicles. 167,760 vehicles. Include Carvana listings (Online, no location info)
+uni_marketcheck_vehicles.db: Marketcheck vehicles only. 51,518 vehicles, seems to match marketshare in CA more. 
+
 ## Column reference
 
 | Column | Type | Description | Primary sources |
@@ -67,7 +71,7 @@ The `unified_vehicle_listings` table combines the most complete attributes from 
 | `availability_status` | TEXT | Marketcheck inventory availability state. | Marketcheck `availability_status`
 | `is_certified` | INTEGER | Certified Pre-Owned flag. | Marketcheck `is_certified`, Auto.dev `retailListing.cpo`
 | `is_cpo` | INTEGER | Alias for `is_certified` (kept for Marketcheck parity). | Derived
-| `is_used` | INTEGER | Boolean indicator for used vehicles. | Auto.dev `retailListing.used`, Marketcheck `inventory_type`
+| `is_used` | INTEGER | Boolean indicator for used vehicles. | Auto.dev `retailListing.used`, Marketcheck `inventory_type`. 1 is used, 0 is new.
 | `in_transit` | INTEGER | Marks listings still in transit to the lot. | Marketcheck `in_transit`
 | `model_code` | TEXT | Manufacturer model code. | Marketcheck `model_code`
 | `stock_number` | TEXT | Dealer stock identifier. | Auto.dev `retailListing.stockNumber`, Marketcheck `stock_no`
