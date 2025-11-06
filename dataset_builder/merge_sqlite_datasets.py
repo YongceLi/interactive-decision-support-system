@@ -30,7 +30,7 @@ import logging
 import os
 import sqlite3
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 LOGGER = logging.getLogger("merge_datasets")
 
@@ -357,6 +357,32 @@ def normalize_marketcheck_row(row_dict: Dict[str, object]) -> Dict[str, Optional
             "raw_json": row_dict.get("raw_json"),
         }
     )
+
+    media_json = row_dict.get("media_json")
+    primary_image_url: Optional[str] = None
+    photo_count: Optional[int] = None
+    if media_json:
+        media_data: Optional[Dict[str, Any]] = None
+        if isinstance(media_json, str):
+            try:
+                media_data = json.loads(media_json)
+            except json.JSONDecodeError:
+                media_data = None
+        elif isinstance(media_json, dict):
+            media_data = media_json
+
+        if isinstance(media_data, dict):
+            photo_links = media_data.get("photo_links")
+            if isinstance(photo_links, list):
+                valid_links = [link for link in photo_links if isinstance(link, str)]
+                photo_count = len(valid_links)
+                for link in valid_links:
+                    if link:
+                        primary_image_url = link
+                        break
+
+    record["primary_image_url"] = primary_image_url
+    record["photo_count"] = photo_count
 
     # Prefer Marketcheck build data for core vehicle description when available.
     if record["build_year"] is not None:
