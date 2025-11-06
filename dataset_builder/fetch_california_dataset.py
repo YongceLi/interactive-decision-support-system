@@ -32,7 +32,7 @@ load_dotenv()
 class DatasetFetcher:
     """Fetches and manages California vehicle dataset in SQLite."""
 
-    def __init__(self, db_path: str = "data/california_vehicles.db"):
+    def __init__(self, db_path: str = "data/california_vehicles_zip.db"):
         """Initialize the fetcher.
 
         Args:
@@ -178,7 +178,6 @@ class DatasetFetcher:
                 except sqlite3.Error as e:
                     print(f"    ✗ Error inserting VIN {data.get('vin', 'unknown')}: {e}")
                     continue
-                inserted += 1
 
             conn.commit()
 
@@ -300,8 +299,8 @@ class DatasetFetcher:
         """
         base_params = {
             "zip": zip_code,
-            "distance": 200,
-            "page": 1,
+            "distance": 20,
+            "retailListing.state": "CA",
         }
 
         all_vehicles: List[Dict[str, Any]] = []

@@ -55,17 +55,22 @@ Full schema: `dataset_builder/schema.sql`
 
 ```
 dataset_builder/
-├── README.md                     # This file
-├── schema.sql                    # SQLite database schema
-├── fetch_california_dataset.py   # Main fetcher script
-└── (output) → data/california_vehicles.db
+├── README.md                          # This file
+├── schema.sql                         # Auto.dev SQLite schema
+├── fetch_california_dataset.py        # Auto.dev fetcher script
+├── marketcheck_schema.sql             # Marketcheck SQLite schema
+├── fetch_marketcheck_dataset.py       # Marketcheck fetcher script
+├── marketcheck_stats.py               # Marketcheck reporting helper
+└── (output)
+    ├── data/california_vehicles.db    # Auto.dev dataset
+    └── data/marketcheck_vehicles.db   # Marketcheck dataset
 ```
 
 ## Usage
 
 ### Prerequisites
 
-1. Ensure `AUTODEV_API_KEY` is set in `.env`
+1. Ensure `AUTODEV_API_KEY` and/or `MARKETCHECK_API_KEY` are set in `.env`
 2. Dependencies already installed (requests, python-dotenv, sqlite3 is built-in)
 
 ### Run the Fetcher
@@ -74,6 +79,12 @@ From project root:
 
 ```bash
 python dataset_builder/fetch_california_dataset.py
+```
+
+or, for Marketcheck listings:
+
+```bash
+python dataset_builder/fetch_marketcheck_dataset.py
 ```
 
 The script automatically:
@@ -89,6 +100,26 @@ The script automatically:
 Creates `data/california_vehicles.db` with:
 - `vehicle_listings` table: All vehicles with indexed fields
 - `zip_fetch_progress` table: Progress tracking for resume support
+
+Creates `data/marketcheck_vehicles.db` with:
+- `marketcheck_listings` table: Marketcheck inventory search results (all listing fields + raw JSON)
+- `marketcheck_zip_progress` table: Bay Area zip code progress tracker
+
+### Explore California Dataset Statistics
+
+Summarize make/model distribution, inventory mix, pricing buckets, and dealer hotspots for the Auto.dev dataset without re-running the fetcher:
+
+```bash
+python dataset_builder/california_stats.py
+```
+
+### Explore Marketcheck Statistics
+
+Generate distribution summaries for make, model, inventory type, pricing buckets, and dealer coverage without refetching data:
+
+```bash
+python dataset_builder/marketcheck_stats.py
+```
 
 ### Resume Interrupted Runs
 
