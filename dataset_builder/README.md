@@ -57,10 +57,16 @@ Full schema: `dataset_builder/schema.sql`
 dataset_builder/
 ├── README.md                          # This file
 ├── schema.sql                         # Auto.dev SQLite schema
+├── unified_schema.sql                 # Unified schema shared by merged datasets
+├── unified_schema_reference.md        # Column-by-column documentation for the unified schema
 ├── fetch_california_dataset.py        # Auto.dev fetcher script
 ├── marketcheck_schema.sql             # Marketcheck SQLite schema
 ├── fetch_marketcheck_dataset.py       # Marketcheck fetcher script
 ├── marketcheck_stats.py               # Marketcheck reporting helper
+├── merge_sqlite_datasets.py           # Merge Auto.dev & Marketcheck SQLite files
+├── fetch_unified_dataset.py           # Fetch Auto.dev/Marketcheck data directly into the unified schema
+├── unified_stats.py                   # Summary statistics for unified_vehicle_listings
+├── visualize_california_zip_map.py    # Choropleth map of California inventory by ZIP
 └── (output)
     ├── data/california_vehicles.db    # Auto.dev dataset
     └── data/marketcheck_vehicles.db   # Marketcheck dataset
@@ -120,6 +126,75 @@ Generate distribution summaries for make, model, inventory type, pricing buckets
 ```bash
 python dataset_builder/marketcheck_stats.py
 ```
+
+### Merge Auto.dev and Marketcheck Datasets
+
+Convert any combination of Auto.dev (`vehicle_listings`) and Marketcheck
+(`marketcheck_listings`) SQLite files into a single database with a unified
+schema. Duplicate VINs are resolved in favour of Marketcheck entries.
+
+```bash
+python dataset_builder/merge_sqlite_datasets.py \
+  data/unified_vehicles.db \
+  data/california_vehicles.db \
+  data/marketcheck_vehicles.db
+```
+
+The output database uses the schema stored in `dataset_builder/unified_schema.sql`
+and records the origin of each row in the `source` column (`autodev` or
+`marketcheck`).
+
+For a detailed description of every field, refer to
+[`unified_schema_reference.md`](./unified_schema_reference.md).
+
+### Fetch directly into the unified schema
+
+Skip the intermediate source-specific databases by fetching Auto.dev or
+Marketcheck listings straight into `unified_vehicle_listings`:
+
+```bash
+# Auto.dev example with custom filters
+python dataset_builder/fetch_unified_dataset.py autodev \
+  --base-params '{"retailListing.state": "CA", "vehicle.make": "Tesla"}' \
+  --output-db data/unified_vehicles.db
+
+# Marketcheck example using raw query parameters
+python dataset_builder/fetch_unified_dataset.py marketcheck \
+  --base-params '{"zip": "94105", "radius": "25"}'
+```
+
+Pass `--base-params` either as an inline JSON string or a path to a JSON
+file containing request parameters. The script honours the VIN priority used
+during merges (Marketcheck rows replace Auto.dev rows when duplicates are
+encountered).
+
+### Unified dataset statistics
+
+Inspect the combined dataset with `unified_stats.py`:
+
+```bash
+python dataset_builder/unified_stats.py --db data/unified_vehicles.db
+```
+
+The report shows:
+
+- Top 20 makes with dataset share percentages
+- Top 10 models within each leading make
+- Inventory mix, price buckets, and location breakdowns (state, city, ZIP)
+
+### California ZIP choropleth
+
+Render an interactive California map coloured by listing density per ZIP:
+
+```bash
+python dataset_builder/visualize_california_zip_map.py \
+  --db data/unified_vehicles.db \
+  --output data/california_zip_map.html
+```
+
+The script downloads a lightweight California ZIP GeoJSON boundary file the
+first time it runs (or you can supply a custom file via `--geojson`). Open the
+generated HTML file in a browser to explore the distribution.
 
 ### Resume Interrupted Runs
 
