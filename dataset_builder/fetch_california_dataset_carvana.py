@@ -32,7 +32,7 @@ load_dotenv()
 class DatasetFetcher:
     """Fetches and manages California vehicle dataset in SQLite."""
 
-    def __init__(self, db_path: str = "data/california_vehicles_state.db"):
+    def __init__(self, db_path: str = "data/california_vehicles_carvana.db"):
         """Initialize the fetcher.
 
         Args:
@@ -297,7 +297,7 @@ class DatasetFetcher:
             List of vehicle dictionaries, sorted by year descending (newest first)
         """
         base_params = {
-            "retailListing.state": "CA",
+            "retailListing.dealer": "Carvana",
         }
 
         all_vehicles: List[Dict[str, Any]] = []
@@ -392,47 +392,6 @@ class DatasetFetcher:
         vehicles = self.fetch_vehicles_for_state()
         inserted = self.save_vehicles(vehicles)
         total_vehicles_added += inserted
-
-
-        # # Create progress bar
-        # pbar = tqdm(
-        #     remaining,
-        #     desc="Fetching vehicles",
-        #     initial=len(completed_set),
-        #     total=total_zips,
-        #     unit="zip",
-        #     bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
-        # )
-
-        # for idx, zip_code in enumerate(pbar, start=len(completed_set) + 1):
-        #     # Update progress bar description
-        #     pbar.set_description(f"Fetching zip {zip_code}")
-
-        #     # Fetch vehicles
-        #     vehicles = self.fetch_vehicles_for_zip(zip_code, limit=limit_per_zip)
-
-        #     # Save to database
-        #     if vehicles:
-        #         inserted = self.save_vehicles(vehicles)
-        #         total_vehicles_added += inserted
-        #         pbar.write(f"  ✓ {zip_code}: Saved {inserted} vehicles (Total: {total_vehicles_added:,})")
-        #     else:
-        #         pbar.write(f"  ⚠ {zip_code}: No vehicles found")
-
-        #     # Mark progress
-        #     self.mark_progress(zip_code, len(vehicles))
-
-        #     # Rate limiting
-        #     if idx < total_zips:
-        #         time.sleep(rate_limit_delay)
-
-        #     # Update progress bar postfix with stats
-        #     pbar.set_postfix({
-        #         'vehicles': f"{total_vehicles_added:,}",
-        #         'avg/zip': f"{total_vehicles_added/idx:.0f}" if idx > 0 else "0"
-        #     })
-
-        # pbar.close()
 
         # Final statistics
         stats = self.generate_stats()
