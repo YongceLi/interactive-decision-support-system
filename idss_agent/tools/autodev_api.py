@@ -70,7 +70,7 @@ def search_vehicle_listings(
     wholesale_miles: Optional[str] = None,
     # Location filters
     zip: Optional[str] = None,
-    distance: Optional[int] = None,
+    search_radius: Optional[int] = None,
     # Pagination
     page: Optional[int] = 1,
     limit: Optional[int] = 20,
@@ -100,7 +100,7 @@ def search_vehicle_listings(
         wholesale_state: Wholesale listing state (e.g., "CA")
         wholesale_miles: Wholesale mileage filter (use range: "10000-20000")
         zip: 5-digit ZIP code to center the search around
-        distance: Radius in miles from ZIP code (default: 50)
+        search_radius: Radius in miles from ZIP code (default: 50)
         page: Page number to retrieve (starting from 1, default: 1)
         limit: Number of listings per page (1-100, default: 100)
 
@@ -158,8 +158,8 @@ def search_vehicle_listings(
         # Location filters
         if zip:
             params["zip"] = zip
-        if distance:
-            params["distance"] = distance
+        if search_radius:
+            params["distance"] = search_radius
 
         # Pagination
         if page:
