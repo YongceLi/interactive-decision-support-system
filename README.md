@@ -414,3 +414,21 @@ features:
   enable_quick_replies: true
   enable_streaming: true
 ```
+
+---
+
+## Testing
+
+### Recommendation Engine Test Script
+
+Test the recommendation pipeline in isolation with natural language queries:
+
+```bash
+# Basic usage
+python scripts/test_recommendation.py "I want a safe car for my daughter"
+
+# Save to file
+python scripts/test_recommendation.py "I want a safe car for my daughter" > results.json
+```
+
+**Output**: JSON with extracted filters, SQL query, location data, and 20 recommended vehicles.

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-05
+
+### Added
+
+#### Standalone Recommendation Test Script
+- Created `scripts/test_recommendation.py` for testing recommendation engine in isolation
+
+### Documentation
+- **README.md**: Added "Testing" section with usage examples for recommendation test script
+- **README.md**: Updated scripts section to include `test_recommendation.py`
+
+---
+
 ## 2025-11-04
 
 ### Added
