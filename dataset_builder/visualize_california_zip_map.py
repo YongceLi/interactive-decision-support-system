@@ -6,7 +6,7 @@ import argparse
 import json
 import sqlite3
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Iterable, Optional, Tuple
 
 import folium
 import pandas as pd
@@ -58,6 +58,53 @@ def load_zip_counts(conn: sqlite3.Connection) -> Dict[str, int]:
     return counts
 
 
+def _infer_property(
+    properties: Dict[str, object],
+    candidates: Iterable[str],
+    fallback_contains: Iterable[str],
+) -> Optional[str]:
+    for key in candidates:
+        if key in properties:
+            return key
+    lowered = {key.lower(): key for key in properties}
+    for needle in fallback_contains:
+        for lower_key, original_key in lowered.items():
+            if needle in lower_key:
+                return original_key
+    return None
+
+
+def _detect_geojson_keys(feature: Dict[str, object]) -> Tuple[str, Optional[str]]:
+    properties = feature.get("properties", {})
+    if not isinstance(properties, dict):
+        raise ValueError("GeoJSON features must include a properties dictionary.")
+
+    zip_key = _infer_property(
+        properties,
+        candidates=(
+            "zip",
+            "ZIP",
+            "zipcode",
+            "Zip",
+            "ZCTA5CE10",
+            "ZCTA5CE",
+            "ZCTA5",
+            "POSTCODE",
+            "postalCode",
+        ),
+        fallback_contains=("zip", "postal"),
+    )
+    if zip_key is None:
+        raise ValueError("Unable to identify a ZIP code property in the GeoJSON data.")
+
+    city_key = _infer_property(
+        properties,
+        candidates=("city", "City", "CITY", "PO_NAME", "place"),
+        fallback_contains=("city", "place"),
+    )
+    return zip_key, city_key
+
+
 def build_map(zip_counts: Dict[str, int], geojson_path: Path) -> folium.Map:
     if not zip_counts:
         raise ValueError("No California ZIP counts available to visualize.")
@@ -68,13 +115,19 @@ def build_map(zip_counts: Dict[str, int], geojson_path: Path) -> folium.Map:
     with geojson_path.open("r", encoding="utf-8") as handle:
         geojson = json.load(handle)
 
+    features = geojson.get("features")
+    if not features:
+        raise ValueError("GeoJSON file does not contain any features to visualize.")
+
+    zip_property, city_property = _detect_geojson_keys(features[0])
+
     choropleth = folium.Map(location=[36.7783, -119.4179], zoom_start=6, tiles="cartodbpositron")
     folium.Choropleth(
         geo_data=geojson,
         name="zip density",
         data=data,
         columns=["zip", "count"],
-        key_on="feature.properties.zip",
+        key_on=f"feature.properties.{zip_property}",
         fill_color="YlOrRd",
         fill_opacity=0.8,
         line_opacity=0.2,
@@ -82,12 +135,18 @@ def build_map(zip_counts: Dict[str, int], geojson_path: Path) -> folium.Map:
         legend_name="Listings per ZIP",
     ).add_to(choropleth)
 
+    tooltip_fields = [zip_property]
+    tooltip_aliases = ["ZIP"]
+    if city_property:
+        tooltip_fields.append(city_property)
+        tooltip_aliases.append("City")
+
     folium.GeoJson(
         geojson,
         name="zip boundaries",
         tooltip=folium.features.GeoJsonTooltip(
-            fields=["zip", "city"],
-            aliases=["ZIP", "City"],
+            fields=tooltip_fields,
+            aliases=tooltip_aliases,
             localize=True,
         ),
     ).add_to(choropleth)
