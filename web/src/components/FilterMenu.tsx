@@ -9,24 +9,45 @@ interface FilterMenuProps {
 
 interface FilterState {
   brands: string[];
-  mileage: number;
+  retailers: string[];
+  categories: string[];
+  condition: 'new' | 'refurbished' | 'used' | 'any';
   priceRange: { min: number; max: number };
-  condition: 'new' | 'used' | 'both';
-  carTypes: string[];
-  fuelTypes: string[];
 }
 
 const BRANDS = [
-  'Toyota', 'Honda', 'Ford', 'Chevrolet', 'BMW', 'Mercedes-Benz', 
-  'Audi', 'Tesla', 'Subaru', 'Nissan', 'Hyundai', 'Kia', 'Volkswagen', 'Mazda'
+  'Apple',
+  'Samsung',
+  'Google',
+  'Microsoft',
+  'Sony',
+  'LG',
+  'Dell',
+  'HP',
+  'Lenovo',
+  'ASUS',
+  'Acer',
+  'Razer'
 ];
 
-const CAR_TYPES = [
-  'Sedan', 'SUV', 'Truck', 'Hatchback', 'Coupe', 'Convertible', 'Wagon', 'Van'
+const RETAILERS = [
+  'Amazon',
+  'Best Buy',
+  'Walmart',
+  'Target',
+  'Newegg',
+  'eBay'
 ];
 
-const FUEL_TYPES = [
-  'Gasoline', 'Hybrid', 'Electric', 'Diesel', 'Plug-in Hybrid'
+const CATEGORIES = [
+  'Smartphone',
+  'Laptop',
+  'Tablet',
+  'Smartwatch',
+  'Headphones',
+  'Console',
+  'Monitor',
+  'Accessory'
 ];
 
 export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuProps) {
@@ -38,60 +59,37 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
   }, [isOpen, onOpenChange]);
   const [filters, setFilters] = useState<FilterState>({
     brands: [],
-    mileage: 200000,
-    priceRange: { min: 0, max: 200000 },
-    condition: 'both',
-    carTypes: [],
-    fuelTypes: []
+    retailers: [],
+    categories: [],
+    condition: 'any',
+    priceRange: { min: 0, max: 4000 }
   });
   const [lastAppliedFilters, setLastAppliedFilters] = useState<FilterState>({
     brands: [],
-    mileage: 200000,
-    priceRange: { min: 0, max: 200000 },
-    condition: 'both',
-    carTypes: [],
-    fuelTypes: []
+    retailers: [],
+    categories: [],
+    condition: 'any',
+    priceRange: { min: 0, max: 4000 }
   });
 
-  const handleBrandToggle = (brand: string) => {
+  const toggleSelection = (list: 'brands' | 'retailers' | 'categories', value: string) => {
     setFilters(prev => ({
       ...prev,
-      brands: prev.brands.includes(brand)
-        ? prev.brands.filter(b => b !== brand)
-        : [...prev.brands, brand]
+      [list]: prev[list].includes(value)
+        ? prev[list].filter((item: string) => item !== value)
+        : [...prev[list], value]
     }));
-  };
-
-  const handleCarTypeToggle = (type: string) => {
-    setFilters(prev => ({
-      ...prev,
-      carTypes: prev.carTypes.includes(type)
-        ? prev.carTypes.filter(t => t !== type)
-        : [...prev.carTypes, type]
-    }));
-  };
-
-  const handleFuelTypeToggle = (type: string) => {
-    setFilters(prev => ({
-      ...prev,
-      fuelTypes: prev.fuelTypes.includes(type)
-        ? prev.fuelTypes.filter(t => t !== type)
-        : [...prev.fuelTypes, type]
-    }));
-  };
-
-  const handleMileageChange = (value: number) => {
-    setFilters(prev => ({ ...prev, mileage: value }));
   };
 
   const handlePriceRangeChange = (field: 'min' | 'max', value: number) => {
+    const normalized = Math.max(0, Math.min(10000, value));
     setFilters(prev => ({
       ...prev,
-      priceRange: { ...prev.priceRange, [field]: value }
+      priceRange: { ...prev.priceRange, [field]: normalized }
     }));
   };
 
-  const handleConditionChange = (condition: 'new' | 'used' | 'both') => {
+  const handleConditionChange = (condition: FilterState['condition']) => {
     setFilters(prev => ({ ...prev, condition }));
   };
 
@@ -99,35 +97,27 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
     const filterObject: Record<string, unknown> = {};
 
     if (filters.brands.length > 0) {
-      filterObject.make = filters.brands;
+      filterObject.make = filters.brands.join(', ');
     }
 
-    if (filters.mileage < 200000) {
-      filterObject.mileage_max = filters.mileage;
+    if (filters.categories.length > 0) {
+      filterObject.category = filters.categories.join(', ');
+    }
+
+    if (filters.retailers.length > 0) {
+      filterObject.seller = filters.retailers.join(', ');
     }
 
     if (filters.priceRange.min > 0) {
       filterObject.price_min = filters.priceRange.min;
     }
 
-    if (filters.priceRange.max < 200000) {
+    if (filters.priceRange.max < 4000) {
       filterObject.price_max = filters.priceRange.max;
     }
 
-    if (filters.condition !== 'both') {
-      if (filters.condition === 'new') {
-        filterObject.year = '2023-2024';
-      } else {
-        filterObject.year = '2015-2023';
-      }
-    }
-
-    if (filters.carTypes.length > 0) {
-      filterObject.body_style = filters.carTypes;
-    }
-
-    if (filters.fuelTypes.length > 0) {
-      filterObject.fuel_type = filters.fuelTypes;
+    if (filters.condition !== 'any') {
+      filterObject.condition = filters.condition;
     }
 
     return filterObject;
@@ -141,33 +131,26 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
   };
 
   const clearAllFilters = () => {
-    setFilters({
+    const reset: FilterState = {
       brands: [],
-      mileage: 200000,
-      priceRange: { min: 0, max: 200000 },
-      condition: 'both',
-      carTypes: [],
-      fuelTypes: []
-    });
-    // Also clear the last applied filters
-    setLastAppliedFilters({
-      brands: [],
-      mileage: 200000,
-      priceRange: { min: 0, max: 200000 },
-      condition: 'both',
-      carTypes: [],
-      fuelTypes: []
-    });
+      retailers: [],
+      categories: [],
+      condition: 'any',
+      priceRange: { min: 0, max: 4000 }
+    };
+    setFilters(reset);
+    setLastAppliedFilters(reset);
   };
 
   const hasActiveFilters = () => {
-    return filters.brands.length > 0 ||
-           filters.mileage < 200000 ||
-           filters.priceRange.min > 0 ||
-           filters.priceRange.max < 200000 ||
-           filters.condition !== 'both' ||
-           filters.carTypes.length > 0 ||
-           filters.fuelTypes.length > 0;
+    return (
+      filters.brands.length > 0 ||
+      filters.retailers.length > 0 ||
+      filters.categories.length > 0 ||
+      filters.condition !== 'any' ||
+      filters.priceRange.min > 0 ||
+      filters.priceRange.max < 4000
+    );
   };
 
   const hasChanges = () => {
@@ -218,14 +201,14 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
 
           {/* Filter Content */}
           <div className="flex-1 overflow-y-auto space-y-6">
-            {/* Car Brands */}
+            {/* Brands */}
             <div>
               <h3 className="text-base font-semibold text-black mb-3">Brand</h3>
               <div className="grid grid-cols-2 gap-2">
                 {BRANDS.map(brand => (
                   <button
                     key={brand}
-                    onClick={() => handleBrandToggle(brand)}
+                    onClick={() => toggleSelection('brands', brand)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                       filters.brands.includes(brand)
                         ? 'bg-[#750013] text-white shadow-sm'
@@ -238,11 +221,51 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
               </div>
             </div>
 
+            {/* Category */}
+            <div>
+              <h3 className="text-base font-semibold text-black mb-3">Category</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORIES.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => toggleSelection('categories', category)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.categories.includes(category)
+                        ? 'bg-[#750013] text-white shadow-sm'
+                        : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
+                    }`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Retailer */}
+            <div>
+              <h3 className="text-base font-semibold text-black mb-3">Retailer</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {RETAILERS.map(retailer => (
+                  <button
+                    key={retailer}
+                    onClick={() => toggleSelection('retailers', retailer)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.retailers.includes(retailer)
+                        ? 'bg-[#750013] text-white shadow-sm'
+                        : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
+                    }`}
+                  >
+                    {retailer}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Condition */}
             <div>
               <h3 className="text-base font-semibold text-black mb-3">Condition</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {(['new', 'used', 'both'] as const).map(condition => (
+              <div className="grid grid-cols-2 gap-2">
+                {(['new', 'refurbished', 'used', 'any'] as const).map(condition => (
                   <button
                     key={condition}
                     onClick={() => handleConditionChange(condition)}
@@ -252,84 +275,25 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                         : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
                     }`}
                   >
-                    {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                    {condition === 'any'
+                      ? 'Any'
+                      : condition.charAt(0).toUpperCase() + condition.slice(1)}
                   </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Car Types */}
-            <div>
-              <h3 className="text-base font-semibold text-black mb-3">Car Type</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {CAR_TYPES.map(type => (
-                  <button
-                    key={type}
-                    onClick={() => handleCarTypeToggle(type)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      filters.carTypes.includes(type)
-                        ? 'bg-[#750013] text-white shadow-sm'
-                        : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Fuel Types */}
-            <div>
-              <h3 className="text-base font-semibold text-black mb-3">Fuel Type</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {FUEL_TYPES.map(type => (
-                  <button
-                    key={type}
-                    onClick={() => handleFuelTypeToggle(type)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      filters.fuelTypes.includes(type)
-                        ? 'bg-[#750013] text-white shadow-sm'
-                        : 'bg-white border border-[#8b959e]/40 text-black hover:border-[#8b959e] hover:bg-[#8b959e]/5'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Mileage */}
-            <div>
-              <h3 className="text-base font-semibold text-black mb-3">
-                Max Mileage: {filters.mileage.toLocaleString()} miles
-              </h3>
-              <input
-                type="range"
-                min="0"
-                max="200000"
-                step="5000"
-                value={filters.mileage}
-                onChange={(e) => handleMileageChange(Number(e.target.value))}
-                className="w-full h-2 bg-[#8b959e]/30 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <div className="flex justify-between text-sm text-[#8b959e] mt-2">
-                <span>0</span>
-                <span>100K</span>
-                <span>200K+</span>
               </div>
             </div>
 
             {/* Price Range */}
             <div>
-              <h3 className="text-base font-semibold text-black mb-3">Price Range</h3>
+              <h3 className="text-base font-semibold text-black mb-3">Price Range (USD)</h3>
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm text-[#8b959e] mb-1">Min Price</label>
                   <input
                     type="number"
                     min="0"
-                    max="200000"
-                    step="1000"
+                    max="10000"
+                    step="10"
                     value={filters.priceRange.min}
                     onChange={(e) => handlePriceRangeChange('min', Number(e.target.value))}
                     className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#750013]/20 focus:border-[#750013]"
@@ -341,12 +305,12 @@ export default function FilterMenu({ onFilterChange, onOpenChange }: FilterMenuP
                   <input
                     type="number"
                     min="0"
-                    max="200000"
-                    step="1000"
+                    max="10000"
+                    step="10"
                     value={filters.priceRange.max}
                     onChange={(e) => handlePriceRangeChange('max', Number(e.target.value))}
                     className="w-full px-3 py-2 bg-white border border-[#8b959e]/40 rounded-lg text-black text-base focus:outline-none focus:ring-2 focus:ring-[#750013]/20 focus:border-[#750013]"
-                    placeholder="200000"
+                    placeholder="4000"
                   />
                 </div>
               </div>
