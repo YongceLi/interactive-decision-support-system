@@ -2,12 +2,12 @@
 
 # Product-specific terminology
 terminology:
-  product_name: "vehicle"           # Singular form: "vehicle", "property", "product"
-  product_plural: "vehicles"        # Plural form: "vehicles", "properties", "products"
-  product_role: "car salesperson"   # Agent role: "car salesperson", "real estate agent", "sales assistant"
-  identifier_name: "VIN"            # Unique identifier: "VIN", "MLS#", "SKU"
-  search_action: "searching for available vehicles"  # Action description
-  recommendation_action: "recommending vehicles"     # Recommendation description
+  product_name: "product"           # Singular form shown to users
+  product_plural: "products"        # Plural form shown to users
+  product_role: "electronics specialist"   # Agent persona for conversations
+  identifier_name: "Product ID"     # Unique identifier label (RapidAPI identifier)
+  search_action: "searching for available products"  # Action description
+  recommendation_action: "recommending products"     # Recommendation description
 
 # LLM Models for each component
 models:
@@ -61,8 +61,8 @@ limits:
   max_recommended_items: 20          # Maximum items in recommendation list
   max_conversation_history: 10       # Maximum messages to keep in context (interview mode)
   max_interview_questions: 3         # Maximum interview turns before forcing recommendation
-  max_vehicle_summary_chars: 4000    # Maximum characters for vehicle JSON summary
-  top_vehicles_to_show: 3            # Number of top vehicles to include in prompts
+  max_product_summary_chars: 4000    # Maximum characters for product JSON summary
+  top_products_to_show: 3            # Number of top products to include in prompts
   web_search_max_results: 3          # Maximum Tavily search results returned per query
   default_search_radius: 100         # Default search radius in miles when location provided but no explicit radius
 
@@ -81,20 +81,20 @@ interactive:
 # Feature flags
 features:
   enable_streaming: true             # Enable SSE streaming for progress updates
-  require_photos: true               # Require photos in vehicle listings
+  require_photos: false              # Require product images in search results
   enable_quick_replies: true         # Enable quick reply buttons (potential answers)
   enable_suggested_followups: false  # Enable suggested followup questions
-  use_local_vehicle_store: true      # Toggle to use local SQLite dataset instead of Auto.dev
+  use_local_vehicle_store: false      # Disable vehicle-specific local dataset
 
-# API Configuration (Auto.dev specific - modify for other data sources)
+# API Configuration (RapidAPI - Newegg data)
 api:
-  base_url: "https://auto.dev/api"
+  provider: "rapidapi"
+  base_url: "https://product-search-api.p.rapidapi.com/"
   endpoints:
-    search: "/listings"
+    search: "/shopping"
   default_params:
-    page_size: 20
-    sort_by: "price"
-    sort_order: "asc"
+    page: 1
+    keyword: ""
   timeout: 30
 
 # Logging configuration

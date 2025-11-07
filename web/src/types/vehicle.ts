@@ -4,6 +4,8 @@ export interface Vehicle {
   model: string;
   year: number;
   price?: number; // Make price optional since it might not always be available
+  price_text?: string;
+  price_value?: number;
   mileage?: number;
   location?: string;
   image_url?: string | null;
@@ -35,6 +37,17 @@ export interface Vehicle {
     email: string;
   };
   carfax_url?: string;
+  // Product-specific fields for electronics
+  title?: string;
+  brand?: string;
+  source?: string;
+  link?: string;
+  rating?: number;
+  rating_count?: number;
+  price_currency?: string;
+  product?: Record<string, unknown>;
+  offer?: Record<string, unknown>;
+  raw?: Record<string, unknown>;
 }
 
 export interface VehicleFilters {

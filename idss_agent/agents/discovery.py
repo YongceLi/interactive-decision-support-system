@@ -46,10 +46,14 @@ def discovery_agent(
     """
 
     # Emit progress: Starting response generation
+    config = get_config()
+    terminology = config.get_terminology_context()
+    product_plural = terminology.get('product_plural', 'products')
+
     if progress_callback:
         progress_callback({
             "step_id": "generating_response",
-            "description": "Presenting vehicles",
+            "description": f"Presenting {product_plural}",
             "status": "in_progress"
         })
 
@@ -58,13 +62,22 @@ def discovery_agent(
     vehicles = state['recommended_vehicles']
     already_asked = state.get('questions_asked', [])
 
-    # Get configuration
-    config = get_config()
     model_config = config.get_model_config('discovery')
-    top_limit = config.limits.get('top_vehicles_to_show', 3)
+    top_limit = (
+        config.limits.get('top_products_to_show')
+        or config.limits.get('top_vehicles_to_show', 3)
+    )
+    max_summary_chars = (
+        config.limits.get('max_product_summary_chars')
+        or config.limits.get('max_vehicle_summary_chars', 4000)
+    )
 
     # Format vehicles for LLM
-    vehicles_summary = format_vehicles_for_llm(vehicles, limit=top_limit)
+    vehicles_summary = format_vehicles_for_llm(
+        vehicles,
+        limit=top_limit,
+        max_chars=max_summary_chars,
+    )
 
     # Load system prompt from template
     discovery_system_prompt = render_prompt('discovery.j2')
@@ -75,7 +88,7 @@ def discovery_agent(
     if fallback_message:
         fallback_note = f"""
 **IMPORTANT - Fallback Applied:**
-The original filters didn't find vehicles, so we relaxed some constraints.
+The original filters didn't find {product_plural}, so we relaxed some constraints.
 Include this message naturally in your response: "{fallback_message}"
 """
 
@@ -86,7 +99,7 @@ Include this message naturally in your response: "{fallback_message}"
 **User's Preferences:**
 {json.dumps(implicit, indent=2)}
 
-**Current Listings ({len(vehicles)} vehicles found, showing top {top_limit} as JSON):**
+**Current Listings ({len(vehicles)} {product_plural} found, showing top {top_limit} as JSON):**
 {vehicles_summary}
 
 **Topics Already Asked About:** {already_asked}

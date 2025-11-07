@@ -264,7 +264,7 @@ export default function RecommendationCarousel({ vehicles, onItemSelect, showPla
 }
 
 // VehicleCard component
-function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite, isFavorite }: { 
+function VehicleCard({ vehicle, onItemSelect, index, onToggleFavorite, isFavorite }: { 
   vehicle: Vehicle; 
   onItemSelect?: (vehicle: Vehicle) => void;
   index?: number;
@@ -272,9 +272,18 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
   onToggleFavorite?: (vehicle: Vehicle) => void;
   isFavorite?: (vehicleId: string) => boolean;
 }) {
-  // Use Auto.dev image URL
   const primaryImage = vehicle.image_url;
   const hasValidImage = primaryImage && !primaryImage.toLowerCase().includes('.svg');
+
+  const displayTitle = vehicle.title || `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() || 'Product';
+  const subtitleParts = [vehicle.brand, vehicle.source].filter(Boolean);
+  const displaySubtitle = subtitleParts.join(' • ');
+
+  const displayPrice = vehicle.price_text
+    || (typeof vehicle.price === 'number' ? `$${vehicle.price.toLocaleString()}` : undefined);
+  const ratingText = vehicle.rating
+    ? `${vehicle.rating.toFixed(1)} ★${vehicle.rating_count ? ` (${vehicle.rating_count.toLocaleString()})` : ''}`
+    : undefined;
 
   return (
       <>
@@ -283,7 +292,7 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
           <>
             <img
               src={primaryImage}
-              alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+              alt={displayTitle}
               className="w-full h-full object-cover"
               onError={(e) => {
                 // Hide the image if it fails to load and show the emoji instead
@@ -347,31 +356,35 @@ function VehicleCard({ vehicle, onItemSelect, index, isCenter, onToggleFavorite,
       </div>
       
       <div className="space-y-2">
-            <h4 className="text-lg font-bold text-black mb-2 leading-tight">
-          {vehicle.year} {vehicle.make} {vehicle.model}
+        <h4 className="text-lg font-bold text-black leading-tight">
+          {displayTitle}
         </h4>
+
+        {displaySubtitle && (
+          <p className="text-sm text-[#8b959e]">{displaySubtitle}</p>
+        )}
         
         <div className="space-y-1 text-base">
-          {vehicle.price && (
+          {displayPrice && (
             <div className="flex justify-between">
               <span className="text-[#8b959e]">Price:</span>
-              <span className="font-bold text-black">
-                ${vehicle.price.toLocaleString()}
+              <span className="font-bold text-black text-right max-w-[160px] truncate">
+                {displayPrice}
               </span>
             </div>
           )}
           
-          {vehicle.mileage && (
+          {vehicle.link && (
             <div className="flex justify-between">
-              <span className="text-[#8b959e]">Mileage:</span>
-              <span className="text-black">{vehicle.mileage.toLocaleString()} mi</span>
+              <span className="text-[#8b959e]">Store:</span>
+              <span className="text-black text-right max-w-[160px] truncate">{vehicle.source || 'Online'}</span>
             </div>
           )}
           
-          {vehicle.location && (
+          {ratingText && (
             <div className="flex justify-between">
-              <span className="text-[#8b959e]">Location:</span>
-              <span className="text-black text-right max-w-[160px] truncate">{vehicle.location}</span>
+              <span className="text-[#8b959e]">Rating:</span>
+              <span className="text-black text-right max-w-[160px] truncate">{ratingText}</span>
             </div>
           )}
         </div>

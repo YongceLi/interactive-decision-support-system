@@ -445,7 +445,7 @@ limits:
   max_conversation_history: 10
   max_interview_questions: 3
   default_search_radius: 100
-  top_vehicles_to_show: 3
+  top_products_to_show: 3
   web_search_max_results: 3
 ```
 

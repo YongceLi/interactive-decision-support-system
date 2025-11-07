@@ -1,8 +1,6 @@
 'use client';
 
 import { Vehicle } from '@/types/vehicle';
-import { useVehicleImages } from '@/hooks/useVehicleImages';
-
 interface ItemGridProps {
   vehicles: Vehicle[];
   onItemSelect: (item: Vehicle) => void;
@@ -51,8 +49,13 @@ interface ItemCardProps {
 }
 
 function ItemCard({ vehicle, onItemSelect }: ItemCardProps) {
-  const { images, loading, error } = useVehicleImages(vehicle.vin);
-  const displayImage = images[0]?.url || vehicle.image_url;
+  const displayImage = vehicle.image_url;
+  const hasValidImage = displayImage && !displayImage.toLowerCase().includes('.svg');
+  const title = vehicle.title || `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() || 'Product';
+  const subtitleParts = [vehicle.brand, vehicle.source].filter(Boolean);
+  const subtitle = subtitleParts.join(' • ');
+  const priceText = vehicle.price_text || (typeof vehicle.price === 'number' ? `$${vehicle.price.toLocaleString()}` : undefined);
+  const ratingText = vehicle.rating ? `${vehicle.rating.toFixed(1)} ★${vehicle.rating_count ? ` (${vehicle.rating_count.toLocaleString()})` : ''}` : undefined;
 
   return (
     <div
@@ -60,17 +63,10 @@ function ItemCard({ vehicle, onItemSelect }: ItemCardProps) {
       className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer overflow-hidden border border-stone-200 hover:border-stone-300 hover:scale-105 transform flex flex-col h-full"
     >
       <div className="aspect-video bg-gray-200 relative">
-        {loading ? (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-800 mx-auto mb-2"></div>
-              <div className="text-sm">Loading image...</div>
-            </div>
-          </div>
-        ) : displayImage ? (
+        {hasValidImage ? (
           <img
             src={displayImage}
-            alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+            alt={title}
             className="w-full h-full object-cover"
             onError={(e) => {
               // Fallback to placeholder if image fails to load
@@ -88,49 +84,39 @@ function ItemCard({ vehicle, onItemSelect }: ItemCardProps) {
         </div>
         
         <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-full text-xs font-medium">
-          {vehicle.year}
+          #{vehicle.id.slice(-4)}
         </div>
       </div>
       
       <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-semibold text-lg text-gray-900 mb-1">
-          {vehicle.year} {vehicle.make} {vehicle.model}
+        <h3 className="font-semibold text-lg text-gray-900 mb-1 leading-tight">
+          {title}
         </h3>
         
-        {vehicle.trim && (
-          <p className="text-sm text-gray-600 mb-2">{vehicle.trim}</p>
+        {subtitle && (
+          <p className="text-sm text-gray-600 mb-2">{subtitle}</p>
         )}
         
         <div className="flex items-center justify-between mb-3">
           <span className="text-xl font-bold text-red-800">
-            ${vehicle.price ? vehicle.price.toLocaleString() : 'Price N/A'}
+            {priceText || 'Price N/A'}
           </span>
-          {vehicle.mileage && (
-            <span className="text-sm text-gray-500">
-              {typeof vehicle.mileage === 'number' ? vehicle.mileage.toLocaleString() : vehicle.mileage} mi
-            </span>
+          {ratingText && (
+            <span className="text-sm text-gray-500 text-right max-w-[150px]">{ratingText}</span>
           )}
         </div>
         
         <div className="space-y-1 text-sm text-gray-600 flex-1">
-          {vehicle.location && (
+          {vehicle.link && (
             <div className="flex items-center">
-              <span className="mr-1">📍</span>
-              {vehicle.location}
+              <span className="mr-1">🔗</span>
+              <span className="truncate">{vehicle.source || 'Retailer site'}</span>
             </div>
           )}
-          
-          {vehicle.fuel_economy && (
+          {vehicle.offer?.availability && (
             <div className="flex items-center">
-              <span className="mr-1">⛽</span>
-              {vehicle.fuel_economy.combined} MPG combined
-            </div>
-          )}
-          
-          {vehicle.safety_rating && (
-            <div className="flex items-center">
-              <span className="mr-1">🛡️</span>
-              {vehicle.safety_rating.overall}/5 Safety Rating
+              <span className="mr-1">📦</span>
+              {String(vehicle.offer.availability)}
             </div>
           )}
         </div>

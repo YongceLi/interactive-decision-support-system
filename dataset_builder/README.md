@@ -58,8 +58,11 @@ Full schema: `dataset_builder/schema.sql`
 dataset_builder/
 ├── README.md                     # This file
 ├── schema.sql                    # SQLite database schema
-├── fetch_california_dataset.py   # Main fetcher script
-└── (output) → data/california_vehicles.db
+├── fetch_california_dataset.py   # Vehicle dataset fetcher
+├── pc_parts_schema.sql           # PC parts SQLite schema
+├── fetch_pc_parts_dataset.py     # PC parts dataset builder
+├── (output) → data/california_vehicles.db
+└── (output) → data/pc_parts.db
 ```
 
 ## Usage
@@ -213,6 +216,74 @@ After building the dataset:
 sqlite3 data/california_vehicles.db \
   "SELECT COUNT(*) as completed FROM fetch_progress WHERE status='completed'"
 ```
+
+---
+
+# PC Parts Dataset Builder
+
+Build a unified local database of PC components spanning CPUs, GPUs, motherboards, PSUs, cases, cooling solutions, RAM, and storage. The schema mirrors the vehicle dataset philosophy: fast filterable columns plus preserved raw payloads for downstream enrichment.
+
+## Sources
+
+- **PCPartPicker** — Canonical component catalog with rich spec tables (HTML scrape).
+- **Best Buy** — Retail pricing and availability (HTML scrape).
+- **RapidAPI** — Third-party catalog feed (defaults to the Newegg data API, override via env vars).
+
+## Schema Overview
+
+- `pc_parts`: Normalized product metadata (`part_type`, `manufacturer`, `price`, `stock_status`, etc.) with `specs_json` capturing PCPartPicker-style tables and `attributes_json` for auxiliary data.
+- `pc_parts_fetch_progress`: Mirrors `fetch_progress`, enabling resume support per `{source, part_type}`.
+- `pc_parts_dataset_stats`: Cached stats (`total_records`, `unique_parts`, `last_build`, `upserted_this_run`).
+- Built-in deduplication: records are filtered by canonical `part_id` and `(source, manufacturer, product_name)` to avoid duplicate inserts (especially from RapidAPI feeds).
+
+Full definition: `dataset_builder/pc_parts_schema.sql`.
+
+## Running the Builder
+
+### Prerequisites
+
+1. Install dependencies (includes `beautifulsoup4`):
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Set up RapidAPI (optional but recommended):
+   - Add `RAPIDAPI_KEY` to `.env`.
+   - Defaults now target `product-search-api.p.rapidapi.com/shopping`, matching the RapidAPI request snippet you shared (`Content-Type: application/x-www-form-urlencoded` with `query`, `page`, `country`).
+   - Override `RAPIDAPI_HOST`, `RAPIDAPI_ENDPOINT`, or `RAPIDAPI_COUNTRY` in `.env` if you need a different provider or locale.
+
+### Command
+
+```bash
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 40
+# RapidAPI only
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 40 --sources rapidapi
+# Unlimited (fetch all pages)
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 0 --sources rapidapi
+```
+
+- `--limit` controls the per-source-per-category cap (default 50). Set to `0` (or any negative value) to fetch every available page.
+- `--sources` lets you choose any subset of `pcpartpicker`, `bestbuy`, `rapidapi` (default is all).
+- Requests are rate-limited (`time.sleep`) to avoid overloading upstream sites; a full run typically completes in a few minutes.
+
+### Output
+
+- `data/pc_parts.db`
+  - `pc_parts`: Deduplicated records with canonical IDs (`source:origin_id` or hashed fallback).
+  - `pc_parts_fetch_progress`: Ingestion status for each `{source, category}`.
+  - `pc_parts_dataset_stats`: Summary metrics updated after each run.
+
+## Customisation Tips
+
+- Edit `CATEGORIES` in `fetch_pc_parts_dataset.py` to adjust PCPartPicker slugs, Best Buy keywords, or RapidAPI search terms.
+- Override RapidAPI host/endpoint via environment without touching code.
+- Use `--sources` to focus on a single feed (e.g., `--sources rapidapi`) or skip unreliable scrapers.
+- Extend `_canonical_part_id` if you need custom dedupe semantics.
+
+## Troubleshooting
+
+- **RapidAPI skipped**: Log warning indicates missing `RAPIDAPI_KEY`; script still ingests PCPartPicker + Best Buy data.
+- **Selector changes**: If HTML scraping breaks, update the CSS selectors in `PCPartPickerScraper` or `BestBuyScraper`.
+- **Duplicate entries**: Script now skips duplicates by `part_id` and normalized `(source, manufacturer, product_name)`. If you still see dupes, inspect upstream payload IDs or adjust `_canonical_part_id`.
 
 ## Database Maintenance
 

@@ -115,7 +115,8 @@ class PromptLoader:
         context.update({
             'max_interview_questions': config.limits.get('max_interview_questions', 8),
             'max_recommended_items': config.limits.get('max_recommended_items', 20),
-            'top_vehicles_to_show': config.limits.get('top_vehicles_to_show', 3),
+            'top_products_to_show': config.limits.get('top_products_to_show')
+            or config.limits.get('top_vehicles_to_show', 3),
             'max_conversation_history': config.limits.get('max_conversation_history', 10),
         })
 

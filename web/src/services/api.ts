@@ -145,60 +145,63 @@ class IDSSApiService {
 
   // Convert API vehicle data to our Vehicle type
   convertVehicle(apiVehicle: Record<string, unknown>): Vehicle {
-    // Handle nested auto.dev API structure
     const vehicle = (apiVehicle.vehicle as Record<string, unknown>) || apiVehicle;
     const retailListing = (apiVehicle.retailListing as Record<string, unknown>) || {};
-    
-    // Extract price from various possible locations
-    let price: number | undefined;
-    if (retailListing.price) {
-      price = retailListing.price as number;
-    } else if (retailListing.listPrice) {
-      price = retailListing.listPrice as number;
-    } else if (apiVehicle.price) {
-      price = apiVehicle.price as number;
+    const product = (apiVehicle.product as Record<string, unknown>) || {};
+    const offer = (apiVehicle.offer as Record<string, unknown>) || {};
+    const photos = (apiVehicle.photos as Record<string, unknown>) || {};
+
+    const title = (apiVehicle.title as string) || (product.title as string) || `${vehicle.make || ''} ${vehicle.model || ''}`.trim();
+    const brand = (apiVehicle.brand as string) || (product.brand as string);
+    const source = (apiVehicle.source as string) || (offer.seller as string) || (product.source as string);
+
+    const priceText = (apiVehicle.price_text as string) || (offer.price as string) || (apiVehicle.price as string);
+    let priceValue = (apiVehicle.price_value as number) || (apiVehicle.price as number) || undefined;
+
+    if (!priceValue && typeof priceText === 'string') {
+      const numericMatch = priceText.match(/[0-9]+(?:[.,][0-9]+)?/);
+      if (numericMatch) {
+        priceValue = parseFloat(numericMatch[0].replace(',', ''));
+      }
     }
-    
-    // Extract mileage from various possible locations
-    let mileage: number | undefined;
-    if (retailListing.miles) {
-      mileage = retailListing.miles as number;
-    } else if (vehicle.mileage) {
-      mileage = vehicle.mileage as number;
-    } else if (apiVehicle.mileage) {
-      mileage = apiVehicle.mileage as number;
-    }
-    
-    // Extract location - prefer city/state over coordinates
-    let location: string | undefined;
-    if (retailListing.city && retailListing.state) {
-      location = `${retailListing.city}, ${retailListing.state}`;
-    } else if (retailListing.state) {
-      location = retailListing.state as string;
-    } else if (vehicle.location) {
-      location = vehicle.location as string;
-    } else if (apiVehicle.location) {
-      location = apiVehicle.location as string;
-    }
-    
-    // Extract VIN for image fetching
+
+    const location = (() => {
+      if (retailListing.city && retailListing.state) {
+        return `${retailListing.city}, ${retailListing.state}`;
+      }
+      if (retailListing.state) {
+        return retailListing.state as string;
+      }
+      if (vehicle.location) {
+        return vehicle.location as string;
+      }
+      if (apiVehicle.location) {
+        return apiVehicle.location as string;
+      }
+      return undefined;
+    })();
+
     const vin = (vehicle.vin as string) || (apiVehicle.vin as string);
-    
-    // Extract image URL from retailListing.primaryImage (Auto.dev format)
-    const image_url = (retailListing.primaryImage as string) || 
-                     (vehicle.image_url as string) || 
-                     (apiVehicle.image_url as string);
-    
+
+    const imageUrl = (apiVehicle.image_url as string)
+      || (apiVehicle.imageUrl as string)
+      || (vehicle.image_url as string)
+      || ((photos.retail as Array<Record<string, unknown>>)?.[0]?.url as string)
+      || (retailListing.primaryImage as string);
+
     return {
-      id: (vehicle.id as string) || (apiVehicle.id as string) || Math.random().toString(36).substr(2, 9),
-      make: (vehicle.make as string) || 'Unknown',
-      model: (vehicle.model as string) || 'Unknown',
-      year: (vehicle.year as number) || new Date().getFullYear(),
-      price: price,
-      mileage: mileage,
-      location: location,
-      vin: vin,
-      image_url: image_url,
+      id: (vehicle.id as string) || (apiVehicle.id as string) || (product.identifier as string) || (product.id as string) || Math.random().toString(36).substr(2, 9),
+      title: title || 'Product',
+      make: (vehicle.make as string) || brand || source || 'Unknown',
+      model: (vehicle.model as string) || title || 'Unknown',
+      year: (vehicle.year as number) || (apiVehicle.year as number) || new Date().getFullYear(),
+      price: typeof priceValue === 'number' && !Number.isNaN(priceValue) ? priceValue : undefined,
+      price_text: priceText,
+      price_value: priceValue,
+      mileage: (vehicle.mileage as number) || (apiVehicle.mileage as number) || (retailListing.miles as number),
+      location,
+      vin,
+      image_url: imageUrl,
       trim: (vehicle.trim as string) || (apiVehicle.trim as string),
       body_style: (vehicle.bodyStyle as string) || (vehicle.body_style as string) || (apiVehicle.body_style as string),
       engine: (vehicle.engine as string) || (apiVehicle.engine as string),
@@ -219,13 +222,22 @@ class IDSSApiService {
         side: (vehicle.safety_rating as Record<string, unknown>).side as number || 0,
         rollover: (vehicle.safety_rating as Record<string, unknown>).rollover as number || 0,
       } : undefined,
-      description: (vehicle.description as string) || (apiVehicle.description as string),
+      description: (vehicle.description as string) || (apiVehicle.description as string) || (product.description as string),
       dealer_info: retailListing.dealer ? {
         name: ((retailListing.dealer as Record<string, unknown>).name as string) || 'Unknown Dealer',
         phone: (retailListing.dealer as Record<string, unknown>).phone as string,
         email: (retailListing.dealer as Record<string, unknown>).email as string,
       } : undefined,
       carfax_url: (retailListing.carfaxUrl as string) || undefined,
+      brand,
+      source,
+      link: (apiVehicle.link as string) || (offer.url as string) || (product.link as string),
+      rating: (apiVehicle.rating as number) || (product.rating as number),
+      rating_count: (apiVehicle.rating_count as number) || (apiVehicle.reviewCount as number) || (product.rating_count as number) || (product.reviewCount as number),
+      price_currency: (apiVehicle.price_currency as string) || (offer.currency as string),
+      product: Object.keys(product).length > 0 ? product : undefined,
+      offer: Object.keys(offer).length > 0 ? offer : undefined,
+      raw: apiVehicle,
     };
   }
 }

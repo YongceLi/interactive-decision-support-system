@@ -1,0 +1,148 @@
+"""RapidAPI product search tools for electronics recommendations.
+
+This module mirrors the structure of ``autodev_api.py`` but targets a
+general-purpose product search API so the agent can source electronics data.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from typing import Any, Dict, Optional
+
+import requests
+from langchain_core.tools import tool
+
+
+DEFAULT_HOST = os.getenv("RAPIDAPI_HOST", "product-search-api.p.rapidapi.com")
+DEFAULT_BASE_URL = os.getenv("RAPIDAPI_BASE_URL", f"https://{DEFAULT_HOST}")
+DEFAULT_SEARCH_PATH = os.getenv("RAPIDAPI_SEARCH_ENDPOINT", "/shopping")
+DEFAULT_PRODUCT_PATH = os.getenv("RAPIDAPI_PRODUCT_ENDPOINT", "/product")
+
+
+def _get_api_key() -> str:
+    """Retrieve RapidAPI key from environment variables."""
+
+    api_key = os.getenv("RAPIDAPI_KEY")
+    if not api_key:
+        raise ValueError(
+            "RAPIDAPI_KEY not found in environment variables. "
+            "Set RAPIDAPI_KEY with your RapidAPI credential."
+        )
+    return api_key
+
+
+def _build_headers() -> Dict[str, str]:
+    """Return headers required by RapidAPI."""
+
+    return {
+        "X-RapidAPI-Key": _get_api_key(),
+        "X-RapidAPI-Host": DEFAULT_HOST,
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+
+def _make_request(
+    path: str,
+    payload: Dict[str, Any],
+    method: str = "POST",
+    timeout: int = 30,
+) -> str:
+    """Make a request to the RapidAPI electronics endpoint."""
+
+    url = f"{DEFAULT_BASE_URL.rstrip('/')}{path}"
+    headers = _build_headers()
+
+    try:
+        if method.upper() == "POST":
+            response = requests.post(url, data=payload, headers=headers, timeout=timeout)
+        else:
+            response = requests.get(url, params=payload, headers=headers, timeout=timeout)
+
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.HTTPError as exc:  # pragma: no cover - simple wrapper
+        status = exc.response.status_code if exc.response else "unknown"
+        return json.dumps({
+            "error": (
+                "RapidAPI request failed with status "
+                f"{status}. Details: {str(exc)}"
+            )
+        })
+    except Exception as exc:  # pragma: no cover - propagated error text
+        return json.dumps({"error": f"RapidAPI request failed: {str(exc)}"})
+
+
+def _clean_payload(payload: Dict[str, Optional[Any]]) -> Dict[str, Any]:
+    """Drop keys with ``None`` values and coerce everything to strings."""
+
+    cleaned: Dict[str, Any] = {}
+    for key, value in payload.items():
+        if value in (None, ""):
+            continue
+        cleaned[key] = str(value)
+    return cleaned
+
+
+@tool
+def search_products(
+    query: str,
+    page: int = 1,
+    country: Optional[str] = "us",
+    language: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    seller: Optional[str] = None,
+) -> str:
+    """Search electronics products via RapidAPI.
+
+    Args:
+        query: Search keywords (required by the API).
+        page: Page number (1-indexed).
+        country: ISO country code (defaults to ``us``).
+        language: Optional locale.
+        sort_by: Sorting preference accepted by the API.
+        min_price: Minimum price filter.
+        max_price: Maximum price filter.
+        seller: Optional seller/store filter.
+
+    Returns:
+        Raw JSON string from the API response or serialized error message.
+    """
+
+    payload = _clean_payload(
+        {
+            "query": query,
+            "page": page,
+            "country": country,
+            "language": language,
+            "sort_by": sort_by,
+            "min_price": min_price,
+            "max_price": max_price,
+            "seller": seller,
+        }
+    )
+
+    return _make_request(DEFAULT_SEARCH_PATH, payload, method="POST")
+
+
+@tool
+def get_product_details(
+    product_id: str,
+    country: Optional[str] = "us",
+    language: Optional[str] = None,
+) -> str:
+    """Fetch detailed information for a single product by RapidAPI product ID."""
+
+    payload = _clean_payload(
+        {
+            "product_id": product_id,
+            "country": country,
+            "language": language,
+        }
+    )
+
+    return _make_request(DEFAULT_PRODUCT_PATH, payload, method="POST")
+
+

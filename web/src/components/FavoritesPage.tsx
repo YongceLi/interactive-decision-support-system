@@ -106,31 +106,31 @@ export default function FavoritesPage({ favorites, onToggleFavorite, isFavorite,
 
                   {/* Content */}
                   <div className="space-y-2">
-                    <h4 className="text-base font-bold text-black mb-2 leading-tight">
-                      {vehicle.year} {vehicle.make} {vehicle.model}
+                    <h4 className="text-base font-bold text-black mb-1 leading-tight">
+                      {vehicle.title || `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() || 'Product'}
                     </h4>
+                    {(vehicle.brand || vehicle.source) && (
+                      <p className="text-xs text-[#8b959e]">
+                        {[vehicle.brand, vehicle.source].filter(Boolean).join(' • ')}
+                      </p>
+                    )}
                     
                     <div className="space-y-1 text-sm">
-                      {vehicle.price && (
+                      {(vehicle.price_text || vehicle.price) && (
                         <div className="flex justify-between border-l-4 border-l-[#750013] pl-2">
                           <span className="text-[#8b959e]">Price:</span>
-                          <span className="font-bold text-black">
-                            ${vehicle.price.toLocaleString()}
+                          <span className="font-bold text-black text-right max-w-[120px] truncate">
+                            {vehicle.price_text || (vehicle.price ? `$${vehicle.price.toLocaleString()}` : 'N/A')}
                           </span>
                         </div>
                       )}
                       
-                      {vehicle.mileage && (
-                        <div className="flex justify-between">
-                          <span className="text-[#8b959e]">Mileage:</span>
-                          <span className="text-black">{vehicle.mileage.toLocaleString()} mi</span>
-                        </div>
-                      )}
-                      
-                      {vehicle.location && (
-                        <div className="flex justify-between">
-                          <span className="text-[#8b959e]">Location:</span>
-                          <span className="text-black text-right max-w-[140px] truncate">{vehicle.location}</span>
+                      {vehicle.rating && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#8b959e]">Rating:</span>
+                          <span className="text-black text-right max-w-[120px] truncate">
+                            {vehicle.rating.toFixed(1)} ★{vehicle.rating_count ? ` (${vehicle.rating_count.toLocaleString()})` : ''}
+                          </span>
                         </div>
                       )}
                     </div>
