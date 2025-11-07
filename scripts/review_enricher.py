@@ -51,9 +51,7 @@ Review metadata:
 - Date: {date}
 
 Review text:
-"""
 {review}
-"""
 
 Return JSON with keys "likes", "dislikes", and "intention".
 - likes: 1-3 entries. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified.
@@ -115,7 +113,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    df = pd.read_csv(args.input)
+    try:
+        df = pd.read_csv(args.input, encoding_errors="ignore")
+    except TypeError:
+        # Older pandas versions may not expose ``encoding_errors``; fall back to
+        # suppressing problematic bytes via Python's CSV reader instead.
+        with args.input.open("r", encoding="utf-8", errors="ignore") as handle:
+            df = pd.read_csv(handle)
+    except UnicodeDecodeError:
+        with args.input.open("r", encoding="utf-8", errors="ignore") as handle:
+            df = pd.read_csv(handle)
     enriched = enrich_reviews(df, args.model)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     enriched.to_csv(args.output, index=False)
