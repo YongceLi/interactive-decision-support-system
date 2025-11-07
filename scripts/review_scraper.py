@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Fetch top make/model pairs from the unified vehicle database and scrape reviews.
+"""Fetch top make/model/year combinations from the vehicle database and scrape reviews.
 
 This utility performs two major steps:
 
 1. Query the local ``uni_vehicles.db`` database to find the ``k`` most common
-   ``(make, model)`` combinations.
+   ``(make, model, year)`` combinations.
 2. For each pair, download consumer reviews from Edmunds and save them into a
    CSV file so they can be analysed later by LLM-powered personas.
 
@@ -37,10 +37,11 @@ DEFAULT_OUTPUT_PATH = Path("data") / "review_scraper_output.csv"
 
 @dataclass
 class MakeModel:
-    """Simple container describing a make/model pair."""
+    """Simple container describing a make/model/year combination."""
 
     make: str
     model: str
+    year: Optional[int]
     count: int
 
 
@@ -50,6 +51,7 @@ class ReviewRecord:
 
     make: str
     model: str
+    year: Optional[int]
     review: str
     rating: Optional[float]
     date: Optional[str]
@@ -61,6 +63,10 @@ class EdmundsConsumerReviewScraper:
     """Scrape consumer reviews for a given make/model from Edmunds."""
 
     BASE_URL_TEMPLATE = "https://www.edmunds.com/{make_slug}/{model_slug}/consumer-reviews/"
+
+    YEAR_URL_TEMPLATE = (
+        "https://www.edmunds.com/{make_slug}/{model_slug}/{year}/consumer-reviews/"
+    )
 
     def __init__(self, session: Optional[requests.Session] = None) -> None:
         self.session = session or requests.Session()
@@ -77,39 +83,41 @@ class EdmundsConsumerReviewScraper:
         text = re.sub(r"[^a-z0-9]+", "-", text)
         return text.strip("-")
 
-    def build_url(self, make: str, model: str) -> str:
+    def build_url(self, make: str, model: str, year: Optional[int] = None) -> str:
+        if year is not None:
+            return self.YEAR_URL_TEMPLATE.format(
+                make_slug=self._slugify(make),
+                model_slug=self._slugify(model),
+                year=year,
+            )
         return self.BASE_URL_TEMPLATE.format(
             make_slug=self._slugify(make), model_slug=self._slugify(model)
         )
 
-    def fetch_reviews(self, make: str, model: str, limit: int = 20) -> List[ReviewRecord]:
-        url = self.build_url(make, model)
-        logger.info("Fetching reviews for %s %s from %s", make, model, url)
-        try:
-            response = self.session.get(url, timeout=20)
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            logger.warning("Failed to fetch %s: %s", url, exc)
-            return []
-
-        soup = BeautifulSoup(response.text, "html.parser")
+    def _parse_reviews(
+        self,
+        soup: BeautifulSoup,
+        *,
+        make: str,
+        model: str,
+        year: Optional[int],
+        limit: int,
+        source_url: str,
+    ) -> List[ReviewRecord]:
         reviews: List[ReviewRecord] = []
-
         for node in soup.find_all("script", attrs={"type": "application/ld+json"}):
             try:
                 data = json.loads(node.string or "{}")
             except json.JSONDecodeError:
                 continue
 
-            # Edmunds nests reviews under the product entry.
             potential_reviews: Sequence[dict]
             if isinstance(data, dict) and data.get("@type") == "Product":
                 potential_reviews = data.get("review", []) or []
             elif isinstance(data, list):
-                potential_reviews = []
-                for item in data:
-                    if isinstance(item, dict) and item.get("@type") == "Review":
-                        potential_reviews.append(item)
+                potential_reviews = [
+                    item for item in data if isinstance(item, dict) and item.get("@type") == "Review"
+                ]
             else:
                 continue
 
@@ -134,36 +142,65 @@ class EdmundsConsumerReviewScraper:
                     ReviewRecord(
                         make=make,
                         model=model,
+                        year=year,
                         review=body.strip(),
                         rating=rating,
                         date=date_published,
                         source="edmunds",
-                        source_url=url,
+                        source_url=source_url,
                     )
                 )
             if len(reviews) >= limit:
                 break
-
-        if not reviews:
-            logger.warning("No structured reviews found for %s %s", make, model)
-
         return reviews
+
+    def fetch_reviews(
+        self, make: str, model: str, *, year: Optional[int] = None, limit: int = 20
+    ) -> List[ReviewRecord]:
+        urls_to_try: List[str] = []
+        if year is not None:
+            urls_to_try.append(self.build_url(make, model, year))
+        urls_to_try.append(self.build_url(make, model))
+
+        for url in urls_to_try:
+            logger.info("Fetching reviews for %s %s%s from %s", make, model, f" {year}" if year else "", url)
+            try:
+                response = self.session.get(url, timeout=20)
+                response.raise_for_status()
+            except requests.RequestException as exc:
+                logger.warning("Failed to fetch %s: %s", url, exc)
+                continue
+
+            soup = BeautifulSoup(response.text, "html.parser")
+            reviews = self._parse_reviews(
+                soup,
+                make=make,
+                model=model,
+                year=year,
+                limit=limit,
+                source_url=url,
+            )
+            if reviews:
+                return reviews
+
+        logger.warning("No structured reviews found for %s %s%s", make, model, f" {year}" if year else "")
+        return []
 
 
 def fetch_top_make_model_pairs(db_path: Path, top_k: int) -> List[MakeModel]:
-    """Query the SQLite database for the most common make/model pairs."""
+    """Query the SQLite database for the most common make/model/year combinations."""
 
     if not db_path.exists():
         raise FileNotFoundError(
             f"Database not found at {db_path}. Ensure uni_vehicles.db is available."
         )
 
-    logger.info("Querying top %d make/model pairs from %s", top_k, db_path)
+    logger.info("Querying top %d make/model/year combinations from %s", top_k, db_path)
     sql = (
-        "SELECT make, model, COUNT(*) as cnt "
+        "SELECT make, model, year, COUNT(*) as cnt "
         "FROM unified_vehicle_listings "
         "WHERE make IS NOT NULL AND model IS NOT NULL "
-        "GROUP BY make, model "
+        "GROUP BY make, model, year "
         "ORDER BY cnt DESC "
         "LIMIT ?"
     )
@@ -172,12 +209,24 @@ def fetch_top_make_model_pairs(db_path: Path, top_k: int) -> List[MakeModel]:
         conn.row_factory = sqlite3.Row
         rows = conn.execute(sql, (top_k,)).fetchall()
 
-    return [MakeModel(row["make"], row["model"], int(row["cnt"])) for row in rows]
+    return [
+        MakeModel(row["make"], row["model"], row["year"], int(row["cnt"]))
+        for row in rows
+    ]
 
 
 def write_reviews_to_csv(reviews: Iterable[ReviewRecord], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fieldnames = ["Make", "Model", "Review", "ratings", "date", "source", "source_url"]
+    fieldnames = [
+        "Make",
+        "Model",
+        "Year",
+        "Review",
+        "ratings",
+        "date",
+        "source",
+        "source_url",
+    ]
     with output_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -186,6 +235,7 @@ def write_reviews_to_csv(reviews: Iterable[ReviewRecord], output_path: Path) -> 
                 {
                     "Make": record.make,
                     "Model": record.model,
+                    "Year": record.year,
                     "Review": record.review,
                     "ratings": record.rating,
                     "date": record.date,
@@ -202,11 +252,21 @@ def run(db_path: Path, top_k: int, output_path: Path, reviews_per_pair: int) -> 
 
     all_reviews: List[ReviewRecord] = []
     for pair in pairs:
-        scraped = scraper.fetch_reviews(pair.make, pair.model, limit=reviews_per_pair)
+        scraped = scraper.fetch_reviews(
+            pair.make,
+            pair.model,
+            year=pair.year if pair.year is not None else None,
+            limit=reviews_per_pair,
+        )
         if scraped:
             all_reviews.extend(scraped)
         else:
-            logger.info("Skipping %s %s due to missing reviews", pair.make, pair.model)
+            logger.info(
+                "Skipping %s %s%s due to missing reviews",
+                pair.make,
+                pair.model,
+                f" {pair.year}" if pair.year is not None else "",
+            )
 
     if not all_reviews:
         logger.warning("No reviews collected. Check network access or Edmunds markup.")
@@ -221,7 +281,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_DB_PATH,
         help="Path to uni_vehicles.db (default: data/car_dataset_idss/uni_vehicles.db)",
     )
-    parser.add_argument("--top-k", type=int, default=5, help="Number of make/model pairs to fetch")
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=5,
+        help="Number of make/model/year combinations to fetch",
+    )
     parser.add_argument(
         "--output",
         type=Path,
