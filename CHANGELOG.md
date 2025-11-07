@@ -7,6 +7,134 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-06
+
+### Changed
+
+#### Database Migration: california_vehicles.db → uni_vehicles.db
+- Migrated to unified vehicle database with 7.4x more vehicles (22,623 → 167,760)
+
+#### Semantic Parser Filter Normalization
+- Added Valid Filter Options section with exact categorical values from database
+
+### Fixed
+
+#### Filter Extraction Issues
+- **Issue**: "compact gas cars" extracted `body_style="compact"` (doesn't exist) → 0 results
+- **Fix**: "compact" now goes to `implicit_preferences.priorities` instead
+- **Issue**: "electric and hybrid" extracted `engine="electric,hybrid,gas"` (wrong column) → 0 results
+- **Fix**: Now correctly uses `fuel_type` filter with normalized values
+
+#### Files Modified
+- `idss_agent/tools/local_vehicle_store.py`: Database path, table name, location columns, format transformation
+- `config/prompts/semantic_parser.j2`: Added filter normalization guidelines and updated examples
+- `README.md`: Updated project structure with new database location, added database download instructions
+- `.gitignore`: Added data/car_dataset_idss/ to exclude large database from git
+
+---
+
+## 2025-11-05
+
+### Added
+
+#### Standalone Recommendation Test Script
+- Created `scripts/test_recommendation.py` for testing recommendation engine in isolation
+
+### Documentation
+- **README.md**: Added "Testing" section with usage examples for recommendation test script
+- **README.md**: Updated scripts section to include `test_recommendation.py`
+
+---
+
+## 2025-11-04
+
+### Added
+
+#### Two-Tier Location System
+- **Browser Geolocation Priority**: Uses latitude/longitude from browser geolocation API when user shares location
+- **ZIP Code Fallback**: If browser location denied, prompts for ZIP code and converts to coordinates
+- Created `idss_agent/tools/zipcode_lookup.py` with dictionary-based caching
+  - Loads **41,695 US ZIP codes** from CSV into memory (~3 MB)
+  - Lazy loading with global cache for O(1) lookups after first load
+  - `get_location_from_zip_or_coords()` handles priority logic
+- Added `user_latitude` and `user_longitude` to `VehicleSearchState` for location storage
+- ZIP code database lookup eliminates need for external geocoding APIs
+- Geographic search now works universally with haversine distance calculation
+
+#### New Vehicle Filters
+- **`drivetrain` filter**: AWD, FWD, RWD, 4WD (8,676 vehicles with AWD in database)
+- **`fuel_type` filter**: Gasoline, Electric, Hybrid, Plug-In Hybrid, Diesel (17,263 gasoline, 3,353 electric)
+- Both filters added to:
+  - `VehicleFilters` schema (TypedDict + Pydantic)
+  - SQL query construction (`local_vehicle_store.py`)
+  - Vector ranking system (`vector_ranker.py`)
+
+#### Default Search Radius
+- Automatically applies 100-mile search radius when user provides location but no explicit radius
+- Configurable via `config/agent_config.yaml`: `limits.default_search_radius`
+- Prevents empty results when user shares location without specifying distance
+
+#### Utilities & Scripts
+- Created `scripts/convert_zipcode_to_sqlite.py` for converting ZIP CSV to SQLite (optional)
+- Created `tests/test_location_system.py` with comprehensive location system tests
+- All 5 location tests passing (browser priority, ZIP fallback, geographic search)
+
+### Changed
+
+#### Filter Renaming for Semantic Clarity
+- **`miles` → `mileage`**: Renamed to clarify it's vehicle odometer reading (not travel distance)
+  - Updated in: `VehicleFilters`, SQL queries, vector ranker
+  - Description: "Vehicle's odometer reading in miles (e.g., '0-50000' for cars with under 50k miles)"
+- **`distance` → `search_radius`**: Renamed to clarify it's maximum travel distance to dealer
+  - Updated in: `VehicleFilters`, SQL queries, haversine calculation
+  - Description: "Maximum distance in miles you're willing to travel to pick up vehicle from dealer"
+- Prevents LLM confusion between odometer mileage, search radius, and commute distance
+
+#### Location Filtering Architecture
+- **Removed ZIP exact-match filtering**: No longer uses `WHERE dealer_zip = '94043'`
+- **Geographic-only filtering**: All location searches now use haversine distance calculation
+- ZIP code is now an **input method** (converted to coordinates) rather than a **filter**
+- Removed `zip` token from vector ranking (no longer a filterable attribute)
+- State filter removed from exact-match; kept only for optional state-specific searches
+
+#### Filter-to-SQL Mapping Improvements
+- Verified and corrected all 17 filter mappings
+- Ensured database columns match filter names or have explicit mapping comments
+- Multi-value filters properly handle comma-separated values
+- Range filters properly parse "min-max" format
+
+### Removed
+
+#### Features Filter Cleanup
+- **Removed `features` filter** from schema (TypedDict + Pydantic)
+- Reason: Auto.dev API does not provide structured feature data (sunroof, leather seats, etc.)
+- Prevents LLM from extracting non-functional filters that would fail SQL queries
+- Removed `features` token from vehicle embeddings in vector ranker
+
+### Fixed
+
+#### Geographic Search Issues
+- **Issue**: ZIP code being used as exact match filter instead of coordinate lookup
+- **Fix**: Implemented proper two-tier system with coordinate conversion
+- **Issue**: Missing search radius when location provided
+- **Fix**: Auto-apply default 100-mile radius when location exists but no explicit radius
+
+#### Filter Mapping Correctness
+- **Issue**: `miles` (vehicle odometer) confused with `distance` (search radius) and commute distance
+- **Fix**: Renamed both filters with explicit descriptions
+- **Issue**: `drivetrain` and `fuel_type` columns in database but not exposed as filters
+- **Fix**: Added both filters to schema and query construction
+
+#### Location System Consistency
+- All location searches now use consistent haversine distance calculation
+- SQL queries properly include `WHERE latitude IS NOT NULL AND longitude IS NOT NULL`
+- User location properly passed through: API → state → recommendation → SQL
+
+### Documentation
+
+- **README.md**: updated README.md
+---
+
 ## 2025-10-29
 
 ### Added

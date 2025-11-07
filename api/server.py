@@ -159,6 +159,11 @@ async def chat(request: ChatRequest):
         # Get or create session
         session_id, state = get_or_create_session(request.session_id)
 
+        # Store user location in state for distance calculations
+        if request.latitude and request.longitude:
+            state['user_latitude'] = request.latitude
+            state['user_longitude'] = request.longitude
+
         # Prepare message - include location as a hidden chat message if provided
         message = request.message
         if request.latitude and request.longitude:
@@ -491,7 +496,7 @@ async def handle_favorite(
             logger.info(f"Session {session_id}: Added vehicle {vin} to favorites. Total: {len(state['favorites'])}")
 
         # Generate proactive response using LLM
-        from idss_agent.components.proactive_responses import generate_favorite_response
+        from idss_agent.processing.proactive_responses import generate_favorite_response
 
         try:
             proactive_response = generate_favorite_response(request.vehicle, state)

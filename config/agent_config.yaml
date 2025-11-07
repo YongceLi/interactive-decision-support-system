@@ -63,6 +63,8 @@ limits:
   max_interview_questions: 3         # Maximum interview turns before forcing recommendation
   max_vehicle_summary_chars: 4000    # Maximum characters for vehicle JSON summary
   top_vehicles_to_show: 3            # Number of top vehicles to include in prompts
+  web_search_max_results: 3          # Maximum Tavily search results returned per query
+  default_search_radius: 100         # Default search radius in miles when location provided but no explicit radius
 
 # Interactive elements configuration
 interactive:
@@ -82,7 +84,8 @@ features:
   require_photos: true               # Require photos in vehicle listings
   enable_quick_replies: true         # Enable quick reply buttons (potential answers)
   enable_suggested_followups: false  # Enable suggested followup questions
-  
+  use_local_vehicle_store: true      # Toggle to use local SQLite dataset instead of Auto.dev
+
 # API Configuration (Auto.dev specific - modify for other data sources)
 api:
   base_url: "https://auto.dev/api"

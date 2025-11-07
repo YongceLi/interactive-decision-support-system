@@ -572,9 +572,9 @@ GET /session/{session_id}/events?event_type={optional_type}
   seating_capacity?: number;
   price?: string;         // "20000-30000"
   state?: string;         // "CA"
-  miles?: string;         // "0-50000"
+  mileage?: string;       // "0-50000"
   zip?: string;
-  distance?: number;
+  search_radius?: number;
   features?: string[];
 }
 ```
