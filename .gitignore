@@ -50,6 +50,7 @@ htmlcov/
 
 # Databases (keep structure, ignore if you don't want to commit data)
 # *.db
+data/car_dataset_idss/
 
 # OS
 .DS_Store

@@ -1,7 +1,7 @@
 """
 Local vehicle data access layer backed by SQLite.
 
-Provides filtered queries against the prebuilt california_vehicles.db dataset
+Provides filtered queries against the prebuilt uni_vehicles.db dataset
 and returns results shaped like the Auto.dev payloads expected by downstream
 components.
 """
@@ -23,7 +23,7 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parent.parent.parent
 
 
-DEFAULT_DB_PATH = _project_root() / "data" / "california_vehicles.db"
+DEFAULT_DB_PATH = _project_root() / "data" / "car_dataset_idss" / "uni_vehicles.db"
 
 
 class VehicleStoreError(RuntimeError):
@@ -91,9 +91,9 @@ def _haversine_distance_sql(user_lat: float, user_lon: float) -> str:
     # SQLite uses radians for trig functions
     return f"""
         ({earth_radius} * 2 * ASIN(SQRT(
-            POW(SIN((RADIANS(latitude) - RADIANS({user_lat})) / 2), 2) +
-            COS(RADIANS({user_lat})) * COS(RADIANS(latitude)) *
-            POW(SIN((RADIANS(longitude) - RADIANS({user_lon})) / 2), 2)
+            POW(SIN((RADIANS(dealer_latitude) - RADIANS({user_lat})) / 2), 2) +
+            COS(RADIANS({user_lat})) * COS(RADIANS(dealer_latitude)) *
+            POW(SIN((RADIANS(dealer_longitude) - RADIANS({user_lon})) / 2), 2)
         )))
     """
 
@@ -190,7 +190,7 @@ class LocalVehicleStore:
         if not vin:
             return None
 
-        sql = "SELECT raw_json FROM vehicle_listings WHERE vin = ? LIMIT 1"
+        sql = "SELECT raw_json FROM unified_vehicle_listings WHERE vin = ? LIMIT 1"
 
         try:
             with self._connect() as conn:
@@ -215,7 +215,12 @@ class LocalVehicleStore:
         user_longitude: Optional[float] = None,
     ) -> Tuple[str, Tuple[Any, ...]]:
         """Construct SQL query and parameter tuple from explicit filters."""
-        select_clause = "SELECT raw_json, price, mileage, primary_image_url, photo_count FROM vehicle_listings"
+        select_clause = """SELECT raw_json, price, mileage, primary_image_url, photo_count,
+            year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
+            doors, seats, exterior_color, interior_color,
+            dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
+            is_used, is_cpo, vdp_url, carfax_url, vin
+            FROM unified_vehicle_listings"""
         conditions: List[str] = []
         params: List[Any] = []
 
@@ -264,8 +269,8 @@ class LocalVehicleStore:
         if filters.get("search_radius") and user_latitude is not None and user_longitude is not None:
             radius_miles = filters["search_radius"]
             # Only include vehicles with valid lat/long coordinates
-            conditions.append("latitude IS NOT NULL")
-            conditions.append("longitude IS NOT NULL")
+            conditions.append("dealer_latitude IS NOT NULL")
+            conditions.append("dealer_longitude IS NOT NULL")
             # Add haversine distance calculation
             distance_expr = _haversine_distance_sql(user_latitude, user_longitude)
             conditions.append(f"({distance_expr}) <= {float(radius_miles)}")
@@ -341,18 +346,74 @@ class LocalVehicleStore:
         else:
             payload = {}
 
-        # Ensure price/miles are populated even if raw_json missing fields.
-        retail_listing = payload.setdefault("retailListing", {})
-        if row["price"] is not None:
-            retail_listing.setdefault("price", row["price"])
-        if row["mileage"] is not None:
-            retail_listing.setdefault("miles", row["mileage"])
+        # Check if this is the new unified format (flat structure) vs old Auto.dev format (nested)
+        # New format has fields like "heading", "data_source" at root level
+        # Old format has "vehicle" and "retailListing" as nested objects
+        is_unified_format = "data_source" in payload or ("vehicle" not in payload and "retailListing" not in payload)
 
-        # Backfill photo hint if missing
-        if row["primary_image_url"] and not retail_listing.get("primaryImage"):
-            retail_listing["primaryImage"] = row["primary_image_url"]
-        if row["photo_count"] is not None and not retail_listing.get("photoCount"):
-            retail_listing["photoCount"] = row["photo_count"]
+        if is_unified_format:
+            # Transform unified format to Auto.dev format expected by downstream code
+            # Prefer database columns over raw_json values (database columns are normalized)
+            vehicle_data = {
+                "vin": row["vin"],
+                "year": row["year"],
+                "make": row["make"],
+                "model": row["model"],
+                "trim": row["trim"],
+                "bodyStyle": row["body_style"],
+                "drivetrain": row["drivetrain"],
+                "engine": row["engine"],
+                "fuel": row["fuel_type"],
+                "transmission": row["transmission"],
+                "doors": row["doors"],
+                "seats": row["seats"],
+                "exteriorColor": row["exterior_color"],
+                "interiorColor": row["interior_color"],
+            }
 
-        return payload
+            # Extract retail listing info
+            retail_data = {
+                "price": row["price"],
+                "miles": row["mileage"],
+                "dealer": row["dealer_name"],
+                "city": row["dealer_city"],
+                "state": row["dealer_state"],
+                "zip": row["dealer_zip"],
+                "vdp": row["vdp_url"],
+                "carfaxUrl": row["carfax_url"],
+                "primaryImage": row["primary_image_url"],
+                "photoCount": row["photo_count"],
+                "used": row["is_used"] if row["is_used"] is not None else True,
+                "cpo": row["is_cpo"] if row["is_cpo"] is not None else False,
+            }
+
+            # Reconstruct in Auto.dev format
+            transformed_payload = {
+                "@id": payload.get("id", f"unified/{row['vin']}"),
+                "vin": row["vin"],
+                "online": payload.get("online", True),
+                "vehicle": vehicle_data,
+                "retailListing": retail_data,
+                "wholesaleListing": None,
+            }
+
+            # Keep original payload as metadata
+            transformed_payload["_original"] = payload
+
+            return transformed_payload
+        else:
+            # Old Auto.dev format - use existing logic
+            retail_listing = payload.setdefault("retailListing", {})
+            if row["price"] is not None:
+                retail_listing.setdefault("price", row["price"])
+            if row["mileage"] is not None:
+                retail_listing.setdefault("miles", row["mileage"])
+
+            # Backfill photo hint if missing
+            if row["primary_image_url"] and not retail_listing.get("primaryImage"):
+                retail_listing["primaryImage"] = row["primary_image_url"]
+            if row["photo_count"] is not None and not retail_listing.get("photoCount"):
+                retail_listing["photoCount"] = row["photo_count"]
+
+            return payload
 
