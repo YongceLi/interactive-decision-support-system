@@ -20,6 +20,13 @@ conda activate idss
 # Install Python dependencies
 pip install -r requirements.txt
 
+# Download vehicle database from Google Drive
+# Download the car_dataset_idss.zip file from:  https://drive.google.com/drive/folders/17TqIRStI9mwEvcshx4jjzqiN9rLfTcZZ?usp=drive_link
+# Extract and place it in the data/ directory:
+mkdir -p data
+# Extract car_dataset_idss.zip to data/car_dataset_idss/
+# The final structure should be: data/car_dataset_idss/uni_vehicles.db
+
 # Create .env file in project root
 cat > .env << EOF
 OPENAI_API_KEY=your-openai-api-key-here
@@ -39,6 +46,42 @@ npm run dev
 **Note**: The application will be available at:
 - API: `http://localhost:8000`
 - Web Interface: `http://localhost:3000`
+
+### Database Setup
+
+The system requires the unified vehicle database to function. Due to its size (~840MB), the database is hosted externally.
+
+**Download Instructions:**
+
+1. **Download** the database from Google Drive: `[GOOGLE_DRIVE_LINK_HERE]`
+2. **Extract** the downloaded `car_dataset_idss.zip` file
+3. **Place** the extracted `car_dataset_idss` folder in the `data/` directory
+
+**Expected directory structure:**
+```
+interactive-decision-support-system/
+├── data/
+│   ├── car_dataset_idss/
+│   │   └── uni_vehicles.db          # 167,760 vehicles (840MB)
+│   ├── feature_data.db
+│   ├── safety_data.db
+│   └── zip_code_database.csv
+```
+
+**Verification:**
+```bash
+# Verify the database is in the correct location
+ls -lh data/car_dataset_idss/uni_vehicles.db
+
+# Should show: uni_vehicles.db (~840MB)
+```
+
+**Database Contents:**
+- **167,760 vehicles** from nationwide dealers
+- Includes both MarketCheck and Auto.dev data sources
+- California: 55,818 vehicles with location data
+- Price range: $0 - $500,000+
+- Years: 1990 - 2026
 
 ### API Endpoints
 
@@ -102,7 +145,8 @@ interactive-decision-support-system/
 │   └── prompts/                    # Jinja2 templates
 │
 ├── data/
-│   ├── california_vehicles.db      # Vehicle database (22,623 vehicles)
+│   ├── car_dataset_idss/
+│   │   └── uni_vehicles.db         # Unified vehicle database (167,760 vehicles, nationwide)
 │   ├── feature_data.db             # Vehicle features database
 │   ├── safety_data.db              # Safety ratings database
 │   └── zip_code_database.csv       # ZIP coordinate data (41,695 ZIP codes)

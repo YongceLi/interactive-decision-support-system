@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-06
+
+### Changed
+
+#### Database Migration: california_vehicles.db → uni_vehicles.db
+- Migrated to unified vehicle database with 7.4x more vehicles (22,623 → 167,760)
+
+#### Semantic Parser Filter Normalization
+- Added Valid Filter Options section with exact categorical values from database
+
+### Fixed
+
+#### Filter Extraction Issues
+- **Issue**: "compact gas cars" extracted `body_style="compact"` (doesn't exist) → 0 results
+- **Fix**: "compact" now goes to `implicit_preferences.priorities` instead
+- **Issue**: "electric and hybrid" extracted `engine="electric,hybrid,gas"` (wrong column) → 0 results
+- **Fix**: Now correctly uses `fuel_type` filter with normalized values
+
+#### Files Modified
+- `idss_agent/tools/local_vehicle_store.py`: Database path, table name, location columns, format transformation
+- `config/prompts/semantic_parser.j2`: Added filter normalization guidelines and updated examples
+- `README.md`: Updated project structure with new database location, added database download instructions
+- `.gitignore`: Added data/car_dataset_idss/ to exclude large database from git
+
+---
+
 ## 2025-11-05
 
 ### Added

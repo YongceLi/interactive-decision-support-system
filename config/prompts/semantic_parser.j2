@@ -52,15 +52,36 @@ Rules:
 - If user says "low mileage", use "0-30000"
 - Infer implicit preferences from context clues (e.g., "family" → family-oriented, safety priority)
 
+**Valid Filter Options (use these exact values):**
+
+**fuel_type** - Choose from: Gasoline, Unleaded, Electric, Hybrid, Diesel, Plug-In Hybrid
+  - User says "gas"/"gasoline" → use "Gasoline,Unleaded"
+  - User says "electric"/"EV" → use "Electric"
+  - User says "hybrid" → use "Hybrid"
+  - User says "plug-in hybrid" → use "Plug-In Hybrid"
+  - User says "diesel" → use "Diesel"
+
+**body_style** - Choose from: Sedan, SUV, Pickup, Hatchback, Coupe, Convertible, Minivan, Wagon, Cargo Van
+  - User says "truck" → use "Pickup"
+  - User says "van" → use "Cargo Van" or "Minivan"
+  - For size terms like "compact"/"small"/"large" → DO NOT use body_style, add to implicit_preferences instead
+
+**drivetrain** - Choose from: AWD, 4WD, FWD, RWD
+  - User says "all-wheel drive" → use "AWD" or "AWD,4WD"
+  - User says "four-wheel drive" → use "4WD"
+
+**transmission** - Choose from: Automatic, Manual, CVT
+  - User says "automatic" → use "Automatic" (or "Automatic,CVT" for broader match)
+
 Examples:
 
-Example 1 - Initial search:
-User: "I'm looking for a reliable sedan under $25k"
+Example 1 - Initial search with fuel type:
+User: "I'm looking for an electric sedan under $25k"
 Output:
 {
   "has_new_filters": true,
-  "explicit_filters": {"body_style": "sedan", "price": "0-25000"},
-  "implicit_preferences": {"priorities": ["reliability"], "budget_sensitivity": "moderate"}
+  "explicit_filters": {"body_style": "Sedan", "fuel_type": "Electric", "price": "0-25000"},
+  "implicit_preferences": {"priorities": ["affordability"], "budget_sensitivity": "budget-conscious"}
 }
 
 Example 2 - Multiple options:
@@ -151,5 +172,21 @@ Output:
   "explicit_filters": {},
   "implicit_preferences": {}
 }
+
+Example 8 - Multiple fuel types with size preference:
+User: "Can we check out some affordable electric and hybrid options? Also some compact gas cars"
+Output:
+{
+  "has_new_filters": true,
+  "explicit_filters": {
+    "fuel_type": "Electric,Hybrid,Gasoline,Unleaded"
+  },
+  "implicit_preferences": {
+    "priorities": ["affordability", "compact size"],
+    "budget_sensitivity": "budget-conscious",
+    "notes": "User wants electric, hybrid, and compact gasoline vehicles"
+  }
+}
+Note: "compact" is a SIZE preference, not a body_style. Do NOT extract as body_style filter.
 
 Now analyze the conversation and extract filters accordingly.
