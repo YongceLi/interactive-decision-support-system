@@ -95,7 +95,11 @@ Create a JSON object with keys writing_style, interaction_style, family_backgrou
 goal_summary, and user_message. The user_message must be the exact text the
 persona will send to the assistant in a single turn. It should reflect their
 writing style and refer to their family/life context when appropriate. Keep it
-under 120 words and avoid lists/bullets.
+under 120 words and avoid lists/bullets. In details:
+- writing_style: A brief description of the user's writing style.
+- interaction_style: A brief description of how the user prefers to interact.
+- family_background: A brief summary of the user's family/life context relevant to car buying.
+- goal_summary: A concise summary of the user's goal when interacting with a car recommendation agent.
 """,
         ),
     ]

@@ -11,6 +11,10 @@ from typing import List, Optional
 import pandas as pd
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 logger = logging.getLogger("review_enricher")
@@ -53,9 +57,9 @@ Review metadata:
 Review text:
 {review}
 
-Return JSON with keys "likes", "dislikes", and "intention".
-- likes: 1-3 entries. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified.
-- dislikes: 0-3 entries with the same schema describing what they want to avoid.
+Return JSON with keys "likes", "dislikes", and "intention". First, determine the make/model/year/condition preferences implied by the review. Then, bucket the makes/models/years/conditions into their respective categories. Finally, summarize the reviewer's intention when interacting with a car recommendation agent.
+- likes: This bucket is for make/model/year/condition that are preferred by the reviewer. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified
+- dislikes: This bucket is for make/model/year/condition that are avoided by the reviewer. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified
 - intention: One or two sentences about their goal when interacting with a car recommendation agent.
 
 Focus only on signals grounded in the review; never hallucinate brands not implied.
