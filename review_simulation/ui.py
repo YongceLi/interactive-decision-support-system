@@ -25,6 +25,18 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         console.print(f"[bold]Interaction style:[/bold] {turn.interaction_style}")
         console.print(f"[bold]Family background:[/bold] {turn.family_background}")
         console.print(f"[bold]Goal summary:[/bold] {turn.goal_summary}")
+        console.print(
+            "[bold]Preferences:[/bold] "
+            f"Makes {', '.join(persona.mentioned_makes) if persona.mentioned_makes else 'unspecified'} | "
+            f"Models {', '.join(persona.mentioned_models) if persona.mentioned_models else 'unspecified'} | "
+            f"Years {', '.join(str(year) for year in persona.mentioned_years) if persona.mentioned_years else 'unspecified'} | "
+            f"Condition {persona.preferred_condition or 'unspecified'} | "
+            f"Newness {persona.newness_preference_score or 'unknown'} ({persona.newness_preference_notes or 'no context'}) | "
+            f"Type {persona.preferred_vehicle_type or 'unspecified'} | "
+            f"Fuel {persona.preferred_fuel_type or 'unspecified'} | "
+            f"Openness {persona.alternative_openness or 'unknown'} | "
+            f"Notes {persona.misc_notes or 'none'}"
+        )
         console.print()
         console.print(f"[bold]User turn:[/bold] {turn.message}")
         console.print()

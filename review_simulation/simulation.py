@@ -78,7 +78,8 @@ PERSONA_PROMPT = ChatPromptTemplate.from_messages(
         (
             "system",
             "You craft single-turn user utterances for a car recommendation demo."
-            "Read the reviewer's background and produce a concise, natural query.",
+            "Read the reviewer's background and produce a concise, natural query."
+            "Every generated query must restate the shopper's concrete preferences.",
         ),
         (
             "human",
@@ -90,6 +91,15 @@ Review excerpt: "{review}"
 Likes: {likes}
 Dislikes: {dislikes}
 Stated intention: {intention}
+Mentioned makes: {mentioned_makes}
+Mentioned models: {mentioned_models}
+Mentioned years: {mentioned_years}
+Preferred condition: {preferred_condition}
+Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
+Preferred vehicle type: {preferred_vehicle_type}
+Preferred fuel type: {preferred_fuel_type}
+Openness to alternatives (1-10): {openness_to_alternatives}
+Other priorities: {misc_notes}
 
 Create a JSON object with keys writing_style, interaction_style, family_background,
 goal_summary, and user_message. The user_message must be the exact text the
@@ -100,6 +110,9 @@ under 120 words and avoid lists/bullets. In details:
 - interaction_style: A brief description of how the user prefers to interact.
 - family_background: A brief summary of the user's family/life context relevant to car buying.
 - goal_summary: A concise summary of the user's goal when interacting with a car recommendation agent.
+- user_message: Must clearly mention the desired make/model (if any), relevant years, whether the car should be new or used, how
+  new they want the search to be, body style, preferred fuel type, willingness to consider alternatives, and any additional
+  priorities highlighted above.
 """,
         ),
     ]
@@ -112,7 +125,8 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "system",
             "You evaluate car recommendations for a simulated shopper."
             "Decide if each vehicle matches the persona's expressed likes/dislikes."
-            "Only use make, model, year, condition (new/used), and dealer location to judge.",
+            "Only use make, model, year, condition (new/used), body style, fuel type, and dealer location to judge."
+            "Respect their newness preference scale and openness to alternatives when deciding satisfaction.",
         ),
         (
             "human",
@@ -123,6 +137,15 @@ Interaction style: {interaction_style}
 Family background: {family_background}
 Likes: {likes}
 Dislikes: {dislikes}
+Mentioned makes: {mentioned_makes}
+Mentioned models: {mentioned_models}
+Mentioned years: {mentioned_years}
+Preferred condition: {preferred_condition}
+Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
+Preferred vehicle type: {preferred_vehicle_type}
+Preferred fuel type: {preferred_fuel_type}
+Openness to alternatives (1-10): {openness_to_alternatives}
+Other priorities: {misc_notes}
 
 For each vehicle below decide if the persona would be satisfied. Respond with
 JSON: {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>}}, ...]}}.
@@ -153,6 +176,12 @@ def _affinities_to_text(items: List[VehicleAffinity]) -> str:
             summary += f" ({item.rationale})"
         parts.append(summary)
     return "; ".join(parts)
+
+
+def _list_to_text(values: List[str]) -> str:
+    if not values:
+        return "None"
+    return ", ".join(values)
 
 
 def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]:
@@ -202,6 +231,16 @@ def _build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTur
         likes=likes_text,
         dislikes=dislikes_text,
         intention=persona.intention or "",
+        mentioned_makes=_list_to_text(persona.mentioned_makes),
+        mentioned_models=_list_to_text(persona.mentioned_models),
+        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
+        preferred_condition=persona.preferred_condition or "unspecified",
+        newness_preference_score=persona.newness_preference_score or "unknown",
+        newness_preference_notes=persona.newness_preference_notes or "",
+        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
+        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
+        openness_to_alternatives=persona.alternative_openness or "unknown",
+        misc_notes=persona.misc_notes or "None stated",
     )
     draft = structured_model.invoke(prompt.to_messages())
     return PersonaTurn(
@@ -231,6 +270,16 @@ def _assess_vehicles(
         family_background=persona_turn.family_background,
         likes=likes_text,
         dislikes=dislikes_text,
+        mentioned_makes=_list_to_text(persona.mentioned_makes),
+        mentioned_models=_list_to_text(persona.mentioned_models),
+        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
+        preferred_condition=persona.preferred_condition or "unspecified",
+        newness_preference_score=persona.newness_preference_score or "unknown",
+        newness_preference_notes=persona.newness_preference_notes or "",
+        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
+        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
+        openness_to_alternatives=persona.alternative_openness or "unknown",
+        misc_notes=persona.misc_notes or "None stated",
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())
