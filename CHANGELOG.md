@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-09
+
+### Added
+
+#### Experimental Recommendation Methods
+- **Method 1 (SQL + Vector + MMR)**: Hybrid SQL query with diversity enforcement via window functions (max 20 vehicles per make/model), vector ranking, and MMR diversification (λ=0.7)
+- **Method 2 (Web Search + Parallel SQL)**: LLM + web search (Tavily) suggests relevant makes, spawns parallel SQL queries per make, vector ranks within each make, proportional selection ensures diversity
+- Created `idss_agent/processing/diversification.py` with MMR algorithm utilities
+- Created `idss_agent/processing/recommendation_method1.py` implementing Method 1
+- Created `idss_agent/processing/recommendation_method2.py` implementing Method 2 with Tavily integration
+- Created `scripts/test_recommendation_methods.py` standalone test script for natural language queries
+
+#### SQL-Level Diversity Enforcement
+- Added `max_per_make_model` parameter to `LocalVehicleStore.search_listings()`
+- Implemented SQL window functions (`ROW_NUMBER() OVER PARTITION BY make, model`) to limit vehicles per combination
+- Prevents homogeneous results when SQL returns clustered data (e.g., 100 Honda Civics)
+
+#### Diversity Statistics
+- Added comprehensive diversity metrics to test output: unique makes/models/combinations, distribution counts
+- Test scripts output JSON with full vehicle lists and diversity stats
+
+### Documentation
+- **README.md**: Added "New Recommendation Methods (Experimental)" section with usage examples and concise method descriptions
+- **README.md**: Updated testing section with bash commands for both methods
+
+---
+
 ## 2025-11-06
 
 ### Changed

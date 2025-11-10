@@ -138,6 +138,7 @@ class LocalVehicleStore:
         order_dir: str = "ASC",
         user_latitude: Optional[float] = None,
         user_longitude: Optional[float] = None,
+        max_per_make_model: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Execute a filtered search against the local database.
@@ -150,6 +151,8 @@ class LocalVehicleStore:
             order_dir: Sort direction ("ASC" or "DESC").
             user_latitude: Optional user latitude for distance filtering.
             user_longitude: Optional user longitude for distance filtering.
+            max_per_make_model: Optional limit on vehicles per make/model combination
+                               (enforces diversity via SQL window functions)
 
         Returns:
             List of listing payloads shaped like Auto.dev responses.
@@ -162,6 +165,7 @@ class LocalVehicleStore:
             order_dir,
             user_latitude,
             user_longitude,
+            max_per_make_model,
         )
         sql_single_line = " ".join(sql.split())
         logger.info(
@@ -213,6 +217,7 @@ class LocalVehicleStore:
         order_dir: str,
         user_latitude: Optional[float] = None,
         user_longitude: Optional[float] = None,
+        max_per_make_model: Optional[int] = None,
     ) -> Tuple[str, Tuple[Any, ...]]:
         """Construct SQL query and parameter tuple from explicit filters."""
         select_clause = """SELECT raw_json, price, mileage, primary_image_url, photo_count,
@@ -321,13 +326,44 @@ class LocalVehicleStore:
         # Fall back to ascending unless explicitly descending
         direction = "DESC" if order_dir.upper() == "DESC" else "ASC"
 
-        sql = (
-            f"{select_clause}{where_clause} "
-            f"ORDER BY {order_column} {direction}, vin ASC "
-            f"LIMIT ? OFFSET ?"
-        )
+        # Build final SQL with optional window function for diversity
+        if max_per_make_model is not None:
+            # Use window function to limit vehicles per make/model combination
+            # This enforces diversity at the SQL level
+            # Note: Add ROW_NUMBER as an additional column in the CTE
+            sql = f"""
+            WITH ranked_vehicles AS (
+                SELECT raw_json, price, mileage, primary_image_url, photo_count,
+                    year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
+                    doors, seats, exterior_color, interior_color,
+                    dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
+                    is_used, is_cpo, vdp_url, carfax_url, vin,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY make, model
+                        ORDER BY {order_column} {direction}, vin ASC
+                    ) as row_num
+                FROM unified_vehicle_listings{where_clause}
+            )
+            SELECT raw_json, price, mileage, primary_image_url, photo_count,
+                year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
+                doors, seats, exterior_color, interior_color,
+                dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
+                is_used, is_cpo, vdp_url, carfax_url, vin
+            FROM ranked_vehicles
+            WHERE row_num <= ?
+            ORDER BY {order_column} {direction}, vin ASC
+            LIMIT ? OFFSET ?
+            """
+            params.extend([max_per_make_model, limit, offset])
+        else:
+            # Standard query without window function
+            sql = (
+                f"{select_clause}{where_clause} "
+                f"ORDER BY {order_column} {direction}, vin ASC "
+                f"LIMIT ? OFFSET ?"
+            )
+            params.extend([limit, offset])
 
-        params.extend([limit, offset])
         return sql, tuple(params)
 
     @staticmethod

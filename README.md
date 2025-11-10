@@ -463,16 +463,38 @@ features:
 
 ## Testing
 
-### Recommendation Engine Test Script
+### Recommendation Engine Test Scripts
 
-Test the recommendation pipeline in isolation with natural language queries:
+#### Original Recommendation Pipeline
+
+Test the standard recommendation pipeline:
 
 ```bash
-# Basic usage
 python scripts/test_recommendation.py "I want a safe car for my daughter"
-
-# Save to file
-python scripts/test_recommendation.py "I want a safe car for my daughter" > results.json
 ```
 
-**Output**: JSON with extracted filters, SQL query, location data, and 20 recommended vehicles.
+#### New Recommendation Methods (Experimental)
+
+Test two new diversity-focused recommendation approaches:
+
+```bash
+# Method 1: SQL + Vector + MMR Diversification
+python scripts/test_recommendation_methods.py "affordable electric and hybrid cars" --method 1
+
+# Method 2: Web Search + Parallel SQL
+python scripts/test_recommendation_methods.py "affordable electric and hybrid cars" --method 2
+```
+
+**Method 1 (SQL + Vector + MMR)**:
+- Hybrid SQL query (exact matches + diverse alternatives)
+- Window functions limit max 20 vehicles per make/model
+- Vector ranking by relevance
+- MMR diversification (λ=0.7) for final selection
+
+**Method 2 (Web Search + Parallel SQL)**:
+- LLM + web search suggests relevant makes
+- Parallel SQL queries per make
+- Vector ranking within each make
+- Proportional selection ensures make diversity
+
+**Output**: JSON with filters, vehicles, and diversity statistics (unique makes/models/combinations).
