@@ -15,6 +15,10 @@ fastapi>=0.104.0
 uvicorn>=0.24.0
 pydantic>=2.0.0
 sse-starlette>=1.6.0  # For Server-Sent Events (streaming progress updates)
+folium>=0.15.0
+pandas>=2.0.0
+beautifulsoup4>=4.12.0  # For web scraping of review content
+rich>=13.7.0  # For terminal UI rendering in review simulation mode
 
 # Python typing extensions
 typing-extensions>=4.8.0

@@ -154,10 +154,49 @@ interactive-decision-support-system/
 ├── tests/                          # Test suites
 │   └── test_location_system.py
 │
+├── review_simulation/              # Review-driven single turn simulator
+│   ├── persona.py                  # CSV loaders and affinity parsing
+│   ├── simulation.py               # Core simulation + evaluation logic
+│   ├── ui.py                       # Rich terminal renderer
+│   └── run.py                      # CLI entry point
 └── scripts/                        # Utility scripts
     ├── convert_zipcode_to_sqlite.py  # Convert ZIP CSV to SQLite (optional)
-    └── demo.py                       # Demo/testing script
+    ├── demo.py                       # Demo/testing script
+    ├── review_scraper.py             # Fetch top make/model pairs and scrape reviews
+    ├── review_enricher.py            # Derive personas from scraped reviews via GPT-4o-mini
+    └── test_recommendation.py        # Standalone recommendation runner
 ```
+
+### Review-based single turn simulation workflow
+
+The repository now includes a complete pipeline for building single-turn user personas straight from real-world review data.
+
+1. **Collect top makes/models and scrape reviews**
+   ```bash
+   python scripts/review_scraper.py --top-k 10 --output data/reviews/raw_reviews.csv
+   ```
+   This query looks up the most common make/model pairs in `data/car_dataset_idss/uni_vehicles.db` and downloads up to 20
+   consumer reviews per pair from Edmunds. The script stores the consolidated dataset (make, model, review text, rating, date)
+   in CSV format. Network hiccups are logged and skipped so partial progress is preserved.
+
+2. **Enrich reviews with GPT-4o-mini**
+   ```bash
+   python scripts/review_enricher.py data/reviews/raw_reviews.csv --output data/reviews/enriched_reviews.csv
+   ```
+   Each review is sent to `gpt-4o-mini`, which infers the vehicles/configurations the author likes or dislikes and why, along
+   with their intent when seeking a recommender. The output file keeps the original review fields and adds JSON columns
+   (`liked_options`, `disliked_options`) plus the natural-language `user_intention` summary.
+
+3. **Run the review-driven simulation**
+   ```bash
+   python review_simulation/run.py data/reviews/enriched_reviews.csv --max-personas 3 --limit 20 --metric-k 20
+   ```
+   The simulator creates a single-turn user query for each persona, executes the full recommendation pipeline via
+   `scripts/test_recommendation.py`, and has the LLM judge each of the top-k vehicles based on the persona's expressed likes
+   and dislikes. A Rich-powered terminal UI displays the persona description, their one-shot message, each recommended
+   vehicle (make/model/year/condition/location), the satisfaction verdict, rationale, and precision@k/recall@k metrics.
+
+All steps require the OpenAI API key (set in `.env`). The scraping stage also needs outbound internet access to Edmunds.
 
 ---
 

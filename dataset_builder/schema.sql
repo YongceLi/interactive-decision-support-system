@@ -71,15 +71,14 @@ CREATE INDEX IF NOT EXISTS idx_make_price ON vehicle_listings(make, price);
 CREATE INDEX IF NOT EXISTS idx_body_style_price ON vehicle_listings(body_style, price);
 
 -- Progress tracking table
-CREATE TABLE IF NOT EXISTS fetch_progress (
+CREATE TABLE IF NOT EXISTS zip_fetch_progress (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    make TEXT NOT NULL,
-    model TEXT NOT NULL,
+    zip_code TEXT NOT NULL,
     vehicles_fetched INTEGER DEFAULT 0,
     fetched_at TEXT NOT NULL,
     status TEXT DEFAULT 'completed',  -- 'completed', 'failed', 'partial'
     error_message TEXT,
-    UNIQUE(make, model)
+    UNIQUE(zip_code)
 );
 
 -- Statistics table (optional, for quick stats access)

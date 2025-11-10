@@ -4,7 +4,7 @@ Build a comprehensive local SQLite database of California vehicle listings for t
 
 ## Overview
 
-This module fetches vehicle listings from California across all 2,479 make/model combinations found in `safety_data.db` and stores them in a fast, queryable SQLite database.
+This module fetches every vehicle listing available from California's Bay Area (zip codes listed in `bay_area_zip.csv`) and stores them in a fast, queryable SQLite database.
 
 ## Why SQLite?
 
@@ -42,31 +42,41 @@ Full schema: `dataset_builder/schema.sql`
 ## Dataset Specifications
 
 - **Source**: Auto.dev Listings API
-- **Location**: California only (`retailListing.state=CA`)
-- **Years**: 2018-2026
-- **Mileage Range**: 0-150,000 miles
-- **Vehicles per Model**: Up to 50
-- **Total Make/Model Combinations**: 2,479
-- **Expected Total Vehicles**: 60,000-100,000 (unique VINs)
-- **Expected API Calls**: ~2,500
-- **Estimated Runtime**: 8-12 minutes
-- **Database Size**: ~100-200 MB
+- **Location**: California Bay Area zip codes (`bay_area_zip.csv`)
+- **Years**: All available model years (no filter applied)
+- **Mileage Range**: All available odometer readings (no filter applied)
+- **Listings per Zip**: All available Bay Area listings (new and used when present)
+- **Total Zip Codes**: Matches entries in `bay_area_zip.csv`
+- **Expected API Calls**: Dependent on inventory volume across Bay Area zip codes
+- **Estimated Runtime**: Varies with API responses and available inventory
+- **Database Size**: Dependent on available inventory
 
 ## Files
 
 ```
 dataset_builder/
-├── README.md                     # This file
-├── schema.sql                    # SQLite database schema
-├── fetch_california_dataset.py   # Main fetcher script
-└── (output) → data/california_vehicles.db
+├── README.md                          # This file
+├── schema.sql                         # Auto.dev SQLite schema
+├── unified_schema.sql                 # Unified schema shared by merged datasets
+├── unified_schema_reference.md        # Column-by-column documentation for the unified schema
+├── fetch_california_dataset.py        # Auto.dev fetcher script
+├── marketcheck_schema.sql             # Marketcheck SQLite schema
+├── fetch_marketcheck_dataset.py       # Marketcheck fetcher script
+├── marketcheck_stats.py               # Marketcheck reporting helper
+├── merge_sqlite_datasets.py           # Merge Auto.dev & Marketcheck SQLite files
+├── fetch_unified_dataset.py           # Fetch Auto.dev/Marketcheck data directly into the unified schema
+├── unified_stats.py                   # Summary statistics for unified_vehicle_listings
+├── visualize_california_zip_map.py    # Choropleth map of California inventory by ZIP
+└── (output)
+    ├── data/california_vehicles.db    # Auto.dev dataset
+    └── data/marketcheck_vehicles.db   # Marketcheck dataset
 ```
 
 ## Usage
 
 ### Prerequisites
 
-1. Ensure `AUTODEV_API_KEY` is set in `.env`
+1. Ensure `AUTODEV_API_KEY` and/or `MARKETCHECK_API_KEY` are set in `.env`
 2. Dependencies already installed (requests, python-dotenv, sqlite3 is built-in)
 
 ### Run the Fetcher
@@ -77,15 +87,128 @@ From project root:
 python dataset_builder/fetch_california_dataset.py
 ```
 
+or, for Marketcheck listings:
+
+```bash
+python dataset_builder/fetch_marketcheck_dataset.py
+```
+
+The script automatically:
+
+1. Loads Bay Area zip codes from `dataset_builder/bay_area_zip.csv`
+2. Iterates over every zip code in the Bay Area list
+3. Fetches every available Bay Area listing per zip, balancing new and used requests
+4. Restricts all API requests to the Bay Area zip codes
+5. Stores the deduplicated (by VIN) results in `data/california_vehicles.db`
+
 ### Output
 
 Creates `data/california_vehicles.db` with:
 - `vehicle_listings` table: All vehicles with indexed fields
-- `fetch_progress` table: Progress tracking for resume support
+- `zip_fetch_progress` table: Progress tracking for resume support
+
+Creates `data/marketcheck_vehicles.db` with:
+- `marketcheck_listings` table: Marketcheck inventory search results (all listing fields + raw JSON)
+- `marketcheck_zip_progress` table: Bay Area zip code progress tracker
+
+### Explore California Dataset Statistics
+
+Summarize make/model distribution, inventory mix, pricing buckets, and dealer hotspots for the Auto.dev dataset without re-running the fetcher:
+
+```bash
+python dataset_builder/california_stats.py
+```
+
+### Explore Marketcheck Statistics
+
+Generate distribution summaries for make, model, inventory type, pricing buckets, and dealer coverage without refetching data:
+
+```bash
+python dataset_builder/marketcheck_stats.py
+```
+
+### Merge Auto.dev and Marketcheck Datasets
+
+Convert any combination of Auto.dev (`vehicle_listings`) and Marketcheck
+(`marketcheck_listings`) SQLite files into a single database with a unified
+schema. Duplicate VINs are resolved in favour of Marketcheck entries.
+
+```bash
+python dataset_builder/merge_sqlite_datasets.py \
+  data/unified_vehicles.db \
+  data/california_vehicles.db \
+  data/marketcheck_vehicles.db
+```
+
+The output database uses the schema stored in `dataset_builder/unified_schema.sql`
+and records the origin of each row in the `source` column (`autodev` or
+`marketcheck`).
+
+For a detailed description of every field, refer to
+[`unified_schema_reference.md`](./unified_schema_reference.md).
+
+### Fetch directly into the unified schema
+
+Skip the intermediate source-specific databases by fetching Auto.dev or
+Marketcheck listings straight into `unified_vehicle_listings`:
+
+```bash
+# Auto.dev example with custom filters
+python dataset_builder/fetch_unified_dataset.py autodev \
+  --base-params '{"retailListing.state": "CA", "vehicle.make": "Tesla"}' \
+  --output-db data/unified_vehicles.db
+
+# Marketcheck example using raw query parameters
+python dataset_builder/fetch_unified_dataset.py marketcheck \
+  --base-params '{"zip": "94105", "radius": "25"}'
+```
+
+Pass `--base-params` either as an inline JSON string or a path to a JSON
+file containing request parameters. The script honours the VIN priority used
+during merges (Marketcheck rows replace Auto.dev rows when duplicates are
+encountered).
+
+### Unified dataset statistics
+
+Inspect the combined dataset with `unified_stats.py`:
+
+```bash
+python dataset_builder/unified_stats.py --db data/unified_vehicles.db
+```
+
+The report shows:
+
+- Top 20 makes with dataset share percentages
+- Top 10 models within each leading make
+- Inventory mix, price buckets, and location breakdowns (state, city, ZIP)
+
+### California ZIP choropleth
+
+Render an interactive California map coloured by listing density per ZIP:
+
+```bash
+python dataset_builder/visualize_california_zip_map.py \
+  --db data/unified_vehicles.db \
+  --output data/california_zip_map.html
+```
+
+The script downloads a lightweight California ZIP GeoJSON boundary file the
+first time it runs (or you can supply a custom file via `--geojson`). Open the
+generated HTML file in a browser to explore the distribution.
 
 ### Resume Interrupted Runs
 
 If the script stops, simply re-run it - it automatically resumes from where it left off.
+
+### View Dataset Statistics
+
+Statistics are printed at the end of the run and can be regenerated without refetching:
+
+```bash
+python -c "from dataset_builder.fetch_california_dataset import DatasetFetcher; DatasetFetcher().generate_stats()"
+```
+
+The output includes total vehicles, unique VINs, top makes, and price distribution.
 
 ## Features
 
@@ -100,8 +223,8 @@ If the script stops, simply re-run it - it automatically resumes from where it l
 - Timeouts with retry logic
 
 ### Progress Tracking
-- Database tracks completed make/model combinations
-- Real-time progress updates every 50 models
+- Database tracks completed Bay Area zip codes
+- Real-time progress updates per zip code processed
 - Final statistics with database size
 
 ## Querying the Database
@@ -161,15 +284,14 @@ Edit parameters in `fetch_california_dataset.py`:
 # In main() function
 fetcher = DatasetFetcher(db_path="data/california_vehicles.db")
 fetcher.fetch_all(
-    limit_per_model=50,      # Vehicles to fetch per make/model
-    rate_limit_delay=0.2     # Seconds between API calls
+    limit_per_zip=None,    # Fetch all available vehicles per Bay Area zip code
+    rate_limit_delay=0.2   # Seconds between API calls
 )
 
-# In fetch_vehicles_for_model()
+# In fetch_vehicles_for_zip()
 params = {
-    "vehicle.year": "2018-2026",           # Customize year range
-    "retailListing.state": "CA",           # Change state
-    "retailListing.miles": "0-150000",     # Customize mileage
+    "retailListing.state": "CA",  # Change state if needed
+    "retailListing.zip": zip_code, # Replace or expand with other filters
 }
 ```
 
@@ -211,7 +333,7 @@ After building the dataset:
 **Check progress during run**
 ```bash
 sqlite3 data/california_vehicles.db \
-  "SELECT COUNT(*) as completed FROM fetch_progress WHERE status='completed'"
+  "SELECT COUNT(*) as completed FROM zip_fetch_progress WHERE status='completed'"
 ```
 
 ## Database Maintenance
