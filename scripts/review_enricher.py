@@ -33,6 +33,55 @@ class VehiclePreference(BaseModel):
     rationale: str = Field(..., description="Short explanation referencing the review text")
 
 
+class PersonaSignals(BaseModel):
+    """Aggregated shopping preferences inferred from the review."""
+
+    mentioned_makes: List[str] = Field(
+        default_factory=list,
+        description="Distinct vehicle makes explicitly referenced in the review.",
+    )
+    mentioned_models: List[str] = Field(
+        default_factory=list,
+        description="Distinct vehicle models explicitly referenced in the review.",
+    )
+    mentioned_years: List[int] = Field(
+        default_factory=list,
+        description="Model years or year ranges referenced in the review.",
+    )
+    preferred_condition: str = Field(
+        ...,
+        description="Whether the reviewer signals a preference for new, used, either, or leaves it unspecified.",
+    )
+    newness_preference_score: int = Field(
+        ...,
+        ge=1,
+        le=10,
+        description="1 (vintage only) to 10 (brand new only) scale describing freshness preference.",
+    )
+    newness_preference_notes: str = Field(
+        ...,
+        description="Short explanation of the newness preference scale selection.",
+    )
+    preferred_vehicle_type: Optional[str] = Field(
+        None,
+        description="Most likely body style (SUV, sedan, truck, etc.) inferred from the review.",
+    )
+    preferred_fuel_type: Optional[str] = Field(
+        None,
+        description="Fuel or powertrain type (EV, gas, diesel, hybrid, etc.) implied by the review.",
+    )
+    openness_to_alternatives: int = Field(
+        ...,
+        ge=1,
+        le=10,
+        description="1 (not open) to 10 (very open) scale describing willingness to consider alternatives.",
+    )
+    misc_notes: str = Field(
+        ...,
+        description="Catch-all notes such as safety, reliability, budget, or lifestyle considerations.",
+    )
+
+
 class ReviewInference(BaseModel):
     """LLM-derived persona summary for a single review."""
 
@@ -43,10 +92,23 @@ class ReviewInference(BaseModel):
         ..., description="Vehicles or configurations the reviewer wants to avoid"
     )
     intention: str = Field(..., description="What the reviewer would hope to achieve with a recommender")
+    persona_signals: PersonaSignals = Field(
+        ..., description="Aggregated search preferences to guide persona/query generation."
+    )
 
 
 PROMPT_TEMPLATE = """
 You are analysing a consumer-written vehicle review. Extract concrete buying signals.
+
+The incoming data columns mean:
+- Review: free-form text written by the vehicle owner.
+- Rating: numeric score from 1 (most negative) to 5 (most positive).
+- Make: vehicle make discussed in the review.
+- Model: vehicle model discussed in the review.
+- Date: publication date of the review.
+- like_option: vehicle options or trims explicitly praised in the review.
+- dislike_option: vehicle options or trims explicitly criticised in the review.
+- user_intention: what the shopper is trying to achieve.
 
 Review metadata:
 - Make: {make}
@@ -57,10 +119,21 @@ Review metadata:
 Review text:
 {review}
 
-Return JSON with keys "likes", "dislikes", and "intention". First, determine the make/model/year/condition preferences implied by the review. Then, bucket the makes/models/years/conditions into their respective categories. Finally, summarize the reviewer's intention when interacting with a car recommendation agent.
-- likes: This bucket is for make/model/year/condition that are preferred by the reviewer. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified
-- dislikes: This bucket is for make/model/year/condition that are avoided by the reviewer. Each entry must specify make/model/year/condition when the review implies it. Condition must be one of: new, used, either, unspecified
+Return JSON with keys "likes", "dislikes", "intention", and "persona_signals". First, determine the make/model/year/condition preferences implied by the review. Then, bucket the makes/models/years/conditions into their respective categories. Finally, summarize the reviewer's intention when interacting with a car recommendation agent and capture high-level search signals.
+- likes: Vehicles/configurations the reviewer prefers. Each entry must specify make/model/year/condition when implied. Condition must be one of: new, used, either, unspecified.
+- dislikes: Vehicles/configurations the reviewer avoids. Each entry must specify make/model/year/condition when implied. Condition must be one of: new, used, either, unspecified.
 - intention: One or two sentences about their goal when interacting with a car recommendation agent.
+- persona_signals: Object describing aggregated search preferences with these keys:
+  * mentioned_makes (list of strings)
+  * mentioned_models (list of strings)
+  * mentioned_years (list of integers; omit if none)
+  * preferred_condition (new, used, either, or unspecified)
+  * newness_preference_score (integer 1-10 where 1=vintage only, 5=new-used is fine, 10=brand new only)
+  * newness_preference_notes (sentence explaining the score)
+  * preferred_vehicle_type (SUV, sedan, truck, wagon, etc. or null if unstated)
+  * preferred_fuel_type (gas, diesel, EV, hybrid, etc. or null if unstated)
+  * openness_to_alternatives (integer 1-10 where 1=refuses alternatives, 10=fully open)
+  * misc_notes (sentence covering other priorities such as reliability, safety, budget, comfort)
 
 Focus only on signals grounded in the review; never hallucinate brands not implied.
 """
@@ -87,10 +160,23 @@ def enrich_reviews(df: pd.DataFrame, model_name: str) -> pd.DataFrame:
                 "Model": row.get("Model"),
                 "Review": row.get("Review"),
                 "ratings": row.get("ratings"),
+                "Rating": row.get("ratings"),
                 "date": row.get("date"),
                 "liked_options": json.dumps([pref.model_dump() for pref in inference.likes]),
                 "disliked_options": json.dumps([pref.model_dump() for pref in inference.dislikes]),
+                "like_option": json.dumps([pref.model_dump() for pref in inference.likes]),
+                "dislike_option": json.dumps([pref.model_dump() for pref in inference.dislikes]),
                 "user_intention": inference.intention,
+                "mentioned_makes": json.dumps(inference.persona_signals.mentioned_makes),
+                "mentioned_models": json.dumps(inference.persona_signals.mentioned_models),
+                "mentioned_years": json.dumps(inference.persona_signals.mentioned_years),
+                "preferred_condition": inference.persona_signals.preferred_condition,
+                "newness_preference_score": inference.persona_signals.newness_preference_score,
+                "newness_preference_notes": inference.persona_signals.newness_preference_notes,
+                "preferred_vehicle_type": inference.persona_signals.preferred_vehicle_type,
+                "preferred_fuel_type": inference.persona_signals.preferred_fuel_type,
+                "openness_to_alternatives": inference.persona_signals.openness_to_alternatives,
+                "misc_notes": inference.persona_signals.misc_notes,
             }
         )
 
