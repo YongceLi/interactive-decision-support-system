@@ -10,7 +10,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
 from review_simulation.persona import ReviewPersona, VehicleAffinity
-from scripts.test_recommendation import test_recommendation_pipeline
+from scripts.test_recommendation_methods import (
+    test_method1_pipeline,
+    test_method2_pipeline,
+)
 
 
 @dataclass
@@ -334,10 +337,19 @@ def run_simulation(
     llm: ChatOpenAI,
     recommendation_limit: int = 20,
     metric_k: Optional[int] = None,
+    recommendation_method: int = 1,
 ) -> SimulationResult:
     persona_turn = _build_persona_turn(persona, llm)
 
-    response = test_recommendation_pipeline(persona_turn.message)
+    if recommendation_method == 1:
+        response = test_method1_pipeline(persona_turn.message)
+    elif recommendation_method == 2:
+        response = test_method2_pipeline(persona_turn.message)
+    else:
+        raise ValueError(
+            "recommendation_method must be 1 or 2; received"
+            f" {recommendation_method}"
+        )
     vehicles = (response.get("recommended_vehicles") or [])[:recommendation_limit]
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
