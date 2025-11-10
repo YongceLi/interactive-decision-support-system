@@ -37,6 +37,13 @@ def parse_args() -> argparse.Namespace:
         help="k value for precision/recall reporting (defaults to limit)",
     )
     parser.add_argument(
+        "--method",
+        type=int,
+        choices=[1, 2],
+        default=1,
+        help="Recommendation method to evaluate (1 = SQL + Vector + MMR, 2 = Web Search + Parallel SQL)",
+    )
+    parser.add_argument(
         "--max-personas",
         type=int,
         default=None,
@@ -67,6 +74,7 @@ def main() -> None:
                 llm,
                 recommendation_limit=args.limit,
                 metric_k=args.metric_k,
+                recommendation_method=args.method,
             )
         )
 
