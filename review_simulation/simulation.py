@@ -220,7 +220,7 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     }
 
 
-def _build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn:
+def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn:
     structured_model = model.with_structured_output(PersonaDraft)
     likes_text = _affinities_to_text(persona.liked)
     dislikes_text = _affinities_to_text(persona.disliked)
@@ -339,7 +339,26 @@ def run_simulation(
     metric_k: Optional[int] = None,
     recommendation_method: int = 1,
 ) -> SimulationResult:
-    persona_turn = _build_persona_turn(persona, llm)
+    persona_turn = build_persona_turn(persona, llm)
+
+    return evaluate_persona(
+        persona,
+        persona_turn,
+        llm,
+        recommendation_limit=recommendation_limit,
+        metric_k=metric_k,
+        recommendation_method=recommendation_method,
+    )
+
+
+def evaluate_persona(
+    persona: ReviewPersona,
+    persona_turn: PersonaTurn,
+    llm: ChatOpenAI,
+    recommendation_limit: int = 20,
+    metric_k: Optional[int] = None,
+    recommendation_method: int = 1,
+) -> SimulationResult:
 
     if recommendation_method == 1:
         response = test_method1_pipeline(persona_turn.message)
