@@ -1,9 +1,9 @@
-"""Build a local SQLite database of PC components.
+"""Build a local SQLite database of consumer electronics products.
 
 This script mirrors the California vehicle dataset builder but targets
-PC components sourced from:
+consumer electronics sourced from:
 
-1. PCPartPicker (HTML scrape)
+1. PCPartPicker (HTML scrape, when a category is supported)
 2. Best Buy (HTML scrape)
 3. RapidAPI (configurable, defaults to Newegg data API)
 
@@ -43,7 +43,7 @@ if str(PROJECT_ROOT) not in sys.path:
 load_dotenv()
 
 
-logger = logging.getLogger("pc_parts_builder")
+logger = logging.getLogger("electronics_builder")
 if not logger.handlers:
     logging.basicConfig(
         level=logging.INFO,
@@ -55,7 +55,7 @@ if not logger.handlers:
 # Configuration
 # ---------------------------------------------------------------------------
 
-CATEGORIES: Dict[str, Dict[str, str]] = {
+ELECTRONICS_CATEGORIES: Dict[str, Dict[str, Optional[str]]] = {
     "cpu": {
         "pcpartpicker_slug": "cpu",
         "bestbuy_query": "CPU",
@@ -91,10 +91,225 @@ CATEGORIES: Dict[str, Dict[str, str]] = {
         "bestbuy_query": "ram",
         "rapid_query": "ram",
     },
-    "storage": {
+    "internal_storage": {
         "pcpartpicker_slug": "internal-hard-drive",
-        "bestbuy_query": "ssd",
-        "rapid_query": "ssd",
+        "bestbuy_query": "internal ssd",
+        "rapid_query": "internal ssd",
+    },
+    "external_storage": {
+        "pcpartpicker_slug": "external-hard-drive",
+        "bestbuy_query": "external hard drive",
+        "rapid_query": "external ssd",
+    },
+    "laptop": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "laptop",
+        "rapid_query": "laptop computer",
+    },
+    "desktop_pc": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "desktop computer",
+        "rapid_query": "desktop pc",
+    },
+    "monitor": {
+        "pcpartpicker_slug": "monitor",
+        "bestbuy_query": "computer monitor",
+        "rapid_query": "computer monitor",
+    },
+    "keyboard": {
+        "pcpartpicker_slug": "keyboard",
+        "bestbuy_query": "mechanical keyboard",
+        "rapid_query": "mechanical keyboard",
+    },
+    "mouse": {
+        "pcpartpicker_slug": "mouse",
+        "bestbuy_query": "gaming mouse",
+        "rapid_query": "gaming mouse",
+    },
+    "headset": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "gaming headset",
+        "rapid_query": "gaming headset",
+    },
+    "headphones": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "wireless headphones",
+        "rapid_query": "wireless headphones",
+    },
+    "speakers": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "bluetooth speaker",
+        "rapid_query": "bluetooth speaker",
+    },
+    "soundbar": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "sound bar",
+        "rapid_query": "soundbar",
+    },
+    "microphone": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "usb microphone",
+        "rapid_query": "usb microphone",
+    },
+    "webcam": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "webcam",
+        "rapid_query": "webcam",
+    },
+    "gaming_console": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "gaming console",
+        "rapid_query": "gaming console",
+    },
+    "vr_headset": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "vr headset",
+        "rapid_query": "vr headset",
+    },
+    "smartphone": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smartphone unlocked",
+        "rapid_query": "unlocked smartphone",
+    },
+    "tablet": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "tablet",
+        "rapid_query": "tablet",
+    },
+    "smartwatch": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smartwatch",
+        "rapid_query": "smart watch",
+    },
+    "fitness_tracker": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "fitness tracker",
+        "rapid_query": "fitness tracker",
+    },
+    "camera": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "mirrorless camera",
+        "rapid_query": "mirrorless camera",
+    },
+    "action_camera": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "action camera",
+        "rapid_query": "action camera",
+    },
+    "drone": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "camera drone",
+        "rapid_query": "camera drone",
+    },
+    "printer": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "wireless printer",
+        "rapid_query": "wireless printer",
+    },
+    "router": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "wifi router",
+        "rapid_query": "wifi router",
+    },
+    "network_switch": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "network switch",
+        "rapid_query": "network switch",
+    },
+    "modem": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "cable modem",
+        "rapid_query": "cable modem",
+    },
+    "mesh_wifi": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "mesh wifi",
+        "rapid_query": "mesh wifi system",
+    },
+    "smart_home_hub": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart home hub",
+        "rapid_query": "smart home hub",
+    },
+    "smart_speaker": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart speaker",
+        "rapid_query": "smart speaker",
+    },
+    "smart_display": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart display",
+        "rapid_query": "smart display",
+    },
+    "smart_light": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart light",
+        "rapid_query": "smart light",
+    },
+    "smart_thermostat": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart thermostat",
+        "rapid_query": "smart thermostat",
+    },
+    "smart_lock": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "smart lock",
+        "rapid_query": "smart lock",
+    },
+    "security_camera": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "security camera",
+        "rapid_query": "security camera",
+    },
+    "video_doorbell": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "video doorbell",
+        "rapid_query": "video doorbell",
+    },
+    "tv": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "4k tv",
+        "rapid_query": "4k television",
+    },
+    "projector": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "home theater projector",
+        "rapid_query": "home theater projector",
+    },
+    "streaming_device": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "streaming media player",
+        "rapid_query": "streaming media player",
+    },
+    "portable_charger": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "portable charger",
+        "rapid_query": "portable charger",
+    },
+    "charging_station": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "charging station",
+        "rapid_query": "charging station",
+    },
+    "car_audio": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "car stereo",
+        "rapid_query": "car stereo",
+    },
+    "dash_cam": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "dash cam",
+        "rapid_query": "dash cam",
+    },
+    "gps": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "gps navigation",
+        "rapid_query": "gps navigation",
+    },
+    "e_reader": {
+        "pcpartpicker_slug": None,
+        "bestbuy_query": "ereader",
+        "rapid_query": "ebook reader",
     },
 }
 
@@ -690,15 +905,17 @@ class PCPartsDatasetBuilder:
     def __init__(
         self,
         db_path: str = "data/pc_parts.db",
-        limit_per_source: Optional[int] = 50,
+        limit_per_source: Optional[int] = None,
         enabled_sources: Optional[Iterable[str]] = None,
     ) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.limit_per_source = limit_per_source if limit_per_source and limit_per_source > 0 else None
-        self.enabled_sources: Set[str] = (
-            set(enabled_sources) if enabled_sources else {"pcpartpicker", "bestbuy", "rapidapi"}
-        )
+        if enabled_sources:
+            self.enabled_sources_order: List[str] = [source.lower() for source in enabled_sources]
+        else:
+            self.enabled_sources_order = ["rapidapi", "pcpartpicker", "bestbuy"]
+        self.enabled_sources: Set[str] = set(self.enabled_sources_order)
 
         self._init_database()
 
@@ -729,48 +946,67 @@ class PCPartsDatasetBuilder:
     def build(self) -> None:
         total_inserted = 0
 
-        for part_type, config in CATEGORIES.items():
+        for part_type, config in ELECTRONICS_CATEGORIES.items():
             logger.info("=== Collecting data for %s ===", part_type)
             collected: List[PCPartRecord] = []
 
-            if "pcpartpicker" in self.enabled_sources:
-                try:
-                    pcpp_records = self.pcpartpicker.fetch(
-                        category=part_type,
-                        slug=config["pcpartpicker_slug"],
-                        limit=self.limit_per_source,
-                    )
-                    collected.extend(pcpp_records)
-                    self._mark_progress("pcpartpicker", part_type, len(pcpp_records))
-                except Exception as exc:  # noqa: BLE001
-                    logger.exception("PCPartPicker scrape failed for %s: %s", part_type, exc)
-                    self._mark_progress("pcpartpicker", part_type, 0, status="failed", error=str(exc))
+            for source in self.enabled_sources_order:
+                if source not in self.enabled_sources:
+                    continue
 
-            if "bestbuy" in self.enabled_sources:
-                try:
-                    bestbuy_records = self.bestbuy.fetch(
-                        category=part_type,
-                        query=config["bestbuy_query"],
-                        limit=self.limit_per_source,
-                    )
-                    collected.extend(bestbuy_records)
-                    self._mark_progress("bestbuy", part_type, len(bestbuy_records))
-                except Exception as exc:  # noqa: BLE001
-                    logger.exception("BestBuy scrape failed for %s: %s", part_type, exc)
-                    self._mark_progress("bestbuy", part_type, 0, status="failed", error=str(exc))
+                if source == "pcpartpicker":
+                    slug = config.get("pcpartpicker_slug")
+                    if not slug:
+                        self._mark_progress("pcpartpicker", part_type, 0, status="skipped", error="no_slug")
+                        continue
+                    try:
+                        pcpp_records = self.pcpartpicker.fetch(
+                            category=part_type,
+                            slug=slug,
+                            limit=self.limit_per_source,
+                        )
+                        collected.extend(pcpp_records)
+                        self._mark_progress("pcpartpicker", part_type, len(pcpp_records))
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("PCPartPicker scrape failed for %s: %s", part_type, exc)
+                        self._mark_progress("pcpartpicker", part_type, 0, status="failed", error=str(exc))
 
-            if "rapidapi" in self.enabled_sources:
-                try:
-                    rapid_records = self.rapidapi.fetch(
-                        category=part_type,
-                        query=config["rapid_query"],
-                        limit=self.limit_per_source,
-                    )
-                    collected.extend(rapid_records)
-                    self._mark_progress("rapidapi", part_type, len(rapid_records))
-                except Exception as exc:  # noqa: BLE001
-                    logger.exception("RapidAPI fetch failed for %s: %s", part_type, exc)
-                    self._mark_progress("rapidapi", part_type, 0, status="failed", error=str(exc))
+                elif source == "bestbuy":
+                    query = config.get("bestbuy_query")
+                    if not query:
+                        self._mark_progress("bestbuy", part_type, 0, status="skipped", error="no_query")
+                        continue
+                    try:
+                        bestbuy_records = self.bestbuy.fetch(
+                            category=part_type,
+                            query=query,
+                            limit=self.limit_per_source,
+                        )
+                        collected.extend(bestbuy_records)
+                        self._mark_progress("bestbuy", part_type, len(bestbuy_records))
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("BestBuy scrape failed for %s: %s", part_type, exc)
+                        self._mark_progress("bestbuy", part_type, 0, status="failed", error=str(exc))
+
+                elif source == "rapidapi":
+                    query = config.get("rapid_query")
+                    if not query:
+                        self._mark_progress("rapidapi", part_type, 0, status="skipped", error="no_query")
+                        continue
+                    try:
+                        rapid_records = self.rapidapi.fetch(
+                            category=part_type,
+                            query=query,
+                            limit=self.limit_per_source,
+                        )
+                        collected.extend(rapid_records)
+                        self._mark_progress("rapidapi", part_type, len(rapid_records))
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("RapidAPI fetch failed for %s: %s", part_type, exc)
+                        self._mark_progress("rapidapi", part_type, 0, status="failed", error=str(exc))
+
+                else:
+                    logger.warning("Unknown source %s requested; skipping", source)
 
             inserted = self._save_records(collected)
             total_inserted += inserted
@@ -930,8 +1166,8 @@ def main() -> None:
     parser.add_argument(
         "--limit",
         type=int,
-        default=50,
-        help="Number of records to fetch per source/category (default: 50; use 0 for unlimited)",
+        default=0,
+        help="Number of records to fetch per source/category (default: 0 meaning unlimited)",
     )
     parser.add_argument(
         "--sources",

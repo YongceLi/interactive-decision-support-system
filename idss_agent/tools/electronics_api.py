@@ -22,7 +22,7 @@ api_logger = get_logger("tools.electronics_api")
 DEFAULT_HOST = os.getenv("RAPIDAPI_HOST", "product-search-api.p.rapidapi.com")
 DEFAULT_BASE_URL = os.getenv("RAPIDAPI_BASE_URL", f"https://{DEFAULT_HOST}")
 DEFAULT_SEARCH_PATH = os.getenv("RAPIDAPI_SEARCH_ENDPOINT", "/shopping")
-DEFAULT_PRODUCT_PATH = os.getenv("RAPIDAPI_PRODUCT_ENDPOINT", "/product")
+DEFAULT_PRODUCT_PATH = os.getenv("RAPIDAPI_PRODUCT_ENDPOINT", "/products/{product_id}")
 
 
 def _get_api_key() -> str:
@@ -152,6 +152,23 @@ def get_product_details(
 ) -> str:
     """Fetch detailed information for a single product by RapidAPI product ID."""
 
+    path_template = DEFAULT_PRODUCT_PATH or ""
+    path_template = path_template.strip()
+
+    # Support templated REST path (/products/{product_id}) and legacy POST endpoint (/product)
+    supports_rest_path = any(token in path_template for token in ("{product_id}", "{id}"))
+
+    if supports_rest_path:
+        path = path_template.format(product_id=product_id, id=product_id)
+        payload = _clean_payload(
+            {
+                "country": country,
+                "language": language,
+            }
+        )
+        return _make_request(path, payload, method="GET")
+
+    # Legacy behaviour: append product_id via payload and POST to default path
     payload = _clean_payload(
         {
             "product_id": product_id,
@@ -160,6 +177,12 @@ def get_product_details(
         }
     )
 
-    return _make_request(DEFAULT_PRODUCT_PATH, payload, method="POST")
+    # If the legacy path is something like "/products", append the id manually
+    if path_template.rstrip("/").endswith("/products"):
+        path = f"{path_template.rstrip('/')}/{product_id}"
+        payload.pop("product_id", None)
+        return _make_request(path, payload, method="GET")
+
+    return _make_request(path_template or "/product", payload, method="POST")
 
 

@@ -60,7 +60,7 @@ dataset_builder/
 ├── schema.sql                    # SQLite database schema
 ├── fetch_california_dataset.py   # Vehicle dataset fetcher
 ├── pc_parts_schema.sql           # PC parts SQLite schema
-├── fetch_pc_parts_dataset.py     # PC parts dataset builder
+├── fetch_pc_parts_dataset.py     # Electronics dataset builder (PC + consumer electronics)
 ├── (output) → data/california_vehicles.db
 └── (output) → data/pc_parts.db
 ```
@@ -219,9 +219,9 @@ sqlite3 data/california_vehicles.db \
 
 ---
 
-# PC Parts Dataset Builder
+# Electronics Dataset Builder
 
-Build a unified local database of PC components spanning CPUs, GPUs, motherboards, PSUs, cases, cooling solutions, RAM, and storage. The schema mirrors the vehicle dataset philosophy: fast filterable columns plus preserved raw payloads for downstream enrichment.
+Build a unified local database of consumer electronics spanning core PC components, complete systems (laptops and desktops), peripherals, home entertainment, smart home gear, wearables, drones, cameras, networking hardware, and more. The schema mirrors the vehicle dataset philosophy: fast filterable columns plus preserved raw payloads for downstream enrichment.
 
 ## Sources
 
@@ -254,15 +254,15 @@ Full definition: `dataset_builder/pc_parts_schema.sql`.
 ### Command
 
 ```bash
-python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 40
-# RapidAPI only
-python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 40 --sources rapidapi
-# Unlimited (fetch all pages)
-python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 0 --sources rapidapi
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db
+# RapidAPI only, capped to 100 per category
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --limit 100 --sources rapidapi
+# Best Buy + PCPartPicker only, unlimited
+python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --sources pcpartpicker bestbuy
 ```
 
-- `--limit` controls the per-source-per-category cap (default 50). Set to `0` (or any negative value) to fetch every available page.
-- `--sources` lets you choose any subset of `pcpartpicker`, `bestbuy`, `rapidapi` (default is all).
+- `--limit` controls the per-source-per-category cap (default `0`, which means unlimited). Provide a positive value to cap records if you want quicker runs.
+- `--sources` lets you choose any subset of `pcpartpicker`, `bestbuy`, `rapidapi` (default order prioritises `rapidapi`, then `pcpartpicker`, then `bestbuy`). Pass sources in your preferred priority order.
 - Requests are rate-limited (`time.sleep`) to avoid overloading upstream sites; a full run typically completes in a few minutes.
 
 ### Output
@@ -274,7 +274,7 @@ python dataset_builder/fetch_pc_parts_dataset.py --db-path data/pc_parts.db --li
 
 ## Customisation Tips
 
-- Edit `CATEGORIES` in `fetch_pc_parts_dataset.py` to adjust PCPartPicker slugs, Best Buy keywords, or RapidAPI search terms.
+- Edit `ELECTRONICS_CATEGORIES` in `fetch_pc_parts_dataset.py` to adjust PCPartPicker slugs, Best Buy keywords, or RapidAPI search terms.
 - Override RapidAPI host/endpoint via environment without touching code.
 - Use `--sources` to focus on a single feed (e.g., `--sources rapidapi`) or skip unreliable scrapers.
 - Extend `_canonical_part_id` if you need custom dedupe semantics.

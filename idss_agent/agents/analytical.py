@@ -179,6 +179,11 @@ Your role is to answer specific, data-driven questions about products by leverag
 
 ## Available Tools
 
+**Cached Recommendation Lookup (`cached_recommendation_lookup`)**
+- Input: '#N', product ID, or partial title. Use 'list' for all cached items.
+- Returns: JSON describing products already fetched in this session.
+- Use when: referencing products the user already sees (e.g., '#1', '#2') or needing their cached metadata before making new API calls.
+
 **Product Catalog Search (`search_products`)**
 - Input: keyword query and optional filters.
 - Returns: JSON array of products with pricing, seller, rating, and metadata.
@@ -203,9 +208,10 @@ Your role is to answer specific, data-driven questions about products by leverag
 4. Summarize findings in clear, user-friendly language—avoid copying marketing fluff verbatim.
 
 **Query best practices**
-1. Narrow catalog searches with model numbers, capacity, or feature keywords when possible.
-2. Use product detail lookup immediately after obtaining a product_id to enrich your answer.
-3. When comparing products, gather the same set of attributes (price, cores/threads, boost clocks, TDP, bundled cooler, socket compatibility, etc.) for each item.
+1. Check cached recommendations first via `cached_recommendation_lookup` when the user references products you already showed them (like '#1', '#2', or named items). Only call external APIs if necessary data is missing.
+2. Narrow catalog searches with model numbers, capacity, or feature keywords when possible.
+3. Use product detail lookup immediately after obtaining a product_id to enrich your answer.
+4. When comparing products, gather the same set of attributes (price, cores/threads, boost clocks, TDP, bundled cooler, socket compatibility, etc.) for each item.
 
 **Product references**
 - When the user references "#1", "#2", etc., map those to the recommended products list provided in the context.
@@ -297,14 +303,101 @@ def analytical_agent(
     )
 
     # Get available tools
+    cached_products = state.get("recommended_products") or state.get("recommended_vehicles", [])
+
+    @tool("cached_recommendation_lookup")
+    def cached_recommendation_lookup(selector: str) -> str:
+        """
+        Retrieve data from the current cached recommendations without calling external APIs.
+
+        Args:
+            selector: Use '#N' for the Nth product, a product ID, or part of the product title.
+                      Use 'list' to retrieve all cached products.
+
+        Returns:
+            JSON string containing matching products with metadata.
+        """
+        if not cached_products:
+            return json.dumps({"error": "No cached recommendations available."})
+
+        selector_normalized = selector.strip().lower()
+
+        def serialize_product(product: Dict[str, Any], idx: int) -> Dict[str, Any]:
+            product_info = product.get("product") or {}
+            offer = product.get("offer") or {}
+            return {
+                "index": idx + 1,
+                "id": product.get("id"),
+                "product_identifier": product_info.get("identifier") or product_info.get("id"),
+                "title": product.get("title") or product_info.get("title"),
+                "brand": product.get("brand") or product_info.get("brand"),
+                "price_text": product.get("price_text") or offer.get("price"),
+                "price_value": product.get("price_value"),
+                "currency": product.get("price_currency") or offer.get("currency"),
+                "rating": product.get("rating"),
+                "rating_count": product.get("rating_count") or product.get("reviewCount"),
+                "attributes": product_info.get("attributes"),
+                "source": product.get("source") or offer.get("seller"),
+                "link": product.get("link") or offer.get("url"),
+                "raw": product,
+            }
+
+        results: List[Dict[str, Any]] = []
+
+        if selector_normalized in ("", "list", "all", "*"):
+            results = [serialize_product(prod, idx) for idx, prod in enumerate(cached_products)]
+        else:
+            # Match by index (#1), identifier, or fuzzy title match
+            index_match = re.match(r"#?(\d+)", selector_normalized)
+            if index_match:
+                idx = int(index_match.group(1)) - 1
+                if 0 <= idx < len(cached_products):
+                    results.append(serialize_product(cached_products[idx], idx))
+
+            if not results:
+                for idx, product in enumerate(cached_products):
+                    product_info = product.get("product") or {}
+                    identifiers = {
+                        str(product.get("id") or "").lower(),
+                        str(product_info.get("identifier") or "").lower(),
+                        str(product_info.get("id") or "").lower(),
+                    }
+                    title = (product.get("title") or product_info.get("title") or "").lower()
+                    if selector_normalized in identifiers or selector_normalized in title:
+                        results.append(serialize_product(product, idx))
+
+            if not results:
+                # Try substring match on title
+                for idx, product in enumerate(cached_products):
+                    product_info = product.get("product") or {}
+                    title = (product.get("title") or product_info.get("title") or "").lower()
+                    if selector_normalized and selector_normalized in title:
+                        results.append(serialize_product(product, idx))
+
+        if not results:
+            available = [
+                {
+                    "index": idx + 1,
+                    "title": product.get("title") or (product.get("product") or {}).get("title"),
+                }
+                for idx, product in enumerate(cached_products[:10])
+            ]
+            return json.dumps({
+                "error": f"No cached product matched selector '{selector}'.",
+                "available_examples": available,
+            })
+
+        return json.dumps({"results": results})
+
     tools = [
+        cached_recommendation_lookup,
         search_products,
         get_product_details,
         web_search,
     ]
 
     # Build product context from state
-    products = state.get("recommended_vehicles", [])
+    products = state.get("recommended_products") or state.get("recommended_vehicles", [])
     filters = state.get("explicit_filters", {})
     preferences = state.get("implicit_preferences", {})
 
