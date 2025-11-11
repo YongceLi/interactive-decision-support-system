@@ -58,10 +58,10 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
                 vehicle.make or "?",
                 vehicle.model or "?",
                 str(vehicle.year or "-"),
-                vehicle.condition,
-                vehicle.location,
+                str(vehicle.condition or "-"),
+                str(vehicle.location or "-"),
                 satisfaction,
-                vehicle.rationale,
+                vehicle.rationale or "",
             )
         console.print(table)
         console.print(
