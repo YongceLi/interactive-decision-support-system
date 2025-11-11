@@ -64,6 +64,7 @@ def save_conversation_log(
             "recommended_products": state.get("recommended_vehicles", [])[:20],
             "conversation_history": serialized_history,
             "diagnostics": state.get("diagnostics"),
+            "latency": state.get("_latency"),
         }
 
         log_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2))

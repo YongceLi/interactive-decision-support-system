@@ -9,10 +9,13 @@ Architecture:
 
 """
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional, Callable, Dict, Any
 from idss_agent.utils.logger import get_logger
 from idss_agent.state.schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.core.supervisor import run_supervisor
+from idss_agent.processing.semantic_parser import semantic_parser_node
+from idss_agent.processing.recommendation import update_recommendation_list
+from idss_agent.utils.config import get_config
 from idss_agent.utils.telemetry import start_span, finish_span, append_span
 
 logger = get_logger("agent")
@@ -56,11 +59,82 @@ def run_agent(
             "status": "in_progress"
         })
 
+    config = get_config()
+    features = config.features or {}
+    if features.get("single_turn_conversations"):
+        logger.info("Single-turn conversation mode enabled; running semantic parsing and recommender pipeline.")
+
+        single_turn_state = semantic_parser_node(state, progress_callback)
+        single_turn_state = update_recommendation_list(single_turn_state, progress_callback)
+
+        products = single_turn_state.get("recommended_products") or []
+        if not single_turn_state.get("ai_response"):
+            if products:
+                single_turn_state["ai_response"] = (
+                    f"I found {len(products)} products that match what you're looking for."
+                )
+            else:
+                single_turn_state["ai_response"] = (
+                    "I couldn't find matching products right now. Try adjusting your request."
+                )
+
+        single_turn_state["current_mode"] = "single_turn"
+
+        if single_turn_state.get("ai_response"):
+            single_turn_state = add_ai_message(single_turn_state, single_turn_state["ai_response"])
+
+        if progress_callback:
+            progress_callback({
+                "step_id": "processing",
+                "description": "Response ready",
+                "status": "completed"
+            })
+
+        return single_turn_state
+
     # Run supervisor to handle request
     logger.info("Running supervisor agent...")
     turn_span = start_span("turn", {"input_chars": len(user_input)})
     result = run_supervisor(user_input, state, progress_callback)
     append_span(result, finish_span(turn_span))
+
+    # Summarize latency for logging/observability
+    telemetry = result.get("_telemetry", [])
+    if telemetry:
+        turn_duration = None
+        spans_summary = []
+        aggregated: Dict[str, Dict[str, Any]] = {}
+
+        for span in telemetry:
+            name = span.get("name")
+            duration = span.get("duration_ms")
+            spans_summary.append({
+                "name": name,
+                "duration_ms": duration,
+                "metadata": span.get("metadata"),
+            })
+
+            if name and isinstance(duration, (int, float)):
+                agg = aggregated.setdefault(name, {"count": 0, "total_ms": 0.0})
+                agg["count"] += 1
+                agg["total_ms"] += duration
+                if name == "turn":
+                    turn_duration = duration
+
+        aggregates_serialized = {
+            name: {
+                "count": stats["count"],
+                "total_ms": round(stats["total_ms"], 2),
+                "avg_ms": round(stats["total_ms"] / stats["count"], 2),
+            }
+            for name, stats in aggregated.items()
+        }
+
+        result["_latency"] = {
+            "turn_duration_ms": round(turn_duration, 2) if turn_duration is not None else None,
+            "spans": spans_summary,
+            "aggregates": aggregates_serialized,
+        }
 
     # Set mode to 'supervisor' (for backward compatibility tracking)
     result["current_mode"] = "supervisor"

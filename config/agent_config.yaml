@@ -85,6 +85,7 @@ features:
   enable_quick_replies: true         # Enable quick reply buttons (potential answers)
   enable_suggested_followups: false  # Enable suggested followup questions
   use_local_vehicle_store: false      # Disable vehicle-specific local dataset
+  single_turn_conversations: true    # When true, route requests through semantic parser -> recommender only
 
 # API Configuration (RapidAPI - Newegg data)
 api:

@@ -51,6 +51,14 @@ This document summarizes the code changes introduced to improve agent latency, r
   - `run_agent` now appends a per-turn span, while supervisor captures request-level and stage-level spans.
   - Telemetry is stored in `state['_telemetry']` (list of dicts) to be streamed to clients or persisted.
 
+## Single-Turn Conversation Flag
+
+- Files: `idss_agent/core/agent.py`, `config/agent_config.yaml`
+- Highlights:
+  - Introduces a `features.single_turn_conversations` flag that routes turns directly through `semantic_parser_node` and `update_recommendation_list`.
+  - Bypasses supervisor orchestration in single-turn mode while preserving progress callbacks and telemetry-friendly state updates.
+  - Falls back to the existing supervisor workflow when the flag is disabled (default).
+
 ## Testing Latency Using Web Logs
 
 The web client already emits latency metrics. To compare before vs. after:
