@@ -1,9 +1,9 @@
 """
 Analytical agent - answers specific questions about electronics products using ReAct.
 """
-import os
 import json
 import re
+from collections import OrderedDict
 from typing import Optional, Callable, Dict, List, Any
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
@@ -12,12 +12,40 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
-from idss_agent.state.schema import VehicleSearchState, AgentResponse, ComparisonTable
+from idss_agent.state.schema import VehicleSearchState as ProductSearchState, AgentResponse, ComparisonTable
 from idss_agent.tools.electronics_api import search_products, get_product_details
 from idss_agent.utils.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
 
+MIN_COMPARISON_ATTRIBUTES = 6
+MAX_COMPARISON_ATTRIBUTES = 12
+ATTRIBUTE_PRIORITY = [
+    "Price",
+    "Seller",
+    "Store",
+    "Rating",
+    "Review Count",
+    "Capacity",
+    "Speed",
+    "Frequency",
+    "Cores / Threads",
+    "Base Clock",
+    "Boost Clock",
+    "Clock Speed",
+    "CAS Latency",
+    "Latency",
+    "Voltage",
+    "Form Factor",
+    "Module Count",
+    "Type",
+    "Interface",
+    "Compatibility",
+    "Warranty",
+    "RGB Lighting",
+    "Cooling",
+    "Power Consumption",
+]
 
 def parse_comparison_response(response_text: str) -> Optional[Dict[str, Any]]:
     """
@@ -53,7 +81,6 @@ def parse_comparison_response(response_text: str) -> Optional[Dict[str, Any]]:
         entities = (
             comparison_data.get('products')
             or comparison_data.get('items')
-            or comparison_data.get('vehicles')
         )
         if not entities or 'attributes' not in comparison_data:
             return None
@@ -173,7 +200,7 @@ Generate the interactive elements now.
 
 # System prompt for analytical agent
 ANALYTICAL_SYSTEM_PROMPT = """
-You are an expert electronics research analyst with deep knowledge of consumer technology (PC components, laptops, smart home gear, peripherals, etc.).
+You are an expert electronics research analyst with deep knowledge of PC components, peripherals, and consumer hardware.
 
 Your role is to answer specific, data-driven questions about products by leveraging the tools at your disposal.
 
@@ -182,82 +209,84 @@ Your role is to answer specific, data-driven questions about products by leverag
 **Cached Recommendation Lookup (`cached_recommendation_lookup`)**
 - Input: '#N', product ID, or partial title. Use 'list' for all cached items.
 - Returns: JSON describing products already fetched in this session.
-- Use when: referencing products the user already sees (e.g., '#1', '#2') or needing their cached metadata before making new API calls.
+- Use when: the user references products already shown (e.g., '#1', 'top 3') or when you need cached attributes before new API calls.
 
 **Product Catalog Search (`search_products`)**
 - Input: keyword query and optional filters.
 - Returns: JSON array of products with pricing, seller, rating, and metadata.
-- Use when: you need more product options, to confirm availability, or to retrieve identifiers for follow-up questions.
+- Use when: you need more options, to confirm availability, or to retrieve identifiers for follow-up questions.
 
 **Product Detail Lookup (`get_product_details`)**
-- Input: product_id from the catalog search.
-- Returns: Detailed specifications, pricing, description, images, and seller info.
-- Use when: the user references a specific product ID or you already have an identifier from recommendations.
+- Input: product_id from cached results or catalog search.
+- Returns: Detailed specifications, descriptions, seller info, photos (RapidAPI `/products/{id}` endpoint).
+- Use when: you need rich specs (clock speeds, memory timings, ports, warranty, etc.) for recommendations or comparisons.
 
 **Web Search (`web_search`)**
 - Input: natural language query.
 - Returns: Latest web snippets and URLs.
-- Use when: catalog data is insufficient, you need benchmarks/reviews, or you want up-to-date pricing news.
+- Use when: catalog/detail data is insufficient, you need external benchmarks/reviews, or up-to-date pricing news.
 
 ## Guidelines
 
 **Data accuracy**
-1. Cite concrete specs (core counts, clock speeds, RAM type, display size, power draw, etc.) pulled from tools.
-2. Verify currency and seller before quoting price data.
-3. If sources disagree, note the discrepancy and favor the most recent or authoritative information.
-4. Summarize findings in clear, user-friendly language—avoid copying marketing fluff verbatim.
+1. Pull concrete specs (cores/threads, memory type, clock speeds, latency, wattage, IO, etc.) from tools.
+2. Confirm currency and seller before quoting price data.
+3. If sources disagree, note the discrepancy and prefer the most recent or authoritative information.
+4. Summarize findings clearly—avoid marketing fluff.
 
 **Query best practices**
-1. Check cached recommendations first via `cached_recommendation_lookup` when the user references products you already showed them (like '#1', '#2', or named items). Only call external APIs if necessary data is missing.
-2. Narrow catalog searches with model numbers, capacity, or feature keywords when possible.
-3. Use product detail lookup immediately after obtaining a product_id to enrich your answer.
-4. When comparing products, gather the same set of attributes (price, cores/threads, boost clocks, TDP, bundled cooler, socket compatibility, etc.) for each item.
+1. Check cached recommendations first via `cached_recommendation_lookup` whenever the user references existing products. Only call new APIs if cached data is incomplete.
+2. Narrow catalog searches with model numbers, capacities, or feature keywords when possible.
+3. After obtaining a product_id, call `get_product_details` to enrich the answer with full specifications.
+4. When comparing products, gather the same set of attributes (price, seller, rating, specs, compatibility, thermals, accessories, etc.) for each item.
 
 **Product references**
-- When the user references "#1", "#2", etc., map those to the recommended products list provided in the context.
-- Use `product_id`, `title`, and `brand` for clarity. Prefer product IDs when calling detail lookups.
-- If an identifier is missing, fall back to title + brand in searches or ask the user for clarification.
+- Map "#1", "#2", etc. to cached recommendations by index.
+- Prefer product IDs alongside titles/brands when invoking tools.
+- Ask for clarification if identifiers are ambiguous.
 
 **Comparison queries (SPECIAL FORMAT)**
-When the user asks to compare 2-4 products (e.g., "compare Ryzen 7 7800X3D vs i7-14700K" or "compare top 3"):
-1. Identify which products to compare (from context or via catalog search).
-2. Gather matching specs/prices for each product using the available tools.
-3. Output your response in this EXACT JSON format:
+When the user asks to compare 2-4 products (e.g., "compare Ryzen 7 7800X3D vs i7-14700K", "compare top 3"):
+1. Identify the specific products (from cached recommendations or by searching).
+2. Use cached data plus `get_product_details` to collect rich specs for each product.
+3. Output ONLY this exact JSON format—no additional prose:
 ```json
 {
   "summary": "2-3 sentence summary highlighting key differences",
   "comparison_data": {
-    "products": ["AMD Ryzen 7 7800X3D", "Intel Core i7-14700K"],
+    "products": ["Corsair Vengeance RGB Pro 16GB", "G.SKILL TridentZ RGB 32GB"],
     "attributes": [
-      {"name": "Price", "values": ["$399 (Walmart)", "$409 (Best Buy)"]},
-      {"name": "Cores / Threads", "values": ["8C / 16T", "8P+12E / 28T"]},
-      {"name": "Base / Boost Clock", "values": ["4.2 / 5.0 GHz", "3.4 / 5.6 GHz"]},
-      {"name": "TDP", "values": ["120W", "125W"]}
+      {"name": "Price", "values": ["$81.99 (Amazon)", "$149.99 (Micro Center)"]},
+      {"name": "Capacity", "values": ["16 GB (2 x 8 GB)", "32 GB (2 x 16 GB)"]},
+      {"name": "Speed", "values": ["3600 MT/s", "6000 MT/s"]},
+      {"name": "CAS Latency", "values": ["CL18", "CL36"]},
+      {"name": "Voltage", "values": ["1.35 V", "1.40 V"]},
+      {"name": "RGB Lighting", "values": ["Yes", "Yes"]}
     ]
   }
 }
 ```
-4. **CRITICAL**: For ALL comparison requests, output ONLY the JSON above—no additional prose.
-5. Include the attributes that matter most to the user (performance, thermals, compatibility, bundled accessories, etc.).
+4. Include AT LEAST six attributes when possible (price, seller, rating, reviews, capacity, speed, latency, voltage, form factor, warranty, included accessories, etc.). Add more if data is available.
+5. Ensure attribute names are concise and values are comparable across products.
 
 **Error handling and fallbacks**
-1. If a tool call fails, retry with a simplified query or fewer filters.
-2. If data remains unavailable, explain what you attempted and suggest where the user can verify the information.
-3. Encourage the user to clarify model numbers or desired specs when ambiguity remains.
+1. If a tool call fails, retry with simplified parameters or note what went wrong.
+2. If data remains unavailable, explain what you attempted and suggest trusted sources for verification.
+3. Invite the user to clarify models or desired specs when ambiguity remains.
 
 Think step-by-step:
-1. Understand the user's question and confirm the product scope.
+1. Understand the question and confirm product scope.
 2. Decide which tools to call and in what order.
-3. Collect evidence (catalog data, detail lookup, web snippets).
+3. Collect evidence (cached data, catalog search, detail lookup, web search).
 4. Synthesize the answer in 3-4 concise sentences unless returning comparison JSON.
 5. Offer to help with follow-up questions or deeper analysis.
 """
 
 
 def analytical_agent(
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
     Agent that answers specific questions about electronics products using available data sources.
 
@@ -303,7 +332,8 @@ def analytical_agent(
     )
 
     # Get available tools
-    cached_products = state.get("recommended_products") or state.get("recommended_vehicles", [])
+    legacy_products = state.get("recommended_vehicles", [])
+    cached_products = state.get("recommended_products") or legacy_products
 
     @tool("cached_recommendation_lookup")
     def cached_recommendation_lookup(selector: str) -> str:
@@ -397,7 +427,7 @@ def analytical_agent(
     ]
 
     # Build product context from state
-    products = state.get("recommended_products") or state.get("recommended_vehicles", [])
+    products = state.get("recommended_products") or legacy_products
     filters = state.get("explicit_filters", {})
     preferences = state.get("implicit_preferences", {})
 
@@ -547,21 +577,93 @@ def analytical_agent(
                     # Apply feature flags for fallback values
                     state["quick_replies"] = None
                     state["suggested_followups"] = []  # Analytical mode uses quick_replies only
-            else:
-                # Normal response - no comparison
-                state["ai_response"] = response_content
-                state["comparison_table"] = None
+            fallback_comparison = None
 
-                # Generate interactive elements (quick replies only)
-                try:
-                    interactive = generate_interactive_elements(response_content, user_input)
-                    # Apply feature flags
-                    state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
-                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only (agent asks questions, user answers)
-                except Exception as e:
-                    logger.warning(f"Failed to generate interactive elements: {e}")
-                    state["quick_replies"] = None
-                    state["suggested_followups"] = []  # Analytical mode uses quick_replies only
+            if comparison_result:
+                table_model = comparison_result['comparison_table']
+                headers = table_model.headers[1:]
+                if len(table_model.rows) < MIN_COMPARISON_ATTRIBUTES:
+                    fallback_comparison = _build_comparison_from_cached_products(
+                        user_input,
+                        products,
+                        filters,
+                        comparison_product_names=headers,
+                    )
+                if fallback_comparison:
+                    comparison_data = fallback_comparison["table"]
+                    state["ai_response"] = fallback_comparison["summary"]
+                    state["comparison_table"] = comparison_data
+                    logger.info(
+                        "Comparison table rebuilt from cached data (%d attributes)",
+                        len(comparison_data["rows"]),
+                    )
+                    try:
+                        interactive = generate_interactive_elements(state["ai_response"], user_input)
+                        state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                        state["suggested_followups"] = []
+                    except Exception as e:
+                        logger.warning(f"Failed to generate interactive elements: {e}")
+                        state["quick_replies"] = None
+                        state["suggested_followups"] = []
+                    response_content = state["ai_response"]
+                else:
+                    # Use LLM-produced comparison
+                    state["ai_response"] = comparison_result['summary']
+                    state["comparison_table"] = comparison_result['comparison_table'].model_dump()
+                    logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} products compared")
+
+                    # Generate interactive elements from summary
+                    try:
+                        interactive = generate_interactive_elements(comparison_result['summary'], user_input)
+                        # Apply feature flags
+                        state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                        state["suggested_followups"] = []  # Analytical mode uses quick_replies only (agent asks questions, user answers)
+                    except Exception as e:
+                        logger.warning(f"Failed to generate interactive elements: {e}")
+                        # Apply feature flags for fallback values
+                        state["quick_replies"] = None
+                        state["suggested_followups"] = []  # Analytical mode uses quick_replies only
+                    response_content = state["ai_response"]
+            else:
+                fallback_comparison = None
+                if _should_attempt_comparison(user_input):
+                    fallback_comparison = _build_comparison_from_cached_products(
+                        user_input,
+                        products,
+                        filters,
+                    )
+                if fallback_comparison:
+                    comparison_data = fallback_comparison["table"]
+                    state["ai_response"] = fallback_comparison["summary"]
+                    state["comparison_table"] = comparison_data
+                    logger.info(
+                        "Generated comparison table from cached data (%d attributes)",
+                        len(comparison_data["rows"]),
+                    )
+                    try:
+                        interactive = generate_interactive_elements(state["ai_response"], user_input)
+                        state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                        state["suggested_followups"] = []
+                    except Exception as e:
+                        logger.warning(f"Failed to generate interactive elements: {e}")
+                        state["quick_replies"] = None
+                        state["suggested_followups"] = []
+                    response_content = state["ai_response"]
+                else:
+                    # Normal response - no comparison
+                    state["ai_response"] = response_content
+                    state["comparison_table"] = None
+
+                    # Generate interactive elements (quick replies only)
+                    try:
+                        interactive = generate_interactive_elements(response_content, user_input)
+                        # Apply feature flags
+                        state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
+                        state["suggested_followups"] = []  # Analytical mode uses quick_replies only (agent asks questions, user answers)
+                    except Exception as e:
+                        logger.warning(f"Failed to generate interactive elements: {e}")
+                        state["quick_replies"] = None
+                        state["suggested_followups"] = []  # Analytical mode uses quick_replies only
 
             _apply_verification(state, response_content, evidence_summary, config, user_input)
 
@@ -602,6 +704,372 @@ def analytical_agent(
     return state
 
 
+def _build_comparison_from_cached_products(
+    user_input: str,
+    products: List[Dict[str, Any]],
+    filters: Dict[str, Any],
+    comparison_product_names: Optional[List[str]] = None,
+) -> Optional[Dict[str, Any]]:
+    if not products:
+        return None
+
+    selected = _select_products_for_comparison(user_input, products, comparison_product_names)
+    if len(selected) < 2:
+        return None
+
+    country = (filters or {}).get("country") or "us"
+    language = (filters or {}).get("language")
+
+    attribute_maps: List[OrderedDict[str, str]] = []
+    product_names: List[str] = []
+    for product in selected:
+        detail = _fetch_product_detail(product, country=country, language=language)
+        attr_map = _create_attribute_map(product, detail)
+        if not attr_map:
+            continue
+        attribute_maps.append(attr_map)
+        product_names.append(_display_product_name(product))
+
+    if len(attribute_maps) < 2:
+        return None
+
+    ordered_attrs = _determine_attribute_order(attribute_maps)
+    if not ordered_attrs:
+        return None
+
+    rows: List[List[str]] = []
+    for attr in ordered_attrs[:MAX_COMPARISON_ATTRIBUTES]:
+        row = [attr]
+        for attr_map in attribute_maps:
+            row.append(attr_map.get(attr, "—"))
+        rows.append(row)
+
+    table = {
+        "headers": ["Attribute"] + product_names,
+        "rows": rows,
+    }
+    summary = _build_comparison_summary(product_names, attribute_maps, filters)
+    return {"summary": summary, "table": table}
+
+
+def _should_attempt_comparison(user_input: str) -> bool:
+    if not user_input:
+        return False
+    lowered = user_input.lower()
+    return any(keyword in lowered for keyword in ("compare", "vs", "versus", "#", "top", "which"))
+
+
+def _select_products_for_comparison(
+    user_input: str,
+    products: List[Dict[str, Any]],
+    comparison_product_names: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
+    if not products:
+        return []
+
+    selected: List[Dict[str, Any]] = []
+    used_indices: set[int] = set()
+
+    def add_by_index(idx: int):
+        if 0 <= idx < len(products) and idx not in used_indices:
+            selected.append(products[idx])
+            used_indices.add(idx)
+
+    if comparison_product_names:
+        for name in comparison_product_names:
+            idx = _match_product_by_name(name, products, used_indices)
+            if idx is not None:
+                add_by_index(idx)
+
+    if user_input:
+        for match in re.findall(r"#?\s*(\d+)", user_input):
+            try:
+                idx = int(match) - 1
+            except ValueError:
+                continue
+            add_by_index(idx)
+
+        lowered = user_input.lower()
+        if not used_indices and "top" in lowered:
+            top_match = re.search(r'top\s+(\d+)', lowered)
+            count = 3
+            if top_match:
+                try:
+                    count = max(2, int(top_match.group(1)))
+                except ValueError:
+                    count = 3
+            for idx in range(min(count, len(products))):
+                add_by_index(idx)
+
+    if len(selected) < 2:
+        for idx in range(len(products)):
+            add_by_index(idx)
+            if len(selected) >= 3:
+                break
+
+    return selected[:4]
+
+
+def _match_product_by_name(
+    name: str,
+    products: List[Dict[str, Any]],
+    used_indices: set[int],
+) -> Optional[int]:
+    if not name:
+        return None
+    target = name.lower()
+    for idx, product in enumerate(products):
+        if idx in used_indices:
+            continue
+        product_name = _display_product_name(product).lower()
+        if target in product_name or product_name in target:
+            return idx
+    return None
+
+
+def _display_product_name(product: Dict[str, Any]) -> str:
+    product_info = product.get("product") or {}
+    title = (
+        product.get("title")
+        or product_info.get("title")
+        or product_info.get("name")
+        or product.get("model")
+        or "Unnamed product"
+    )
+    brand = product.get("brand") or product_info.get("brand")
+    if brand and brand.lower() not in title.lower():
+        return f"{brand} {title}".strip()
+    return title
+
+
+def _fetch_product_detail(
+    product: Dict[str, Any],
+    country: str = "us",
+    language: Optional[str] = None,
+) -> Dict[str, Any]:
+    product_info = product.get("product") or {}
+    product_id = (
+        product_info.get("identifier")
+        or product_info.get("id")
+        or product.get("id")
+    )
+    if not product_id:
+        return {}
+
+    payload: Dict[str, Any] = {"product_id": product_id}
+    if country:
+        payload["country"] = country
+    if language:
+        payload["language"] = language
+
+    try:
+        response = get_product_details.invoke(payload)
+        if isinstance(response, str):
+            return json.loads(response)
+        if isinstance(response, dict):
+            return response
+    except Exception as exc:
+        logger.debug(f"Product detail lookup failed for {product_id}: {exc}")
+    return {}
+
+
+def _create_attribute_map(
+    product: Dict[str, Any],
+    detail: Dict[str, Any],
+) -> OrderedDict[str, str]:
+    attr_map: OrderedDict[str, str] = OrderedDict()
+
+    def add_attr(name: str, value: Any):
+        normalized_name = _normalize_attribute_name(name)
+        if not normalized_name or normalized_name in attr_map:
+            return
+        formatted_value = _format_attribute_value(value)
+        if formatted_value:
+            attr_map[normalized_name] = formatted_value
+
+    price_text = product.get("price_text") or product.get("offer", {}).get("price")
+    price_value = product.get("price_value")
+    currency = product.get("price_currency") or product.get("offer", {}).get("currency")
+    if price_text:
+        add_attr("Price", price_text)
+    elif isinstance(price_value, (int, float)):
+        prefix = "$" if not currency or currency.upper() == "USD" else f"{currency.upper()} "
+        add_attr("Price", f"{prefix}{price_value:,.2f}")
+
+    seller = product.get("source") or product.get("offer", {}).get("seller")
+    if seller:
+        add_attr("Seller", seller)
+
+    rating = product.get("rating")
+    if isinstance(rating, (int, float)):
+        add_attr("Rating", f"{rating:.1f}/5")
+
+    rating_count = product.get("rating_count") or product.get("reviewCount") or product.get("reviews")
+    if rating_count:
+        if isinstance(rating_count, (int, float)):
+            add_attr("Review Count", f"{int(rating_count):,}")
+        else:
+            add_attr("Review Count", rating_count)
+
+    availability = product.get("offer", {}).get("availability")
+    if availability:
+        add_attr("Availability", availability)
+
+    potential_sources: List[Any] = []
+    product_info = product.get("product") or {}
+    for key in ("attributes", "specs", "specifications"):
+        value = product_info.get(key)
+        if value:
+            potential_sources.append(value)
+    for key in ("attributes", "specs", "specifications", "details", "features", "additionalInformation"):
+        value = detail.get(key)
+        if value:
+            potential_sources.append(value)
+
+    for source in potential_sources:
+        _collect_attributes_from_source(source, add_attr)
+
+    return attr_map
+
+
+def _collect_attributes_from_source(source: Any, add_attr: Callable[[str, Any], None]) -> None:
+    if isinstance(source, dict):
+        for key, value in source.items():
+            if isinstance(value, (dict, list)):
+                _collect_attributes_from_source(value, add_attr)
+            else:
+                add_attr(key, value)
+    elif isinstance(source, list):
+        for item in source:
+            if isinstance(item, dict):
+                if "name" in item and "value" in item:
+                    add_attr(item["name"], item["value"])
+                elif "label" in item and "value" in item:
+                    add_attr(item["label"], item["value"])
+                else:
+                    for key in ("attributes", "items", "values", "specs", "details"):
+                        if key in item:
+                            _collect_attributes_from_source(item[key], add_attr)
+                    for key, value in item.items():
+                        if key not in ("attributes", "items", "values", "specs", "details"):
+                            if not isinstance(value, (dict, list)):
+                                add_attr(key, value)
+
+
+def _determine_attribute_order(attribute_maps: List[OrderedDict[str, str]]) -> List[str]:
+    seen: List[str] = []
+    for attr_map in attribute_maps:
+        for key in attr_map.keys():
+            if key not in seen:
+                seen.append(key)
+
+    ordered: List[str] = []
+    for preferred in ATTRIBUTE_PRIORITY:
+        for key in seen:
+            if key.lower() == preferred.lower() and key not in ordered:
+                ordered.append(key)
+                break
+
+    for key in seen:
+        if key not in ordered:
+            ordered.append(key)
+
+    return ordered
+
+
+def _build_comparison_summary(
+    product_names: List[str],
+    attribute_maps: List[OrderedDict[str, str]],
+    filters: Dict[str, Any],
+) -> str:
+    product_label = (
+        filters.get("product")
+        or filters.get("category")
+        or filters.get("keywords")
+        or "options"
+    )
+    product_label = str(product_label).strip()
+    if product_label:
+        product_label = product_label.replace("_", " ")
+    summary_lines = [
+        f"Here's a comparison of the top {len(product_names)} {product_label} options:".strip()
+    ]
+
+    highlight_keys = [
+        "Price",
+        "Capacity",
+        "Speed",
+        "Cores / Threads",
+        "Base Clock",
+        "Boost Clock",
+        "Rating",
+    ]
+
+    for name, attrs in zip(product_names, attribute_maps):
+        highlights: List[str] = []
+        for key in highlight_keys:
+            value = attrs.get(key)
+            if not value:
+                continue
+            if key == "Rating" and attrs.get("Review Count"):
+                highlights.append(f"{value} ({attrs['Review Count']} reviews)")
+            else:
+                highlights.append(value)
+            if len(highlights) >= 2:
+                break
+        if not highlights:
+            highlights = list(attrs.values())[:2]
+        highlight_text = ", ".join(highlights) if highlights else ""
+        if highlight_text:
+            summary_lines.append(f"- **{name}**: {highlight_text}")
+        else:
+            summary_lines.append(f"- **{name}**")
+
+    summary_lines.append("Let me know if you want help choosing or need deeper specs.")
+    return "\n".join(summary_lines)
+
+
+def _normalize_attribute_name(name: Any) -> str:
+    if not name:
+        return ""
+    text = str(name).strip().strip(":")
+    if not text:
+        return ""
+    text = re.sub(r"[_\-]+", " ", text)
+    text = re.sub(r"\s+", " ", text)
+    words = []
+    for word in text.split(" "):
+        if not word:
+            continue
+        if word.isupper() and len(word) <= 4:
+            words.append(word)
+        else:
+            words.append(word.capitalize())
+    return " ".join(words)
+
+
+def _format_attribute_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (int, float)):
+        return f"{value}"
+    if isinstance(value, list):
+        formatted_items = [_format_attribute_value(item) for item in value]
+        formatted_items = [item for item in formatted_items if item]
+        return ", ".join(formatted_items)
+    if isinstance(value, dict):
+        if "name" in value and "value" in value:
+            return _format_attribute_value(value["value"])
+        parts = []
+        for key, val in value.items():
+            formatted = _format_attribute_value(val)
+            if formatted:
+                parts.append(f"{_normalize_attribute_name(key)}: {formatted}")
+        return ", ".join(parts)
+    text = str(value).strip()
+    return text
+
+
 def _collect_evidence(messages: List[Any]) -> str:
     """
     Collect tool outputs and intermediate evidence from ReAct execution.
@@ -618,7 +1086,7 @@ def _collect_evidence(messages: List[Any]) -> str:
 
 
 def _apply_verification(
-    state: VehicleSearchState,
+    state: ProductSearchState,
     ai_response: str,
     evidence_summary: str,
     config,
