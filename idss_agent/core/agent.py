@@ -13,9 +13,6 @@ from typing import Optional, Callable, Dict, Any
 from idss_agent.utils.logger import get_logger
 from idss_agent.state.schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.core.supervisor import run_supervisor
-from idss_agent.processing.semantic_parser import semantic_parser_node
-from idss_agent.processing.recommendation import update_recommendation_list
-from idss_agent.utils.config import get_config
 from idss_agent.utils.telemetry import start_span, finish_span, append_span
 
 logger = get_logger("agent")
@@ -58,39 +55,6 @@ def run_agent(
             "description": "Understanding your request",
             "status": "in_progress"
         })
-
-    config = get_config()
-    features = config.features or {}
-    if features.get("single_turn_conversations"):
-        logger.info("Single-turn conversation mode enabled; running semantic parsing and recommender pipeline.")
-
-        single_turn_state = semantic_parser_node(state, progress_callback)
-        single_turn_state = update_recommendation_list(single_turn_state, progress_callback)
-
-        products = single_turn_state.get("recommended_products") or []
-        if not single_turn_state.get("ai_response"):
-            if products:
-                single_turn_state["ai_response"] = (
-                    f"I found {len(products)} products that match what you're looking for."
-                )
-            else:
-                single_turn_state["ai_response"] = (
-                    "I couldn't find matching products right now. Try adjusting your request."
-                )
-
-        single_turn_state["current_mode"] = "single_turn"
-
-        if single_turn_state.get("ai_response"):
-            single_turn_state = add_ai_message(single_turn_state, single_turn_state["ai_response"])
-
-        if progress_callback:
-            progress_callback({
-                "step_id": "processing",
-                "description": "Response ready",
-                "status": "completed"
-            })
-
-        return single_turn_state
 
     # Run supervisor to handle request
     logger.info("Running supervisor agent...")

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-11
+
+### Added
+
+#### Electronics Vector Ranking & Diversification
+- `idss_agent/processing/vector_ranker.py`, `idss_agent/processing/diversification.py`: migrated embeddings to electronics-focused tokenization with optional sqlite caching and added Maximal Marginal Relevance diversification utilities.
+
+#### Modular Recommendation Methods
+- `idss_agent/processing/recommendation_method1.py`, `idss_agent/processing/recommendation_method2.py`, `idss_agent/processing/__init__.py`: introduced reusable RapidAPI pipelines (primary+exploratory search and Tavily-guided parallel search) that share normalization and ranking helpers.
+
+### Changed
+
+#### Recommendation Test Harness
+- `scripts/test_recommendation.py`: updated the standalone CLI to operate purely in the electronics domain, surface RapidAPI payload diagnostics, and report product-centric results.
+
+#### Supervisor Entry Point Cleanup
+- `idss_agent/core/agent.py`, `config/agent_config.yaml`, `docs/agent_architecture_updates.md`: removed the temporary `single_turn_conversations` feature flag so all user turns flow through the supervisor, cleaning up configuration and documentation.
+
+---
+
 ## 2025-11-06
 
 ### Changed

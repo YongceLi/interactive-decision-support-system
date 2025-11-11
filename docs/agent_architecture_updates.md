@@ -51,13 +51,28 @@ This document summarizes the code changes introduced to improve agent latency, r
   - `run_agent` now appends a per-turn span, while supervisor captures request-level and stage-level spans.
   - Telemetry is stored in `state['_telemetry']` (list of dicts) to be streamed to clients or persisted.
 
-## Single-Turn Conversation Flag
+## Vector Ranking & Diversification for Electronics
 
-- Files: `idss_agent/core/agent.py`, `config/agent_config.yaml`
+- Files: `idss_agent/processing/vector_ranker.py`, `idss_agent/processing/diversification.py`
 - Highlights:
-  - Introduces a `features.single_turn_conversations` flag that routes turns directly through `semantic_parser_node` and `update_recommendation_list`.
-  - Bypasses supervisor orchestration in single-turn mode while preserving progress callbacks and telemetry-friendly state updates.
-  - Falls back to the existing supervisor workflow when the flag is disabled (default).
+  - Replaced vehicle-specific embeddings with electronics-aware tokenization and optional sqlite-backed caching.
+  - Added electronics-specific similarity heuristics plus Maximal Marginal Relevance diversification.
+  - Preserves logging of vector-scoring spans for observability.
+
+## Modular Recommendation Methods
+
+- Files: `idss_agent/processing/recommendation_method1.py`, `idss_agent/processing/recommendation_method2.py`, `idss_agent/processing/__init__.py`
+- Highlights:
+  - Method 1: primary + exploratory RapidAPI searches, vector re-ranking, and MMR diversity gate.
+  - Method 2: Tavily-guided brand discovery with parallel RapidAPI fetches and per-brand vector ranking.
+  - Both methods reuse shared normalization utilities to avoid code drift.
+
+## Electronics Test Harness Updates
+
+- Files: `scripts/test_recommendation.py`
+- Highlights:
+  - Converts the standalone CLI to the electronics domain, capturing RapidAPI payload logs instead of SQL.
+  - Outputs recommended products plus structured diagnostics for quick regression checks.
 
 ## Testing Latency Using Web Logs
 

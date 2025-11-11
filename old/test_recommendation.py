@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Standalone test script for the electronics recommendation engine.
+Standalone test script for recommendation engine.
 
 Usage:
-    python scripts/test_recommendation.py "I'm shopping for a mid-range gaming laptop"
+    python scripts/test_recommendation.py "I want a safe and stylish car for my daughter"
 
-Output: JSON with extracted filters, search payloads, and recommended products.
+Output: JSON with extracted filters, SQL query, and recommended vehicles
 """
 
-import json
-import logging
 import os
 import sys
+import json
+import logging
 from pathlib import Path
-
+from io import StringIO
 from dotenv import load_dotenv
 
 # Add project root to path
@@ -26,17 +26,18 @@ load_dotenv(project_root / ".env")
 # Import components
 from idss_agent.state.schema import create_initial_state
 from idss_agent.processing.semantic_parser import semantic_parser_node
-from langchain_core.messages import HumanMessage
 from idss_agent.processing.recommendation import update_recommendation_list
+from idss_agent.tools.zipcode_lookup import get_location_from_zip_or_coords
+from langchain_core.messages import HumanMessage
 
 
 class LogCapture(logging.Handler):
-    """Custom logging handler to capture API payloads and important logs."""
+    """Custom logging handler to capture SQL queries and important logs."""
 
     def __init__(self):
         super().__init__()
         self.logs = []
-        self.search_payload = None
+        self.sql_query = None
 
     def emit(self, record):
         msg = self.format(record)
@@ -46,9 +47,9 @@ class LogCapture(logging.Handler):
             "logger": record.name
         })
 
-        # Capture RapidAPI search payloads for debugging
-        if "RapidAPI product search params" in msg:
-            self.search_payload = msg
+        # Capture SQL query if it appears in logs
+        if "SELECT" in msg and "FROM vehicle_listings" in msg:
+            self.sql_query = msg
 
 
 def test_recommendation_pipeline(user_query: str) -> dict:
@@ -69,7 +70,7 @@ def test_recommendation_pipeline(user_query: str) -> dict:
     log_capture.setFormatter(formatter)
 
     # Add handler to relevant loggers
-    for logger_name in ['idss_agent.tools.electronics_api',
+    for logger_name in ['idss_agent.tools.local_vehicle_store',
                         'idss_agent.processing.recommendation',
                         'idss_agent.processing.semantic_parser']:
         logger = logging.getLogger(logger_name)
@@ -81,10 +82,11 @@ def test_recommendation_pipeline(user_query: str) -> dict:
         "user_query": user_query,
         "extracted_filters": None,
         "implicit_preferences": None,
-        "search_payload": None,
+        "location_data": None,
+        "sql_query": None,
         "search_strategy": None,
-        "products_found": 0,
-        "recommended_products": [],
+        "vehicles_found": 0,
+        "recommended_vehicles": [],
         "processing_logs": [],
         "errors": []
     }
@@ -103,21 +105,39 @@ def test_recommendation_pipeline(user_query: str) -> dict:
             result["errors"].append(f"Semantic parser error: {str(e)}")
             return result
 
-        # Step 3: Run recommendation engine
+        # Step 3: Extract location data if present
+        filters = state["explicit_filters"]
+        if filters.get("zip") or state.get("user_latitude"):
+            coords = get_location_from_zip_or_coords(
+                zipcode=filters.get("zip"),
+                latitude=state.get("user_latitude"),
+                longitude=state.get("user_longitude")
+            )
+
+            result["location_data"] = {
+                "zip_code": filters.get("zip"),
+                "coordinates": list(coords) if coords else None,
+                "search_radius": filters.get("search_radius"),
+                "user_latitude": state.get("user_latitude"),
+                "user_longitude": state.get("user_longitude")
+            }
+
+        # Step 4: Run recommendation engine
         try:
             state = update_recommendation_list(state)
-            result["products_found"] = len(state.get("recommended_products", []))
-            result["recommended_products"] = state.get("recommended_products", [])
+            result["vehicles_found"] = len(state.get("recommended_vehicles", []))
+            result["recommended_vehicles"] = state.get("recommended_vehicles", [])
         except Exception as e:
             result["errors"].append(f"Recommendation engine error: {str(e)}")
             return result
-        # Step 4: Capture API payloads from logs
-        result["search_payload"] = log_capture.search_payload
 
-        # Step 5: Capture processing logs
+        # Step 5: Capture SQL query from logs
+        result["sql_query"] = log_capture.sql_query
+
+        # Step 6: Capture processing logs
         result["processing_logs"] = log_capture.logs
 
-        # Step 6: Determine search strategy (from logs or state)
+        # Step 7: Determine search strategy (from logs or state)
         for log in log_capture.logs:
             if "Search strategy" in log["message"] or "fallback" in log["message"].lower():
                 result["search_strategy"] = log["message"]
@@ -130,7 +150,7 @@ def test_recommendation_pipeline(user_query: str) -> dict:
 
     finally:
         # Clean up log handlers
-        for logger_name in ['idss_agent.tools.electronics_api',
+        for logger_name in ['idss_agent.tools.local_vehicle_store',
                             'idss_agent.processing.recommendation',
                             'idss_agent.processing.semantic_parser']:
             logger = logging.getLogger(logger_name)
@@ -155,10 +175,11 @@ def format_output(result: dict, verbose: bool = False) -> str:
         "user_query": result["user_query"],
         "extracted_filters": result["extracted_filters"],
         "implicit_preferences": result["implicit_preferences"],
-        "search_payload": result["search_payload"],
+        "location_data": result["location_data"],
+        "sql_query": result["sql_query"],
         "search_strategy": result["search_strategy"],
-        "products_found": result["products_found"],
-        "recommended_products": result["recommended_products"]
+        "vehicles_found": result["vehicles_found"],
+        "recommended_vehicles": result["recommended_vehicles"]
     }
 
     # Add logs if verbose
@@ -184,7 +205,7 @@ def main():
     # Parse command-line arguments
     if len(sys.argv) < 2:
         print("Usage: python scripts/test_recommendation.py \"USER QUERY\"", file=sys.stderr)
-        print("Example: python scripts/test_recommendation.py \"I'm looking for a quiet mechanical keyboard under $150\"", file=sys.stderr)
+        print("Example: python scripts/test_recommendation.py \"I want a safe car for my daughter\"", file=sys.stderr)
         sys.exit(1)
 
     user_query = sys.argv[1]
