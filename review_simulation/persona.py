@@ -111,10 +111,9 @@ def _try_parse_int(value: Optional[object]) -> Optional[int]:
         return None
 
 
-def load_personas(csv_path: Path) -> List[ReviewPersona]:
-    df = pd.read_csv(csv_path)
+def load_personas_from_frame(frame: pd.DataFrame) -> List[ReviewPersona]:
     personas: List[ReviewPersona] = []
-    for _, row in df.iterrows():
+    for _, row in frame.iterrows():
         personas.append(
             ReviewPersona(
                 make=str(row.get("Make", "")),
@@ -138,3 +137,8 @@ def load_personas(csv_path: Path) -> List[ReviewPersona]:
             )
         )
     return personas
+
+
+def load_personas(csv_path: Path) -> List[ReviewPersona]:
+    df = pd.read_csv(csv_path)
+    return load_personas_from_frame(df)

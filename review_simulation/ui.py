@@ -55,13 +55,13 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
             satisfaction = "✅" if vehicle.satisfied else "❌"
             table.add_row(
                 str(vehicle.index),
-                vehicle.make or "?",
-                vehicle.model or "?",
+                str(vehicle.make or "?"),
+                str(vehicle.model or "?"),
                 str(vehicle.year or "-"),
-                vehicle.condition,
-                vehicle.location,
+                str(vehicle.condition or "-"),
+                str(vehicle.location or "-"),
                 satisfaction,
-                vehicle.rationale,
+                str(vehicle.rationale or ""),
             )
         console.print(table)
         console.print(
