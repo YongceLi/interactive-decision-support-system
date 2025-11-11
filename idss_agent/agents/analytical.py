@@ -1,5 +1,5 @@
 """
-Analytical agent - answers specific questions about vehicles using ReAct.
+Analytical agent - answers specific questions about electronics products using ReAct.
 """
 import os
 import json
@@ -7,14 +7,13 @@ import re
 from typing import Optional, Callable, Dict, List, Any
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.state.schema import VehicleSearchState, AgentResponse, ComparisonTable
-from idss_agent.tools.autodev_api import get_vehicle_listing_by_vin, get_vehicle_photos_by_vin
-from idss_agent.tools.vehicle_database import get_vehicle_database_tools
+from idss_agent.tools.electronics_api import search_products, get_product_details
 from idss_agent.utils.logger import get_logger
 
 logger = get_logger("components.analytical_tool")
@@ -51,15 +50,20 @@ def parse_comparison_response(response_text: str) -> Optional[Dict[str, Any]]:
             return None
 
         comparison_data = data['comparison_data']
-        if 'vehicles' not in comparison_data or 'attributes' not in comparison_data:
+        entities = (
+            comparison_data.get('products')
+            or comparison_data.get('items')
+            or comparison_data.get('vehicles')
+        )
+        if not entities or 'attributes' not in comparison_data:
             return None
 
         # Build comparison table
-        vehicles = comparison_data['vehicles']
+        product_names = entities
         attributes = comparison_data['attributes']
 
-        # Create headers: ["Attribute", "Vehicle 1", "Vehicle 2", ...]
-        headers = ["Attribute"] + vehicles
+        # Create headers: ["Attribute", "Product 1", "Product 2", ...]
+        headers = ["Attribute"] + product_names
 
         # Create rows: each attribute becomes a row
         rows = []
@@ -82,7 +86,7 @@ def parse_comparison_response(response_text: str) -> Optional[Dict[str, Any]]:
 @tool
 def web_search(query: str) -> str:
     """
-    Search the web for current information about vehicles.
+    Search the web for current information about electronics and consumer tech products.
 
     Args:
         query: Search query string
@@ -169,125 +173,78 @@ Generate the interactive elements now.
 
 # System prompt for analytical agent
 ANALYTICAL_SYSTEM_PROMPT = """
-You are an expert vehicle research analyst with access to comprehensive automotive databases and listing information.
+You are an expert electronics research analyst with deep knowledge of consumer technology (PC components, laptops, smart home gear, peripherals, etc.).
 
-Your role is to answer specific, data-driven questions about vehicles by leveraging the tools at your disposal.
+Your role is to answer specific, data-driven questions about products by leveraging the tools at your disposal.
 
 ## Available Tools
 
-**Auto.dev API Tools:**
-- `get_vehicle_listing_by_vin`: Retrieve complete listing details for a specific vehicle by VIN
-  - Returns: pricing, location, dealer info, mileage, condition, features
-  - Use when: User asks about a specific vehicle's details, availability, or pricing
+**Product Catalog Search (`search_products`)**
+- Input: keyword query and optional filters.
+- Returns: JSON array of products with pricing, seller, rating, and metadata.
+- Use when: you need more product options, to confirm availability, or to retrieve identifiers for follow-up questions.
 
-- `get_vehicle_photos_by_vin`: Fetch photos for a specific vehicle by VIN
-  - Returns: retail photos, exterior/interior images
-  - Use when: User wants to see vehicle images or appearance details
+**Product Detail Lookup (`get_product_details`)**
+- Input: product_id from the catalog search.
+- Returns: Detailed specifications, pricing, description, images, and seller info.
+- Use when: the user references a specific product ID or you already have an identifier from recommendations.
 
-**Database Tools:**
-- `sql_db_list_tables`: List all available tables in the database
-  - Returns: table names
-  - Use when: You need to understand what data is available
-
-- `sql_db_schema`: Get schema for specific tables
-  - Input: table_names (comma-separated)
-  - Returns: CREATE statements with column definitions
-  - Use when: You need to understand table structure before querying
-
-- `sql_db_query`: Execute SQL SELECT queries on the database
-  - Input: SQL query string
-  - Returns: Query results
-  - **IMPORTANT**: ALWAYS check schema first before querying
-  - Available databases:
-    * `safety_data`: NHTSA crash test ratings, safety features (query by make, model, model_yr - use LIKE patterns!)
-    * `feature_data`: EPA fuel economy, MPG ratings, engine specs (query by make, model, year)
-
-**Web Search Tool:**
-- `web_search`: Search the web for current information
-  - Input: search query string
-  - Returns: Search results with up-to-date information
-  - **Use when**: Local databases don't have the information needed
-  - Example queries: "2025 Honda Accord specifications", "Toyota Camry 2024 safety ratings"
-  - This is your fallback when database queries return no results
+**Web Search (`web_search`)**
+- Input: natural language query.
+- Returns: Latest web snippets and URLs.
+- Use when: catalog data is insufficient, you need benchmarks/reviews, or you want up-to-date pricing news.
 
 ## Guidelines
 
-**Data Accuracy:**
-1. ALWAYS verify table schema before writing SQL queries
-2. Use exact column names and table names from schema
-3. Handle case sensitivity properly - column names are lowercase: `make`, `model`, `model_yr` (not Make/Model/ModelYear)
-4. If a query fails, check the schema and try again with correct column names
-5. **IMPORTANT**: Model names may include variants (e.g., "ACCORD SEDAN", "ACCORD HYBRID")
-   - Always use `LIKE '%ModelName%'` pattern matching instead of exact equality
-   - Example: `WHERE model LIKE '%Accord%'` not `WHERE model = 'Accord'`
+**Data accuracy**
+1. Cite concrete specs (core counts, clock speeds, RAM type, display size, power draw, etc.) pulled from tools.
+2. Verify currency and seller before quoting price data.
+3. If sources disagree, note the discrepancy and favor the most recent or authoritative information.
+4. Summarize findings in clear, user-friendly language—avoid copying marketing fluff verbatim.
 
-**Query Best Practices:**
-1. Use WHERE clauses with LIKE patterns for make/model matching: `WHERE make LIKE '%Honda%' AND model LIKE '%Accord%'`
-2. Use LIMIT to prevent overwhelming results (typically LIMIT 5-10)
-3. Order results by relevance (e.g., model_yr DESC for latest models)
-4. Aggregate data when comparing multiple vehicles (AVG, MAX, MIN)
-5. Join tables when combining safety and fuel economy data
-6. **Always use pattern matching** for model names to catch all variants
+**Query best practices**
+1. Narrow catalog searches with model numbers, capacity, or feature keywords when possible.
+2. Use product detail lookup immediately after obtaining a product_id to enrich your answer.
+3. When comparing products, gather the same set of attributes (price, cores/threads, boost clocks, TDP, bundled cooler, socket compatibility, etc.) for each item.
 
-**Vehicle References:**
-- When user references "#1", "#2", etc., use the VIN from the "Available Vehicles" context below
-- When user says "top 3" or "first 3", they mean vehicles #1, #2, #3 from the context
-- When user says "compare top 3" or "compare first few", extract VINs from context and compare those specific listings
-- When comparing specific vehicles by number, use their VINs to fetch detailed data
-- When discussing specific listings, use get_vehicle_listing_by_vin
+**Product references**
+- When the user references "#1", "#2", etc., map those to the recommended products list provided in the context.
+- Use `product_id`, `title`, and `brand` for clarity. Prefer product IDs when calling detail lookups.
+- If an identifier is missing, fall back to title + brand in searches or ask the user for clarification.
 
-**Comparison Queries (SPECIAL FORMAT):**
-When user asks to compare 2-4 vehicles - WHETHER BY NAME (e.g., "compare Honda Accord vs Toyota Camry") OR BY REFERENCE (e.g., "compare top 3", "compare #1, #2, #3"):
-1. Identify which vehicles to compare (by name or from Available Vehicles context)
-2. Gather data for each vehicle using available tools (use get_vehicle_listing_by_vin for specific listings)
+**Comparison queries (SPECIAL FORMAT)**
+When the user asks to compare 2-4 products (e.g., "compare Ryzen 7 7800X3D vs i7-14700K" or "compare top 3"):
+1. Identify which products to compare (from context or via catalog search).
+2. Gather matching specs/prices for each product using the available tools.
 3. Output your response in this EXACT JSON format:
 ```json
 {
   "summary": "2-3 sentence summary highlighting key differences",
   "comparison_data": {
-    "vehicles": ["Honda Accord 2024", "Toyota Camry 2024"],
+    "products": ["AMD Ryzen 7 7800X3D", "Intel Core i7-14700K"],
     "attributes": [
-      {"name": "Price Range", "values": ["$28,500 - $36,200", "$27,400 - $35,000"]},
-      {"name": "Safety Rating", "values": ["5-star ⭐⭐⭐⭐⭐", "5-star ⭐⭐⭐⭐⭐"]},
-      {"name": "Fuel Economy (City)", "values": ["29 MPG", "28 MPG"]},
-      {"name": "Fuel Economy (Highway)", "values": ["37 MPG", "39 MPG"]},
-      {"name": "Fuel Economy (Combined)", "values": ["32 MPG", "32 MPG"]},
-      {"name": "Engine", "values": ["1.5L 4-cyl", "2.5L 4-cyl"]},
-      {"name": "Transmission", "values": ["CVT", "8-speed Auto"]}
+      {"name": "Price", "values": ["$399 (Walmart)", "$409 (Best Buy)"]},
+      {"name": "Cores / Threads", "values": ["8C / 16T", "8P+12E / 28T"]},
+      {"name": "Base / Boost Clock", "values": ["4.2 / 5.0 GHz", "3.4 / 5.6 GHz"]},
+      {"name": "TDP", "values": ["120W", "125W"]}
     ]
   }
 }
 ```
-3. **CRITICAL**: For ALL comparison requests (including "top 3", "#1 vs #2", etc.), you MUST output ONLY the JSON format above - no other text
-4. For specific vehicle comparisons (#1, #2, #3), use get_vehicle_listing_by_vin to get detailed data
-5. Include these attributes when available:
-   - Price Range (from CA dataset or web search)
-   - Safety Rating (from safety_data database)
-   - Fuel Economy - City/Highway/Combined (from feature_data database)
-   - Engine (from feature_data database)
-   - Transmission (from feature_data database)
-   - Any other relevant specs user asked about
+4. **CRITICAL**: For ALL comparison requests, output ONLY the JSON above—no additional prose.
+5. Include the attributes that matter most to the user (performance, thermals, compatibility, bundled accessories, etc.).
 
-**Error Handling & Fallbacks:**
-1. If database query returns no results:
-   - First, check if you used LIKE patterns correctly
-   - Try broader patterns: `LIKE '%Accord%'` instead of exact match
-   - Check schema to verify column names
-2. If local databases have no information:
-   - Use web search tool to find current information online
-   - Search for: "[make] [model] [year] specifications safety ratings"
-3. Only after trying all available tools should you say information is unavailable
+**Error handling and fallbacks**
+1. If a tool call fails, retry with a simplified query or fewer filters.
+2. If data remains unavailable, explain what you attempted and suggest where the user can verify the information.
+3. Encourage the user to clarify model numbers or desired specs when ambiguity remains.
 
 Think step-by-step:
-1. Understand what the user is asking - is it general or specific?
-2. Identify which tools/databases are needed
-3. Check schema if using SQL
-4. Execute tools in logical order
-5. **Synthesize information concisely:**
-   - For general questions: 2-3 highlights + invitation to ask more
-   - For specific questions: Direct answer + 1-2 related points
-   - Think: "What would a salesperson say?"
-6. Keep total response to 3-4 sentences for general queries
+1. Understand the user's question and confirm the product scope.
+2. Decide which tools to call and in what order.
+3. Collect evidence (catalog data, detail lookup, web snippets).
+4. Synthesize the answer in 3-4 concise sentences unless returning comparison JSON.
+5. Offer to help with follow-up questions or deeper analysis.
 """
 
 
@@ -296,20 +253,19 @@ def analytical_agent(
     progress_callback: Optional[Callable[[dict], None]] = None
 ) -> VehicleSearchState:
     """
-    Agent that answers specific questions about vehicles using available data.
+    Agent that answers specific questions about electronics products using available data sources.
 
     This creates a ReAct agent with access to:
-    - Vehicle details by VIN
-    - Vehicle photos
-    - Safety database (NHTSA ratings)
-    - Fuel economy database (EPA data)
+    - RapidAPI product catalog search
+    - RapidAPI product detail lookup
+    - Web search for up-to-date reviews and benchmarks
 
     Uses system + user message format for optimal prompt caching:
     - System message: Role, tools, guidelines (cached)
-    - User message: Vehicle context + question (dynamic)
+    - User message: Product context + question (dynamic)
 
     Args:
-        state: Current state with vehicle context and user question
+        state: Current state with product context and user question
         progress_callback: Optional callback for progress updates
 
     Returns:
@@ -326,7 +282,7 @@ def analytical_agent(
 
     if not recent_history:
         logger.warning("Analytical agent: No conversation history found")
-        state["ai_response"] = "I didn't receive a question. How can I help you with vehicle information?"
+        state["ai_response"] = "I didn't receive a question. How can I help you with product information?"
         return state
 
     # Get latest user message
@@ -341,55 +297,94 @@ def analytical_agent(
     )
 
     # Get available tools
-    db_tools = get_vehicle_database_tools(llm)
     tools = [
-        get_vehicle_listing_by_vin,
-        get_vehicle_photos_by_vin,
-        web_search 
-    ] + db_tools
+        search_products,
+        get_product_details,
+        web_search,
+    ]
 
-    # Build vehicle context from state
-    vehicles = state.get("recommended_vehicles", [])
+    # Build product context from state
+    products = state.get("recommended_vehicles", [])
     filters = state.get("explicit_filters", {})
     preferences = state.get("implicit_preferences", {})
 
-    # Create vehicle reference map (for "#1", "#2" references)
-    vehicle_context_parts = []
+    # Create product reference map (for "#1", "#2" references)
+    product_context_parts: List[str] = []
 
-    if vehicles:
-        vehicle_context_parts.append("## Available Vehicles (for reference)\n")
-        for i, vehicle in enumerate(vehicles[:10], 1):
-            v = vehicle.get("vehicle", {})
-            listing = vehicle.get("retailListing", {})
-            price = listing.get("price", 0)
-            miles = listing.get("miles", 0)
-            vehicle_context_parts.append(
-                f"#{i}: {v.get('year')} {v.get('make')} {v.get('model')} | "
-                f"${price:,} | {miles:,} miles | VIN: {v.get('vin')}"
+    if products:
+        product_context_parts.append("## Available Products (for reference)\n")
+        for index, product in enumerate(products[:10], 1):
+            product_info = product.get("product", {}) or {}
+            display_title = (
+                product.get("title")
+                or product_info.get("title")
+                or product_info.get("name")
+                or product.get("model")
+                or "Unnamed product"
+            )
+            brand = product.get("brand") or product_info.get("brand")
+            if brand and brand.lower() not in display_title.lower():
+                display_name = f"{brand} {display_title}"
+            else:
+                display_name = display_title
+
+            price_text = product.get("price_text")
+            price_value = product.get("price_value")
+            currency = product.get("price_currency") or product.get("offer", {}).get("currency")
+            if price_text:
+                price_display = price_text
+            elif isinstance(price_value, (int, float)):
+                if currency and currency.upper() == "USD":
+                    price_display = f"${price_value:,.2f}"
+                elif currency:
+                    price_display = f"{currency} {price_value:,.2f}"
+                else:
+                    price_display = f"${price_value:,.2f}"
+            else:
+                price_display = "N/A"
+
+            source = product.get("source") or product.get("offer", {}).get("seller")
+            rating = product.get("rating")
+            rating_display = f"{rating:.1f}/5" if isinstance(rating, (int, float)) else "N/A"
+            rating_count = (
+                product.get("rating_count")
+                or product.get("reviewCount")
+                or product.get("reviews")
+            )
+            if rating_count:
+                rating_display = f"{rating_display} ({rating_count} reviews)"
+
+            product_id = (
+                product_info.get("identifier")
+                or product_info.get("id")
+                or product.get("id")
+            )
+            product_context_parts.append(
+                f"#{index}: {display_name} | Price: {price_display} | Seller: {source or 'Unknown'} | Rating: {rating_display} | Product ID: {product_id or 'N/A'}"
             )
 
     # Add search context if available
     if filters:
         active_filters = {k: v for k, v in filters.items() if v}
         if active_filters:
-            vehicle_context_parts.append("\n## Current Search Filters")
+            product_context_parts.append("\n## Current Search Filters")
             for key, value in active_filters.items():
-                vehicle_context_parts.append(f"- {key}: {value}")
+                product_context_parts.append(f"- {key}: {value}")
 
     if preferences:
         active_prefs = {k: v for k, v in preferences.items() if v}
         if active_prefs:
-            vehicle_context_parts.append("\n## User Preferences")
+            product_context_parts.append("\n## User Preferences")
             for key, value in active_prefs.items():
-                vehicle_context_parts.append(f"- {key}: {value}")
+                product_context_parts.append(f"- {key}: {value}")
 
     # Build messages for agent
     messages = [SystemMessage(content=ANALYTICAL_SYSTEM_PROMPT)]
 
-    # Add vehicle context if available (before conversation history)
-    if vehicle_context_parts:
-        vehicle_context = "\n".join(vehicle_context_parts)
-        messages.append(HumanMessage(content=f"Context:\n{vehicle_context}"))
+    # Add product context if available (before conversation history)
+    if product_context_parts:
+        product_context = "\n".join(product_context_parts)
+        messages.append(HumanMessage(content=f"Context:\n{product_context}"))
 
     # Add recent conversation history (includes current question)
     messages.extend(recent_history)
@@ -408,6 +403,7 @@ def analytical_agent(
     try:
         # Invoke with system message (cached) + context + history
         result = agent.invoke({"messages": messages})
+        evidence_summary = _collect_evidence(result.get("messages", []))
 
         # Emit progress: Synthesizing answer
         if progress_callback:
@@ -445,7 +441,7 @@ def analytical_agent(
                 # It's a comparison - use summary as response, store table separately
                 state["ai_response"] = comparison_result['summary']
                 state["comparison_table"] = comparison_result['comparison_table'].model_dump()
-                logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} vehicles compared")
+                logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} products compared")
 
                 # Generate interactive elements from summary
                 try:
@@ -474,6 +470,8 @@ def analytical_agent(
                     state["quick_replies"] = None
                     state["suggested_followups"] = []  # Analytical mode uses quick_replies only
 
+            _apply_verification(state, response_content, evidence_summary, config, user_input)
+
         # Emit progress: Answer ready
         if progress_callback:
             progress_callback({
@@ -499,8 +497,8 @@ def analytical_agent(
             state["ai_response"] = "I'm currently experiencing high demand. Please try again in a moment."
         elif "timeout" in error_msg:
             state["ai_response"] = "The query took too long to process. Please try a simpler question."
-        elif "invalid" in error_msg and "vin" in error_msg:
-            state["ai_response"] = "I couldn't find that vehicle. Please check the VIN or vehicle number and try again."
+        elif "invalid" in error_msg and ("product" in error_msg or "id" in error_msg):
+            state["ai_response"] = "I couldn't find that product. Please double-check the product ID or name and try again."
         else:
             state["ai_response"] = "I encountered an error while researching your question. Please try rephrasing it or ask something else."
 
@@ -509,3 +507,85 @@ def analytical_agent(
         state["suggested_followups"] = []
 
     return state
+
+
+def _collect_evidence(messages: List[Any]) -> str:
+    """
+    Collect tool outputs and intermediate evidence from ReAct execution.
+    """
+    if not messages:
+        return ""
+
+    evidence_lines: List[str] = []
+    for message in messages:
+        if isinstance(message, ToolMessage):
+            snippet = message.content if isinstance(message.content, str) else json.dumps(message.content, ensure_ascii=False)
+            evidence_lines.append(snippet.strip())
+    return "\n".join(evidence_lines[-5:])
+
+
+def _apply_verification(
+    state: VehicleSearchState,
+    ai_response: str,
+    evidence_summary: str,
+    config,
+    user_question: str
+) -> None:
+    """
+    Run a lightweight verifier pass to assess factual confidence.
+    """
+    diagnostics = state.setdefault("diagnostics", {})
+    diagnostics.setdefault("analytical", {})
+    diagnostics["analytical"]["evidence"] = evidence_summary
+
+    if not ai_response:
+        return
+
+    try:
+        model_config = config.get_model_config('analytical_postprocess')
+        verifier = ChatOpenAI(
+            model=model_config['name'],
+            temperature=0,
+            max_tokens=model_config.get('max_tokens', 300)
+        )
+    except Exception as e:
+        logger.warning(f"Verifier model unavailable: {e}")
+        return
+
+    prompt = f"""
+You are a fact-checking assistant. Evaluate if the assistant response is supported by the evidence.
+
+User question: {user_question}
+
+Assistant answer:
+{ai_response}
+
+Evidence collected:
+{evidence_summary or "No evidence"}
+
+Respond with a JSON object containing:
+  "confident": boolean,
+  "issues": optional string describing factual gaps (empty if none).
+"""
+
+    try:
+        verification = verifier.invoke(prompt)
+        payload = verification.content if hasattr(verification, "content") else verification
+        if isinstance(payload, str):
+            payload = payload.strip()
+            if payload.startswith("```"):
+                payload = payload.strip("`")
+            verdict = json.loads(payload)
+        elif isinstance(payload, dict):
+            verdict = payload
+        else:
+            verdict = {}
+
+        diagnostics["analytical"]["verification"] = verdict
+
+        if not verdict.get("confident", True):
+            issues = verdict.get("issues")
+            if issues:
+                state["ai_response"] = f"{state['ai_response']}\n\n_I want to double-check: {issues}_"
+    except Exception as e:
+        logger.warning(f"Verification step failed: {e}")

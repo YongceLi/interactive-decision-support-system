@@ -13,6 +13,11 @@ from typing import Any, Dict, Optional
 import requests
 from langchain_core.tools import tool
 
+from idss_agent.utils.logger import get_logger
+
+
+api_logger = get_logger("tools.electronics_api")
+
 
 DEFAULT_HOST = os.getenv("RAPIDAPI_HOST", "product-search-api.p.rapidapi.com")
 DEFAULT_BASE_URL = os.getenv("RAPIDAPI_BASE_URL", f"https://{DEFAULT_HOST}")
@@ -54,12 +59,24 @@ def _make_request(
     headers = _build_headers()
 
     try:
+        api_logger.info(
+            "RapidAPI request %s %s payload=%s",
+            method.upper(),
+            url,
+            json.dumps(payload)[:1000],
+        )
+
         if method.upper() == "POST":
             response = requests.post(url, data=payload, headers=headers, timeout=timeout)
         else:
             response = requests.get(url, params=payload, headers=headers, timeout=timeout)
 
         response.raise_for_status()
+        api_logger.debug(
+            "RapidAPI response status=%s body_length=%s",
+            response.status_code,
+            len(response.text),
+        )
         return response.text
     except requests.exceptions.HTTPError as exc:  # pragma: no cover - simple wrapper
         status = exc.response.status_code if exc.response else "unknown"

@@ -839,39 +839,67 @@ export default function Home() {
                           : (message.suggested_followups || []);
                         
                         return buttonsToShow.map((reply, idx) => {
-                          const isBudgetReply = reply.toLowerCase().includes('budget');
+                          const normalizedReply = reply.trim().toLowerCase();
+                          const isBudgetReply = normalizedReply.includes('budget') && normalizedReply.replace(/[^a-z]/g, '') !== 'budget';
                           const replyKey = `${message.id}-${idx}`;
                           
                           if (isBudgetReply) {
-                            const currentValue = budgetValue[replyKey] ?? 50000;
+                            const budgetMatch = reply.match(/\$?([0-9][0-9,]*(?:\.[0-9]+)?)/);
+                            const parsedBudget = budgetMatch ? Math.round(parseFloat(budgetMatch[1].replace(/,/g, ''))) : undefined;
+
+                            const defaultMax = 4000;
+                            const baseBudget = parsedBudget && parsedBudget > 0 ? parsedBudget : undefined;
+                            const sliderMin = baseBudget ? Math.max(0, Math.floor(baseBudget * 0.4 / 10) * 10) : 0;
+                            let sliderMax = baseBudget ? Math.ceil(baseBudget * 1.6 / 10) * 10 : defaultMax;
+
+                            if (sliderMax <= sliderMin) {
+                              sliderMax = sliderMin + Math.max(200, Math.ceil(sliderMin * 0.5));
+                            }
+
+                            const sliderStep = sliderMax <= 1000 ? 25 : sliderMax <= 5000 ? 50 : 100;
+                            const storedValue = budgetValue[replyKey];
+                            let currentValue = storedValue ?? baseBudget ?? Math.min(1500, sliderMax);
+                            if (currentValue < sliderMin) currentValue = sliderMin;
+                            if (currentValue > sliderMax) currentValue = sliderMax;
+
+                            const formatTick = (value: number) => {
+                              if (value >= 1000) {
+                                const formatted = value / 1000;
+                                return `$${Number.isInteger(formatted) ? formatted.toFixed(0) : formatted.toFixed(1)}K`;
+                              }
+                              return `$${value.toLocaleString()}`;
+                            };
                             
                             return (
-                              <div key={idx} className="bg-white border border-[#8b959e]/40 rounded-lg p-3 min-w-[200px] shadow-sm">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-black text-base font-medium">Budget: ${currentValue.toLocaleString()}</span>
+                              <div key={idx} className="bg-white border border-[#8b959e]/40 rounded-lg p-3 min-w-[220px] shadow-sm space-y-2">
+                                <span className="block text-black text-base font-medium">
+                                  Budget: ${currentValue.toLocaleString()}
+                                </span>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="range"
+                                    min={sliderMin}
+                                    max={sliderMax}
+                                    step={sliderStep}
+                                    value={currentValue}
+                                    onChange={(e) => {
+                                      const newValue = parseInt(e.target.value, 10);
+                                      setBudgetValue(prev => ({ ...prev, [replyKey]: newValue }));
+                                    }}
+                                    className="w-full h-2 bg-[#8b959e]/30 rounded-lg appearance-none cursor-pointer slider"
+                                  />
                                   <button
                                     onClick={() => handleChatMessage(`My budget is $${currentValue.toLocaleString()}`)}
                                     disabled={isLoading}
-                                    className="px-4 py-2 bg-[#750013] text-white text-sm rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8b1320]"
+                                    className="w-9 h-9 bg-[#750013] text-white rounded-full flex items-center justify-center text-lg leading-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#8b1320]"
+                                    aria-label="Submit budget"
                                   >
-                                    Submit
+                                    →
                                   </button>
                                 </div>
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="200000"
-                                  step="5000"
-                                  value={currentValue}
-                                  onChange={(e) => {
-                                    const newValue = parseInt(e.target.value);
-                                    setBudgetValue(prev => ({ ...prev, [replyKey]: newValue }));
-                                  }}
-                                  className="w-full h-2 bg-[#8b959e]/30 rounded-lg appearance-none cursor-pointer slider"
-                                />
-                                <div className="flex justify-between text-sm text-[#8b959e] mt-1">
-                                  <span>$0</span>
-                                  <span>$200K</span>
+                                <div className="flex justify-between text-xs text-[#8b959e]">
+                                  <span>{formatTick(sliderMin)}</span>
+                                  <span>{formatTick(sliderMax)}</span>
                                 </div>
                               </div>
                             );

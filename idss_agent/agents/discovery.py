@@ -11,12 +11,12 @@ from idss_agent.utils.prompts import render_prompt
 from idss_agent.state.schema import VehicleSearchState, AgentResponse
 
 
-def format_vehicles_for_llm(vehicles: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
-    """Return raw JSON for the top vehicles, truncated to a safe length."""
-    if not vehicles:
+def format_products_for_llm(products: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
+    """Return raw JSON for the top products, truncated to a safe length."""
+    if not products:
         return "[]"
 
-    limited = vehicles[:limit]
+    limited = products[:limit]
     raw_json = json.dumps(limited, indent=2)
 
     if len(raw_json) > max_chars:
@@ -30,15 +30,15 @@ def discovery_agent(
     progress_callback: Optional[Callable[[dict], None]] = None
 ) -> VehicleSearchState:
     """
-    Discovery agent - generates vehicle overview and elicitation questions.
+    Discovery agent - generates product overview and elicitation questions.
 
     This agent:
     1. Acknowledges user preferences
-    2. Uses bullet points to recommend the first vehicle about how it matches the user's preferences
+    2. Uses bullet points to explain how the first product matches the user's preferences
     3. Asks 1-2 strategic elicitation questions
 
     Args:
-        state: Current vehicle search state
+        state: Current product search state
         progress_callback: Optional callback for progress updates
 
     Returns:
@@ -59,7 +59,7 @@ def discovery_agent(
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
-    vehicles = state['recommended_vehicles']
+    products = state['recommended_vehicles']
     already_asked = state.get('questions_asked', [])
 
     model_config = config.get_model_config('discovery')
@@ -72,9 +72,9 @@ def discovery_agent(
         or config.limits.get('max_vehicle_summary_chars', 4000)
     )
 
-    # Format vehicles for LLM
-    vehicles_summary = format_vehicles_for_llm(
-        vehicles,
+    # Format products for LLM
+    products_summary = format_products_for_llm(
+        products,
         limit=top_limit,
         max_chars=max_summary_chars,
     )
@@ -99,8 +99,8 @@ Include this message naturally in your response: "{fallback_message}"
 **User's Preferences:**
 {json.dumps(implicit, indent=2)}
 
-**Current Listings ({len(vehicles)} {product_plural} found, showing top {top_limit} as JSON):**
-{vehicles_summary}
+**Current Listings ({len(products)} {product_plural} found, showing top {top_limit} as JSON):**
+{products_summary}
 
 **Topics Already Asked About:** {already_asked}
 (Avoid asking about these topics again)
@@ -160,12 +160,16 @@ def extract_questions_asked(state: VehicleSearchState, ai_response: str) -> Vehi
     This allows us to avoid repeating questions in future turns.
 
     Args:
-        state: Current vehicle search state
+        state: Current product search state
         ai_response: The assistant's response text
 
     Returns:
         Updated state with questions_asked list
     """
+
+    config = get_config()
+    terminology = config.get_terminology_context()
+    product_name = terminology.get('product_name', 'product')
 
     extraction_prompt = f"""
 Given this assistant response, identify which topics were asked about in the questions.
@@ -174,23 +178,21 @@ Response:
 "{ai_response}"
 
 Possible topics:
-- budget (asking about price range or budget)
-- location (asking about zip code, city, or location)
-- usage (asking about how they'll use the vehicle, purpose, driving patterns)
-- priorities (asking what matters most, what they value)
-- mileage (asking about mileage preferences)
-- vehicle_type (asking about SUV, sedan, truck, body style)
-- features (asking about specific features needed)
-- timeline (asking when they need the vehicle)
+- budget (asking about price range or spending comfort)
+- usage (asking how they'll use the {product_name} or what tasks it must handle)
+- priorities (asking what matters most, like performance, portability, aesthetics)
+- features (asking about specific specs or capabilities)
+- brand (asking about preferred manufacturers)
+- retailer (asking where they prefer to shop or buy)
+- availability (asking about when they need the {product_name} or timeline)
+- support (asking about warranty, support, or service expectations)
 
 Return ONLY a JSON array of topics that were asked about, e.g.:
-["budget", "location", "usage"]
+["budget", "usage", "features"]
 
 If no questions were asked, return an empty array: []
 """
 
-    # Get configuration for extraction model
-    config = get_config()
     model_config = config.get_model_config('discovery_extraction')
 
     llm = ChatOpenAI(

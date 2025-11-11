@@ -1,0 +1,1120 @@
+{
+  "session_id": "931ded4f-60d0-4656-905b-d33b1b397eb8",
+  "timestamp": "20251111T025038Z",
+  "ai_response": "Great choice looking for a new GPU! \n\n- **ASUS GeForce RTX 5070 Ti TUF Gaming OC**: High performance, excellent cooling, $849.99, rated 4.7 by 511 users.\n\nDo you have a specific budget range in mind, or are there any particular features you're looking for in a GPU?",
+  "explicit_filters": {
+    "product": "GPU"
+  },
+  "implicit_preferences": {},
+  "recommended_products": [
+    {
+      "id": "13478145201223320118",
+      "title": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+      "brand": null,
+      "source": "asus.com",
+      "price_text": "$849.99",
+      "price_value": 849.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13478145201223320118,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRd7FDgIM67kYVUgXhIhpJSigqzxV-ree7Qx0VH0ES6JTVWZXsYqG7wz_5aSZ78ODL3KNJvmx8kUenr76nb-UCYeWvHV3kDHtBhdqqGPkECgLBltRskW7UC",
+      "rating": 4.7,
+      "rating_count": 511,
+      "product": {
+        "id": "13478145201223320118",
+        "title": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "13478145201223320118"
+      },
+      "offer": {
+        "price": "$849.99",
+        "currency": "USD",
+        "seller": "asus.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13478145201223320118,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRd7FDgIM67kYVUgXhIhpJSigqzxV-ree7Qx0VH0ES6JTVWZXsYqG7wz_5aSZ78ODL3KNJvmx8kUenr76nb-UCYeWvHV3kDHtBhdqqGPkECgLBltRskW7UC"
+          }
+        ]
+      },
+      "_source": "asus.com",
+      "_raw": {
+        "title": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+        "source": "asus.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13478145201223320118,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$849.99",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRd7FDgIM67kYVUgXhIhpJSigqzxV-ree7Qx0VH0ES6JTVWZXsYqG7wz_5aSZ78ODL3KNJvmx8kUenr76nb-UCYeWvHV3kDHtBhdqqGPkECgLBltRskW7UC",
+        "rating": 4.7,
+        "ratingCount": 511,
+        "productId": "13478145201223320118",
+        "position": 1
+      },
+      "product_brand": "asus.com",
+      "product_name": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+      "model_number": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+      "make": "asus.com",
+      "model": "ASUS GeForce RTX 5070 Ti TUF Gaming OC Graphics Card",
+      "year": 0,
+      "price": 849.99
+    },
+    {
+      "id": "3127072171201258029",
+      "title": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$193.99",
+      "price_value": 193.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3127072171201258029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQtAO_pqICzUCKA1g1W71mqFHAkgDse_LlfMVX7pBPR5W-n8eH4CvsxoIwgh3oMOpPQDXmidpQORN0YtcNqBKMgvfLRIp6tEm3GvLOi_ZPT06UGHto8j6FB",
+      "rating": 4.7,
+      "rating_count": 179,
+      "product": {
+        "id": "3127072171201258029",
+        "title": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "3127072171201258029"
+      },
+      "offer": {
+        "price": "$193.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3127072171201258029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQtAO_pqICzUCKA1g1W71mqFHAkgDse_LlfMVX7pBPR5W-n8eH4CvsxoIwgh3oMOpPQDXmidpQORN0YtcNqBKMgvfLRIp6tEm3GvLOi_ZPT06UGHto8j6FB"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3127072171201258029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$193.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQtAO_pqICzUCKA1g1W71mqFHAkgDse_LlfMVX7pBPR5W-n8eH4CvsxoIwgh3oMOpPQDXmidpQORN0YtcNqBKMgvfLRIp6tEm3GvLOi_ZPT06UGHto8j6FB",
+        "rating": 4.7,
+        "ratingCount": 179,
+        "productId": "3127072171201258029",
+        "position": 2
+      },
+      "product_brand": "Best Buy",
+      "product_name": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+      "model_number": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+      "make": "Best Buy",
+      "model": "MSI GeForce RTX 3050 Gaming X Graphics Card",
+      "year": 0,
+      "price": 193.99
+    },
+    {
+      "id": "6800775342455117360",
+      "title": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+      "brand": null,
+      "source": "B&H Photo-Video-Audio",
+      "price_text": "$749.99",
+      "price_value": 749.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6800775342455117360,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRtnQAdX98rZARYyDEBAJSs5XlFUqCaicArgTIzIQcv3Lf28S-HUOu-Cdj2G9TQ14o4C1T9EKa0lCbyTZshak_UEVCVXyZn371Mufidj6YU",
+      "rating": 4.6,
+      "rating_count": 191,
+      "product": {
+        "id": "6800775342455117360",
+        "title": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6800775342455117360"
+      },
+      "offer": {
+        "price": "$749.99",
+        "currency": "USD",
+        "seller": "B&H Photo-Video-Audio",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6800775342455117360,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRtnQAdX98rZARYyDEBAJSs5XlFUqCaicArgTIzIQcv3Lf28S-HUOu-Cdj2G9TQ14o4C1T9EKa0lCbyTZshak_UEVCVXyZn371Mufidj6YU"
+          }
+        ]
+      },
+      "_source": "B&H Photo-Video-Audio",
+      "_raw": {
+        "title": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+        "source": "B&H Photo-Video-Audio",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6800775342455117360,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$749.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRtnQAdX98rZARYyDEBAJSs5XlFUqCaicArgTIzIQcv3Lf28S-HUOu-Cdj2G9TQ14o4C1T9EKa0lCbyTZshak_UEVCVXyZn371Mufidj6YU",
+        "rating": 4.6,
+        "ratingCount": 191,
+        "productId": "6800775342455117360",
+        "position": 3
+      },
+      "product_brand": "B&H Photo-Video-Audio",
+      "product_name": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+      "model_number": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+      "make": "B&H Photo-Video-Audio",
+      "model": "PNY GeForce RTX 5070 Ti OC Graphics Card",
+      "year": 0,
+      "price": 749.99
+    },
+    {
+      "id": "10692594445830128299",
+      "title": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+      "brand": null,
+      "source": "Newegg.com",
+      "price_text": "$389.99",
+      "price_value": 389.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:10692594445830128299,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSvr1m79bPMZSqDuvAjsE3-r7ByR1mYvTBZ5PH8mS6-36CyzvGc86mEpp1Ztnco5id7amp_SLfPj870LeHLULtOyo-2om_Qb3256qEEYva-aghwTa6kbGzIRg",
+      "rating": 4.8,
+      "rating_count": 316,
+      "product": {
+        "id": "10692594445830128299",
+        "title": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "10692594445830128299"
+      },
+      "offer": {
+        "price": "$389.99",
+        "currency": "USD",
+        "seller": "Newegg.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:10692594445830128299,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSvr1m79bPMZSqDuvAjsE3-r7ByR1mYvTBZ5PH8mS6-36CyzvGc86mEpp1Ztnco5id7amp_SLfPj870LeHLULtOyo-2om_Qb3256qEEYva-aghwTa6kbGzIRg"
+          }
+        ]
+      },
+      "_source": "Newegg.com",
+      "_raw": {
+        "title": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+        "source": "Newegg.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:10692594445830128299,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$389.99",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSvr1m79bPMZSqDuvAjsE3-r7ByR1mYvTBZ5PH8mS6-36CyzvGc86mEpp1Ztnco5id7amp_SLfPj870LeHLULtOyo-2om_Qb3256qEEYva-aghwTa6kbGzIRg",
+        "rating": 4.8,
+        "ratingCount": 316,
+        "productId": "10692594445830128299",
+        "position": 4
+      },
+      "product_brand": "Newegg.com",
+      "product_name": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+      "model_number": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+      "make": "Newegg.com",
+      "model": "Gigabyte Radeon RX 9060 XT Gaming OC Graphics Card",
+      "year": 0,
+      "price": 389.99
+    },
+    {
+      "id": "3779603470699779110",
+      "title": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+      "brand": null,
+      "source": "Walmart - Seller",
+      "price_text": "$1,157.44",
+      "price_value": 1157.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3779603470699779110,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTqmNEktQed2ugBVlVKrbSbg92hAixwPI538eMpsvy8lQ_ikQoJKoeXSgb37blEPAVXdz47L59U9SpjzWUTNAJZlhADeyU2Zx0_A5HpGxY4qIfJ4ZtH_duu1w",
+      "rating": 4.9,
+      "rating_count": 52,
+      "product": {
+        "id": "3779603470699779110",
+        "title": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "3779603470699779110"
+      },
+      "offer": {
+        "price": "$1,157.44",
+        "currency": "USD",
+        "seller": "Walmart - Seller",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3779603470699779110,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTqmNEktQed2ugBVlVKrbSbg92hAixwPI538eMpsvy8lQ_ikQoJKoeXSgb37blEPAVXdz47L59U9SpjzWUTNAJZlhADeyU2Zx0_A5HpGxY4qIfJ4ZtH_duu1w"
+          }
+        ]
+      },
+      "_source": "Walmart - Seller",
+      "_raw": {
+        "title": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+        "source": "Walmart - Seller",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3779603470699779110,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1,157.44",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTqmNEktQed2ugBVlVKrbSbg92hAixwPI538eMpsvy8lQ_ikQoJKoeXSgb37blEPAVXdz47L59U9SpjzWUTNAJZlhADeyU2Zx0_A5HpGxY4qIfJ4ZtH_duu1w",
+        "rating": 4.9,
+        "ratingCount": 52,
+        "productId": "3779603470699779110",
+        "position": 5
+      },
+      "product_brand": "Walmart - Seller",
+      "product_name": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+      "model_number": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+      "make": "Walmart - Seller",
+      "model": "PNY NVIDIA GeForce RTX 5080 ARGB EPIC-X RGB OC Graphics Card 16GB",
+      "year": 0,
+      "price": 1157.0
+    },
+    {
+      "id": "13704503701900025602",
+      "title": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+      "brand": null,
+      "source": "Lenovo",
+      "price_text": "$3,359.99",
+      "price_value": 3359.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13704503701900025602,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRWHX3Ps6dm2qBN1djwUrKDYNt1-EKVVOiKbsUSC6yuTWqRfsFTBLi0LFLCg31moCDnQJAHo08G0cN8AsLikzlj0Qn2y_av",
+      "rating": 4.5,
+      "rating_count": 418,
+      "product": {
+        "id": "13704503701900025602",
+        "title": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "13704503701900025602"
+      },
+      "offer": {
+        "price": "$3,359.99",
+        "currency": "USD",
+        "seller": "Lenovo",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13704503701900025602,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRWHX3Ps6dm2qBN1djwUrKDYNt1-EKVVOiKbsUSC6yuTWqRfsFTBLi0LFLCg31moCDnQJAHo08G0cN8AsLikzlj0Qn2y_av"
+          }
+        ]
+      },
+      "_source": "Lenovo",
+      "_raw": {
+        "title": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+        "source": "Lenovo",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:13704503701900025602,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$3,359.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRWHX3Ps6dm2qBN1djwUrKDYNt1-EKVVOiKbsUSC6yuTWqRfsFTBLi0LFLCg31moCDnQJAHo08G0cN8AsLikzlj0Qn2y_av",
+        "rating": 4.5,
+        "ratingCount": 418,
+        "productId": "13704503701900025602",
+        "position": 6
+      },
+      "product_brand": "Lenovo",
+      "product_name": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+      "model_number": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+      "make": "Lenovo",
+      "model": "ASUS GeForce RTX 5090 ROG Astral OC Graphics Card",
+      "year": 0,
+      "price": 3359.0
+    },
+    {
+      "id": "14268554259970461952",
+      "title": "Intel Arc B580 Limited Edition Graphics Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$249.99",
+      "price_value": 249.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1",
+      "rating": 4.5,
+      "rating_count": 391,
+      "product": {
+        "id": "14268554259970461952",
+        "title": "Intel Arc B580 Limited Edition Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14268554259970461952"
+      },
+      "offer": {
+        "price": "$249.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "Intel Arc B580 Limited Edition Graphics Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$249.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1",
+        "rating": 4.5,
+        "ratingCount": 391,
+        "productId": "14268554259970461952",
+        "position": 7
+      },
+      "product_brand": "Best Buy",
+      "product_name": "Intel Arc B580 Limited Edition Graphics Card",
+      "model_number": "Intel Arc B580 Limited Edition Graphics Card",
+      "make": "Best Buy",
+      "model": "Intel Arc B580 Limited Edition Graphics Card",
+      "year": 0,
+      "price": 249.99
+    },
+    {
+      "id": "14926374095526698469",
+      "title": "Acer Intel Arc B580 Nitro OC Graphic Card",
+      "brand": null,
+      "source": "B&H Photo-Video-Audio",
+      "price_text": "$234.99",
+      "price_value": 234.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14926374095526698469,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTerFIrF4EVox1n5vp0T5DXQ9OfB9uJBMo5i2U0VYETYeShxhJVKtFS_4ybMuV1NDSzOVB2YUU2s0Pm5ULVqGiPZzZWMFXnWXBBiMQ7W-9v",
+      "rating": 4.7,
+      "rating_count": 66,
+      "product": {
+        "id": "14926374095526698469",
+        "title": "Acer Intel Arc B580 Nitro OC Graphic Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14926374095526698469"
+      },
+      "offer": {
+        "price": "$234.99",
+        "currency": "USD",
+        "seller": "B&H Photo-Video-Audio",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14926374095526698469,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTerFIrF4EVox1n5vp0T5DXQ9OfB9uJBMo5i2U0VYETYeShxhJVKtFS_4ybMuV1NDSzOVB2YUU2s0Pm5ULVqGiPZzZWMFXnWXBBiMQ7W-9v"
+          }
+        ]
+      },
+      "_source": "B&H Photo-Video-Audio",
+      "_raw": {
+        "title": "Acer Intel Arc B580 Nitro OC Graphic Card",
+        "source": "B&H Photo-Video-Audio",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14926374095526698469,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$234.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTerFIrF4EVox1n5vp0T5DXQ9OfB9uJBMo5i2U0VYETYeShxhJVKtFS_4ybMuV1NDSzOVB2YUU2s0Pm5ULVqGiPZzZWMFXnWXBBiMQ7W-9v",
+        "rating": 4.7,
+        "ratingCount": 66,
+        "productId": "14926374095526698469",
+        "position": 8
+      },
+      "product_brand": "B&H Photo-Video-Audio",
+      "product_name": "Acer Intel Arc B580 Nitro OC Graphic Card",
+      "model_number": "Acer Intel Arc B580 Nitro OC Graphic Card",
+      "make": "B&H Photo-Video-Audio",
+      "model": "Acer Intel Arc B580 Nitro OC Graphic Card",
+      "year": 0,
+      "price": 234.99
+    },
+    {
+      "id": "8074600860093411229",
+      "title": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+      "brand": null,
+      "source": "YestonStore",
+      "price_text": "$439.00",
+      "price_value": 439.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8074600860093411229,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTLSH7xKgEsSgV8VuzlfEzp9dqQpgb4shKhXmK5Y3ryiInQir300u5i1gEOB0ZDpmHR7nslbdcwrJNV4L39LduEphzctZqSScRqvO2gTy0AdQEORW4tCbmF1w",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "8074600860093411229",
+        "title": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8074600860093411229"
+      },
+      "offer": {
+        "price": "$439.00",
+        "currency": "USD",
+        "seller": "YestonStore",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8074600860093411229,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTLSH7xKgEsSgV8VuzlfEzp9dqQpgb4shKhXmK5Y3ryiInQir300u5i1gEOB0ZDpmHR7nslbdcwrJNV4L39LduEphzctZqSScRqvO2gTy0AdQEORW4tCbmF1w"
+          }
+        ]
+      },
+      "_source": "YestonStore",
+      "_raw": {
+        "title": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+        "source": "YestonStore",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8074600860093411229,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$439.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTLSH7xKgEsSgV8VuzlfEzp9dqQpgb4shKhXmK5Y3ryiInQir300u5i1gEOB0ZDpmHR7nslbdcwrJNV4L39LduEphzctZqSScRqvO2gTy0AdQEORW4tCbmF1w",
+        "productId": "8074600860093411229",
+        "position": 9
+      },
+      "product_brand": "YestonStore",
+      "product_name": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+      "model_number": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+      "make": "YestonStore",
+      "model": "Yeston AMD Radeon Gaming SA RX 7700 XT 12G GDDR6 Graphics Card",
+      "year": 0,
+      "price": 439.0
+    },
+    {
+      "id": "16763737378616830216",
+      "title": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+      "brand": null,
+      "source": "Newegg.com",
+      "price_text": "$429.99",
+      "price_value": 429.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16763737378616830216,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSKcvvtYwtoilz3deno6ydjmz9lH2Ssv9XFd0zg7DqT2LGu5NR1FUKRq-tMA7lpx7YwZQUonr3kTQFj3sNWcaDflq9BASS3i4a3ctSUtKmHfc30NAO5qdOUBQ",
+      "rating": 4.9,
+      "rating_count": 148,
+      "product": {
+        "id": "16763737378616830216",
+        "title": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "16763737378616830216"
+      },
+      "offer": {
+        "price": "$429.99",
+        "currency": "USD",
+        "seller": "Newegg.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16763737378616830216,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSKcvvtYwtoilz3deno6ydjmz9lH2Ssv9XFd0zg7DqT2LGu5NR1FUKRq-tMA7lpx7YwZQUonr3kTQFj3sNWcaDflq9BASS3i4a3ctSUtKmHfc30NAO5qdOUBQ"
+          }
+        ]
+      },
+      "_source": "Newegg.com",
+      "_raw": {
+        "title": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+        "source": "Newegg.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16763737378616830216,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$429.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSKcvvtYwtoilz3deno6ydjmz9lH2Ssv9XFd0zg7DqT2LGu5NR1FUKRq-tMA7lpx7YwZQUonr3kTQFj3sNWcaDflq9BASS3i4a3ctSUtKmHfc30NAO5qdOUBQ",
+        "rating": 4.9,
+        "ratingCount": 148,
+        "productId": "16763737378616830216",
+        "position": 10
+      },
+      "product_brand": "Newegg.com",
+      "product_name": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+      "model_number": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+      "make": "Newegg.com",
+      "model": "ZOTAC GeForce RTX 5060 Ti 16GB Twin Edge OC Graphics Card",
+      "year": 0,
+      "price": 429.99
+    },
+    {
+      "id": "12087814991415084082",
+      "title": "NVIDIA Quadro P620 Graphics Card",
+      "brand": null,
+      "source": "eBay - countlesssales12",
+      "price_text": "$93.38",
+      "price_value": 93.38,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12087814991415084082,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRrqvZ09lOi29VPGF-ezkCMSwglaGScTkxWyzBbwlSrcOsJfUwwHN_o8wR7sSShb17TpA79AhYifwmyDpwTJCPhiON44hMJiM6SbjaeBHv_qyCy4ejlvLk0",
+      "rating": 5,
+      "rating_count": 5,
+      "product": {
+        "id": "12087814991415084082",
+        "title": "NVIDIA Quadro P620 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "12087814991415084082"
+      },
+      "offer": {
+        "price": "$93.38",
+        "currency": "USD",
+        "seller": "eBay - countlesssales12",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12087814991415084082,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRrqvZ09lOi29VPGF-ezkCMSwglaGScTkxWyzBbwlSrcOsJfUwwHN_o8wR7sSShb17TpA79AhYifwmyDpwTJCPhiON44hMJiM6SbjaeBHv_qyCy4ejlvLk0"
+          }
+        ]
+      },
+      "_source": "eBay - countlesssales12",
+      "_raw": {
+        "title": "NVIDIA Quadro P620 Graphics Card",
+        "source": "eBay - countlesssales12",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12087814991415084082,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$93.38",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRrqvZ09lOi29VPGF-ezkCMSwglaGScTkxWyzBbwlSrcOsJfUwwHN_o8wR7sSShb17TpA79AhYifwmyDpwTJCPhiON44hMJiM6SbjaeBHv_qyCy4ejlvLk0",
+        "rating": 5,
+        "ratingCount": 5,
+        "productId": "12087814991415084082",
+        "position": 11
+      },
+      "product_brand": "eBay - countlesssales12",
+      "product_name": "NVIDIA Quadro P620 Graphics Card",
+      "model_number": "NVIDIA Quadro P620 Graphics Card",
+      "make": "eBay - countlesssales12",
+      "model": "NVIDIA Quadro P620 Graphics Card",
+      "year": 0,
+      "price": 93.38
+    },
+    {
+      "id": "17048180403134421259",
+      "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$1,349.95",
+      "price_value": 1349.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSWF0w4bZRk1sQW7ajGOVRPjx130PCgBcYGZ1Y_rpBHOxKiTqO5kTCe1Wx2BgsdPYWwl7f4If4YjYe47wCtYptSswrVobF7Vl83y5iJWKY",
+      "rating": 4.6,
+      "rating_count": 387,
+      "product": {
+        "id": "17048180403134421259",
+        "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17048180403134421259"
+      },
+      "offer": {
+        "price": "$1,349.95",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSWF0w4bZRk1sQW7ajGOVRPjx130PCgBcYGZ1Y_rpBHOxKiTqO5kTCe1Wx2BgsdPYWwl7f4If4YjYe47wCtYptSswrVobF7Vl83y5iJWKY"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1,349.95",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSWF0w4bZRk1sQW7ajGOVRPjx130PCgBcYGZ1Y_rpBHOxKiTqO5kTCe1Wx2BgsdPYWwl7f4If4YjYe47wCtYptSswrVobF7Vl83y5iJWKY",
+        "rating": 4.6,
+        "ratingCount": 387,
+        "productId": "17048180403134421259",
+        "position": 12
+      },
+      "product_brand": "Best Buy",
+      "product_name": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "model_number": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "make": "Best Buy",
+      "model": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "year": 0,
+      "price": 1349.0
+    },
+    {
+      "id": "4251787062371043866",
+      "title": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+      "brand": null,
+      "source": "Walmart - Seller",
+      "price_text": "$619.99",
+      "price_value": 619.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4251787062371043866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSp7Ok1PFLEdLSgvcc6Y0ET2gH5-9Nnja_DAkHemQYFfA4116iVRohQG8tylEPiPfgwfQivdvnUR7psBWRWYo6dvBEjvF1jRCZoubqhr7o",
+      "rating": 4.7,
+      "rating_count": 243,
+      "product": {
+        "id": "4251787062371043866",
+        "title": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4251787062371043866"
+      },
+      "offer": {
+        "price": "$619.99",
+        "currency": "USD",
+        "seller": "Walmart - Seller",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4251787062371043866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSp7Ok1PFLEdLSgvcc6Y0ET2gH5-9Nnja_DAkHemQYFfA4116iVRohQG8tylEPiPfgwfQivdvnUR7psBWRWYo6dvBEjvF1jRCZoubqhr7o"
+          }
+        ]
+      },
+      "_source": "Walmart - Seller",
+      "_raw": {
+        "title": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+        "source": "Walmart - Seller",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4251787062371043866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$619.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSp7Ok1PFLEdLSgvcc6Y0ET2gH5-9Nnja_DAkHemQYFfA4116iVRohQG8tylEPiPfgwfQivdvnUR7psBWRWYo6dvBEjvF1jRCZoubqhr7o",
+        "rating": 4.7,
+        "ratingCount": 243,
+        "productId": "4251787062371043866",
+        "position": 13
+      },
+      "product_brand": "Walmart - Seller",
+      "product_name": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+      "model_number": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+      "make": "Walmart - Seller",
+      "model": "ASRock AMD Radeon RX 9070 XT Steel Legend 16GB Graphics Card",
+      "year": 0,
+      "price": 619.99
+    },
+    {
+      "id": "14478763902085065059",
+      "title": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+      "brand": null,
+      "source": "B&H Photo-Video-Audio",
+      "price_text": "$584.99",
+      "price_value": 584.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14478763902085065059,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRDAH7f026gxGzuww8O3MoPj693FuvcnwYywAmVGmb2DAQM6hBYIOnegr0oRSKdKOlFkPRaCWrAW3UgMy2i0r0ldbxg6_mDBC5o5JQ28w-s",
+      "rating": 4.7,
+      "rating_count": 326,
+      "product": {
+        "id": "14478763902085065059",
+        "title": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14478763902085065059"
+      },
+      "offer": {
+        "price": "$584.99",
+        "currency": "USD",
+        "seller": "B&H Photo-Video-Audio",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14478763902085065059,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRDAH7f026gxGzuww8O3MoPj693FuvcnwYywAmVGmb2DAQM6hBYIOnegr0oRSKdKOlFkPRaCWrAW3UgMy2i0r0ldbxg6_mDBC5o5JQ28w-s"
+          }
+        ]
+      },
+      "_source": "B&H Photo-Video-Audio",
+      "_raw": {
+        "title": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+        "source": "B&H Photo-Video-Audio",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14478763902085065059,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$584.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcRDAH7f026gxGzuww8O3MoPj693FuvcnwYywAmVGmb2DAQM6hBYIOnegr0oRSKdKOlFkPRaCWrAW3UgMy2i0r0ldbxg6_mDBC5o5JQ28w-s",
+        "rating": 4.7,
+        "ratingCount": 326,
+        "productId": "14478763902085065059",
+        "position": 14
+      },
+      "product_brand": "B&H Photo-Video-Audio",
+      "product_name": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+      "model_number": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+      "make": "B&H Photo-Video-Audio",
+      "model": "ASUS TUF Gaming GeForce RTX 5070 OC Edition 12GB GDDR7 Graphics Card",
+      "year": 0,
+      "price": 584.99
+    },
+    {
+      "id": "16313303849911842655",
+      "title": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+      "brand": null,
+      "source": "Newegg.com",
+      "price_text": "$379.99",
+      "price_value": 379.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16313303849911842655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRQ8Ipa7s3yliRerX6QS3oOlZ2GtTtF17PySW2EJ7-1RePhUnGv1dOLQaRuif9TlAXsA58xfxJaqAsX7Ml4xTsUN6AbnxESRpkYrjvWgGBBrq4VRUVidz2G",
+      "rating": 5,
+      "rating_count": 184,
+      "product": {
+        "id": "16313303849911842655",
+        "title": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "16313303849911842655"
+      },
+      "offer": {
+        "price": "$379.99",
+        "currency": "USD",
+        "seller": "Newegg.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16313303849911842655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRQ8Ipa7s3yliRerX6QS3oOlZ2GtTtF17PySW2EJ7-1RePhUnGv1dOLQaRuif9TlAXsA58xfxJaqAsX7Ml4xTsUN6AbnxESRpkYrjvWgGBBrq4VRUVidz2G"
+          }
+        ]
+      },
+      "_source": "Newegg.com",
+      "_raw": {
+        "title": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+        "source": "Newegg.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16313303849911842655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$379.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRQ8Ipa7s3yliRerX6QS3oOlZ2GtTtF17PySW2EJ7-1RePhUnGv1dOLQaRuif9TlAXsA58xfxJaqAsX7Ml4xTsUN6AbnxESRpkYrjvWgGBBrq4VRUVidz2G",
+        "rating": 5,
+        "ratingCount": 184,
+        "productId": "16313303849911842655",
+        "position": 15
+      },
+      "product_brand": "Newegg.com",
+      "product_name": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+      "model_number": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+      "make": "Newegg.com",
+      "model": "Sapphire Pulse Radeon RX 9060 XT Gaming GDDR6 Graphic Card",
+      "year": 0,
+      "price": 379.99
+    },
+    {
+      "id": "4449183849305728586",
+      "title": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+      "brand": null,
+      "source": "Dell",
+      "price_text": "$516.99",
+      "price_value": 516.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4449183849305728586,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQVTVTMbeb4o0VjRm1OoxiSl6XaE9MTuR9g3JG4p2XJKo-xNrNcH3za08J0IQgs47yNh0jZYCaCzg97wQn4RyVSoMM4i7GWNw",
+      "rating": 4.1,
+      "rating_count": 41,
+      "product": {
+        "id": "4449183849305728586",
+        "title": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4449183849305728586"
+      },
+      "offer": {
+        "price": "$516.99",
+        "currency": "USD",
+        "seller": "Dell",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4449183849305728586,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQVTVTMbeb4o0VjRm1OoxiSl6XaE9MTuR9g3JG4p2XJKo-xNrNcH3za08J0IQgs47yNh0jZYCaCzg97wQn4RyVSoMM4i7GWNw"
+          }
+        ]
+      },
+      "_source": "Dell",
+      "_raw": {
+        "title": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+        "source": "Dell",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4449183849305728586,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$516.99",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQVTVTMbeb4o0VjRm1OoxiSl6XaE9MTuR9g3JG4p2XJKo-xNrNcH3za08J0IQgs47yNh0jZYCaCzg97wQn4RyVSoMM4i7GWNw",
+        "rating": 4.1,
+        "ratingCount": 41,
+        "productId": "4449183849305728586",
+        "position": 16
+      },
+      "product_brand": "Dell",
+      "product_name": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+      "model_number": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+      "make": "Dell",
+      "model": "PNY GeForce RTX 5060 Ti 16GB Graphics Card",
+      "year": 0,
+      "price": 516.99
+    },
+    {
+      "id": "17045869647056124178",
+      "title": "XFX Speedster Swft210 Graphics Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$299.99",
+      "price_value": 299.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17045869647056124178,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcR0Zf2BjgtVuwUYX1Ej8QpI_zh6TfyS0CB0QPZdLqhotNmQjWncNqYOXncti7PtovwBrbqtgdGbsQaq5i2gQrcrdMxvqjBCLtEtQOHMxRPmmcPESFBM7Fs19Q",
+      "rating": 4.6,
+      "rating_count": 86,
+      "product": {
+        "id": "17045869647056124178",
+        "title": "XFX Speedster Swft210 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17045869647056124178"
+      },
+      "offer": {
+        "price": "$299.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17045869647056124178,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcR0Zf2BjgtVuwUYX1Ej8QpI_zh6TfyS0CB0QPZdLqhotNmQjWncNqYOXncti7PtovwBrbqtgdGbsQaq5i2gQrcrdMxvqjBCLtEtQOHMxRPmmcPESFBM7Fs19Q"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "XFX Speedster Swft210 Graphics Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17045869647056124178,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$299.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcR0Zf2BjgtVuwUYX1Ej8QpI_zh6TfyS0CB0QPZdLqhotNmQjWncNqYOXncti7PtovwBrbqtgdGbsQaq5i2gQrcrdMxvqjBCLtEtQOHMxRPmmcPESFBM7Fs19Q",
+        "rating": 4.6,
+        "ratingCount": 86,
+        "productId": "17045869647056124178",
+        "position": 17
+      },
+      "product_brand": "Best Buy",
+      "product_name": "XFX Speedster Swft210 Graphics Card",
+      "model_number": "XFX Speedster Swft210 Graphics Card",
+      "make": "Best Buy",
+      "model": "XFX Speedster Swft210 Graphics Card",
+      "year": 0,
+      "price": 299.99
+    },
+    {
+      "id": "6476254341133647052",
+      "title": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+      "brand": null,
+      "source": "asus.com",
+      "price_text": "$1,299.99",
+      "price_value": 1299.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6476254341133647052,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSloEhEkJLudDtsl1-yCX81Ba4mmKKKsZfOA6z8Brhyvetj7uPZfy0kWwnebKPaf8ICQMgVFcsFU9cc07Oqy4u8DjxRII2x7RlV_zOO_6-qePp5m3TP5hclrw",
+      "rating": 4.4,
+      "rating_count": 5400,
+      "product": {
+        "id": "6476254341133647052",
+        "title": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6476254341133647052"
+      },
+      "offer": {
+        "price": "$1,299.99",
+        "currency": "USD",
+        "seller": "asus.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6476254341133647052,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSloEhEkJLudDtsl1-yCX81Ba4mmKKKsZfOA6z8Brhyvetj7uPZfy0kWwnebKPaf8ICQMgVFcsFU9cc07Oqy4u8DjxRII2x7RlV_zOO_6-qePp5m3TP5hclrw"
+          }
+        ]
+      },
+      "_source": "asus.com",
+      "_raw": {
+        "title": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+        "source": "asus.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6476254341133647052,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1,299.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSloEhEkJLudDtsl1-yCX81Ba4mmKKKsZfOA6z8Brhyvetj7uPZfy0kWwnebKPaf8ICQMgVFcsFU9cc07Oqy4u8DjxRII2x7RlV_zOO_6-qePp5m3TP5hclrw",
+        "rating": 4.4,
+        "ratingCount": 5400,
+        "productId": "6476254341133647052",
+        "position": 18
+      },
+      "product_brand": "asus.com",
+      "product_name": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+      "model_number": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+      "make": "asus.com",
+      "model": "ASUS PRIME GeForce RTX 5080 16GB GDDR7 Graphics Card",
+      "year": 0,
+      "price": 1299.0
+    },
+    {
+      "id": "6085606083189671648",
+      "title": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+      "brand": null,
+      "source": "B&H Photo-Video-Audio",
+      "price_text": "$719.99",
+      "price_value": 719.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6085606083189671648,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTfE5oHfL9HYFD3-TcUk8ci8YWJySlMyYaa5ejJa07VrxWcCOa0rOxFkM8t4fqdcFZb2gNjJcmMm6iu4jBXJRq1fUcOt80tfoBeVIjP-PTB",
+      "rating": 4.5,
+      "rating_count": 461,
+      "product": {
+        "id": "6085606083189671648",
+        "title": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6085606083189671648"
+      },
+      "offer": {
+        "price": "$719.99",
+        "currency": "USD",
+        "seller": "B&H Photo-Video-Audio",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6085606083189671648,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTfE5oHfL9HYFD3-TcUk8ci8YWJySlMyYaa5ejJa07VrxWcCOa0rOxFkM8t4fqdcFZb2gNjJcmMm6iu4jBXJRq1fUcOt80tfoBeVIjP-PTB"
+          }
+        ]
+      },
+      "_source": "B&H Photo-Video-Audio",
+      "_raw": {
+        "title": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+        "source": "B&H Photo-Video-Audio",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:6085606083189671648,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$719.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTfE5oHfL9HYFD3-TcUk8ci8YWJySlMyYaa5ejJa07VrxWcCOa0rOxFkM8t4fqdcFZb2gNjJcmMm6iu4jBXJRq1fUcOt80tfoBeVIjP-PTB",
+        "rating": 4.5,
+        "ratingCount": 461,
+        "productId": "6085606083189671648",
+        "position": 19
+      },
+      "product_brand": "B&H Photo-Video-Audio",
+      "product_name": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+      "model_number": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+      "make": "B&H Photo-Video-Audio",
+      "model": "Gigabyte Radeon RX 9070 XT GAMING OC Graphics Card",
+      "year": 0,
+      "price": 719.99
+    },
+    {
+      "id": "18139759705157637250",
+      "title": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+      "brand": null,
+      "source": "Walmart - Seller",
+      "price_text": "$279.99",
+      "price_value": 279.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:18139759705157637250,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSdfjQvSyGOVkorqORD-eB3bSgL43Iz3NpEn9KzOfwtn9fYwjB_C6o-tW9_AqVlcIaub_uoJRLenGHBPkXCE0PWzHKayI107KXR8BGj9Oat",
+      "rating": 4.8,
+      "rating_count": 1900,
+      "product": {
+        "id": "18139759705157637250",
+        "title": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "18139759705157637250"
+      },
+      "offer": {
+        "price": "$279.99",
+        "currency": "USD",
+        "seller": "Walmart - Seller",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:18139759705157637250,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSdfjQvSyGOVkorqORD-eB3bSgL43Iz3NpEn9KzOfwtn9fYwjB_C6o-tW9_AqVlcIaub_uoJRLenGHBPkXCE0PWzHKayI107KXR8BGj9Oat"
+          }
+        ]
+      },
+      "_source": "Walmart - Seller",
+      "_raw": {
+        "title": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+        "source": "Walmart - Seller",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:18139759705157637250,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$279.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSdfjQvSyGOVkorqORD-eB3bSgL43Iz3NpEn9KzOfwtn9fYwjB_C6o-tW9_AqVlcIaub_uoJRLenGHBPkXCE0PWzHKayI107KXR8BGj9Oat",
+        "rating": 4.8,
+        "ratingCount": 1900,
+        "productId": "18139759705157637250",
+        "position": 20
+      },
+      "product_brand": "Walmart - Seller",
+      "product_name": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+      "model_number": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+      "make": "Walmart - Seller",
+      "model": "MSI GeForce RTX 3060 Ventus 2X OC 12GB GDDR6 Graphics Card",
+      "year": 0,
+      "price": 279.99
+    }
+  ],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. im looking for gpus"
+    },
+    {
+      "role": "ai",
+      "content": "Great choice looking for a new GPU! \n\n- **ASUS GeForce RTX 5070 Ti TUF Gaming OC**: High performance, excellent cooling, $849.99, rated 4.7 by 511 users.\n\nDo you have a specific budget range in mind, or are there any particular features you're looking for in a GPU?"
+    }
+  ],
+  "diagnostics": null
+}

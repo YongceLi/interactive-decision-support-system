@@ -1,0 +1,1012 @@
+{
+  "session_id": "62a673be-f1ac-41a8-8ba8-9eae6ab26d6c",
+  "timestamp": "20251111T022705Z",
+  "ai_response": "Thanks for sharing your search criteria for a CPU to build your new system! \n\n- **JET Performance Power Control Module**\n  - Affordable at $141.71\n  - Available from Summit Racing\n  - Great for enhancing performance in system builds\n\nSince performance is a key priority for you, do you have a specific brand or generation of CPU in mind that we can focus on?",
+  "explicit_filters": {
+    "body_style": "CPU",
+    "state": "94305",
+    "zip": "94305",
+    "price": "300-700"
+  },
+  "implicit_preferences": {
+    "priorities": [
+      "performance"
+    ],
+    "lifestyle": "building a new system",
+    "notes": "User is looking for a CPU for a new system build.",
+    "budget_sensitivity": "moderate"
+  },
+  "recommended_products": [
+    {
+      "id": "5693592437478774029",
+      "title": "JET Performance Power Control Module",
+      "brand": null,
+      "source": "Summit Racing",
+      "price_text": "$141.71",
+      "price_value": 141.71,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5693592437478774029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "5693592437478774029",
+        "title": "JET Performance Power Control Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "5693592437478774029"
+      },
+      "offer": {
+        "price": "$141.71",
+        "currency": "USD",
+        "seller": "Summit Racing",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5693592437478774029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL"
+          }
+        ]
+      },
+      "_source": "Summit Racing",
+      "_raw": {
+        "title": "JET Performance Power Control Module",
+        "source": "Summit Racing",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5693592437478774029,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$141.71",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL",
+        "productId": "5693592437478774029",
+        "position": 1
+      },
+      "make": "Summit Racing",
+      "model": "JET Performance Power Control Module",
+      "year": 0,
+      "price": 141.71
+    },
+    {
+      "id": "4601803052264158665",
+      "title": "Thorton Chip Tuning Chevrolet Performance Chip",
+      "brand": null,
+      "source": "Thorton Chip Tuning",
+      "price_text": "$39.95",
+      "price_value": 39.95,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:4601803052264158665,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQkjjN7VfpUSA6_UxIUS9kFrg7ie6oABbQUsiI-ZoIp6mM31QXX6qBIRb6_pBZvlbA6RaQL6ryaaiD-0q7cb-qo4TNc-F8zUkOuxnOauD0ly4aeX9m6EydacQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "4601803052264158665",
+        "title": "Thorton Chip Tuning Chevrolet Performance Chip",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4601803052264158665"
+      },
+      "offer": {
+        "price": "$39.95",
+        "currency": "USD",
+        "seller": "Thorton Chip Tuning",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:4601803052264158665,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQkjjN7VfpUSA6_UxIUS9kFrg7ie6oABbQUsiI-ZoIp6mM31QXX6qBIRb6_pBZvlbA6RaQL6ryaaiD-0q7cb-qo4TNc-F8zUkOuxnOauD0ly4aeX9m6EydacQ"
+          }
+        ]
+      },
+      "_source": "Thorton Chip Tuning",
+      "_raw": {
+        "title": "Thorton Chip Tuning Chevrolet Performance Chip",
+        "source": "Thorton Chip Tuning",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:4601803052264158665,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$39.95",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQkjjN7VfpUSA6_UxIUS9kFrg7ie6oABbQUsiI-ZoIp6mM31QXX6qBIRb6_pBZvlbA6RaQL6ryaaiD-0q7cb-qo4TNc-F8zUkOuxnOauD0ly4aeX9m6EydacQ",
+        "productId": "4601803052264158665",
+        "position": 2
+      },
+      "make": "Thorton Chip Tuning",
+      "model": "Thorton Chip Tuning Chevrolet Performance Chip",
+      "year": 0,
+      "price": 39.95
+    },
+    {
+      "id": "6077133572104603459",
+      "title": "SCT Performance X4 Power Flash Programmer",
+      "brand": null,
+      "source": "Parleys Diesel Performance",
+      "price_text": "$298.95",
+      "price_value": 298.95,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6077133572104603459,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQTbCk23B0zsfmwsbAye_N0iuVftp4_TTvm1wA_pga7HjB3Nf_yLEYG9gLBoiQh-hKpK6aYt6r3uIsz3gvLX8xgjaWIqCMaA3DtqxhzEyHy",
+      "rating": 4.4,
+      "rating_count": 279,
+      "product": {
+        "id": "6077133572104603459",
+        "title": "SCT Performance X4 Power Flash Programmer",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6077133572104603459"
+      },
+      "offer": {
+        "price": "$298.95",
+        "currency": "USD",
+        "seller": "Parleys Diesel Performance",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6077133572104603459,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQTbCk23B0zsfmwsbAye_N0iuVftp4_TTvm1wA_pga7HjB3Nf_yLEYG9gLBoiQh-hKpK6aYt6r3uIsz3gvLX8xgjaWIqCMaA3DtqxhzEyHy"
+          }
+        ]
+      },
+      "_source": "Parleys Diesel Performance",
+      "_raw": {
+        "title": "SCT Performance X4 Power Flash Programmer",
+        "source": "Parleys Diesel Performance",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6077133572104603459,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$298.95",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQTbCk23B0zsfmwsbAye_N0iuVftp4_TTvm1wA_pga7HjB3Nf_yLEYG9gLBoiQh-hKpK6aYt6r3uIsz3gvLX8xgjaWIqCMaA3DtqxhzEyHy",
+        "rating": 4.4,
+        "ratingCount": 279,
+        "productId": "6077133572104603459",
+        "position": 3
+      },
+      "make": "Parleys Diesel Performance",
+      "model": "SCT Performance X4 Power Flash Programmer",
+      "year": 0,
+      "price": 298.95
+    },
+    {
+      "id": "6308126505495138998",
+      "title": "K&N 77-Series Performance Cold Air Intake Kit",
+      "brand": null,
+      "source": "K&N Store",
+      "price_text": "$472.99",
+      "price_value": 472.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6308126505495138998,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSV1aphhpY4U4qxt40995HsN2ber50aolLjsEomdyeXsEQLYge7V3I2qph3Il46tnI_pfze-eNQ-myds1hwxg_Twbeeu2o6D3kE4JXzPmqwcNmCNFVT2AHh",
+      "rating": 4.8,
+      "rating_count": 778,
+      "product": {
+        "id": "6308126505495138998",
+        "title": "K&N 77-Series Performance Cold Air Intake Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6308126505495138998"
+      },
+      "offer": {
+        "price": "$472.99",
+        "currency": "USD",
+        "seller": "K&N Store",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6308126505495138998,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSV1aphhpY4U4qxt40995HsN2ber50aolLjsEomdyeXsEQLYge7V3I2qph3Il46tnI_pfze-eNQ-myds1hwxg_Twbeeu2o6D3kE4JXzPmqwcNmCNFVT2AHh"
+          }
+        ]
+      },
+      "_source": "K&N Store",
+      "_raw": {
+        "title": "K&N 77-Series Performance Cold Air Intake Kit",
+        "source": "K&N Store",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:6308126505495138998,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$472.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSV1aphhpY4U4qxt40995HsN2ber50aolLjsEomdyeXsEQLYge7V3I2qph3Il46tnI_pfze-eNQ-myds1hwxg_Twbeeu2o6D3kE4JXzPmqwcNmCNFVT2AHh",
+        "rating": 4.8,
+        "ratingCount": 778,
+        "productId": "6308126505495138998",
+        "position": 4
+      },
+      "make": "K&N Store",
+      "model": "K&N 77-Series Performance Cold Air Intake Kit",
+      "year": 0,
+      "price": 472.99
+    },
+    {
+      "id": "2687585044910545261",
+      "title": "DiabloSport Reaper Stage 1 Performance Kit",
+      "brand": null,
+      "source": "Walmart",
+      "price_text": "$814.95",
+      "price_value": 814.95,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:2687585044910545261,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSHg0XGWEIhrk-Dc02wxUQy1czLrEQ-OuQyDAdWYPzmpnkUPq2E30r3CGnU3VJS48rpHbZQ1ff6IvmRUXoj0MwHhFLNAPS669TYVnwcy69P",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "2687585044910545261",
+        "title": "DiabloSport Reaper Stage 1 Performance Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "2687585044910545261"
+      },
+      "offer": {
+        "price": "$814.95",
+        "currency": "USD",
+        "seller": "Walmart",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:2687585044910545261,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSHg0XGWEIhrk-Dc02wxUQy1czLrEQ-OuQyDAdWYPzmpnkUPq2E30r3CGnU3VJS48rpHbZQ1ff6IvmRUXoj0MwHhFLNAPS669TYVnwcy69P"
+          }
+        ]
+      },
+      "_source": "Walmart",
+      "_raw": {
+        "title": "DiabloSport Reaper Stage 1 Performance Kit",
+        "source": "Walmart",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:2687585044910545261,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$814.95",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSHg0XGWEIhrk-Dc02wxUQy1czLrEQ-OuQyDAdWYPzmpnkUPq2E30r3CGnU3VJS48rpHbZQ1ff6IvmRUXoj0MwHhFLNAPS669TYVnwcy69P",
+        "productId": "2687585044910545261",
+        "position": 5
+      },
+      "make": "Walmart",
+      "model": "DiabloSport Reaper Stage 1 Performance Kit",
+      "year": 0,
+      "price": 814.95
+    },
+    {
+      "id": "14625153096104099491",
+      "title": "PSI Performance Module for Chevy & GMC 3.0L Duramax LZ0 2023-2026",
+      "brand": null,
+      "source": "Parleys Diesel Performance",
+      "price_text": "$425.00",
+      "price_value": 425.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:14625153096104099491,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSc3Rv0n-SF6zQ3cRxERlrS07F9cJLl91fRpmgF_gxYp4rRH544nlfb_AS6U91KcSZ61JqcsyV6-TUzOVEoHhf51cMFTPeOxL57dOZs1X9Pf0o-ENNTJyk5ug",
+      "rating": 2,
+      "rating_count": 1,
+      "product": {
+        "id": "14625153096104099491",
+        "title": "PSI Performance Module for Chevy & GMC 3.0L Duramax LZ0 2023-2026",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14625153096104099491"
+      },
+      "offer": {
+        "price": "$425.00",
+        "currency": "USD",
+        "seller": "Parleys Diesel Performance",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:14625153096104099491,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSc3Rv0n-SF6zQ3cRxERlrS07F9cJLl91fRpmgF_gxYp4rRH544nlfb_AS6U91KcSZ61JqcsyV6-TUzOVEoHhf51cMFTPeOxL57dOZs1X9Pf0o-ENNTJyk5ug"
+          }
+        ]
+      },
+      "_source": "Parleys Diesel Performance",
+      "_raw": {
+        "title": "PSI Performance Module for Chevy & GMC 3.0L Duramax LZ0 2023-2026",
+        "source": "Parleys Diesel Performance",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:14625153096104099491,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$425.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSc3Rv0n-SF6zQ3cRxERlrS07F9cJLl91fRpmgF_gxYp4rRH544nlfb_AS6U91KcSZ61JqcsyV6-TUzOVEoHhf51cMFTPeOxL57dOZs1X9Pf0o-ENNTJyk5ug",
+        "rating": 2,
+        "ratingCount": 1,
+        "productId": "14625153096104099491",
+        "position": 9
+      },
+      "make": "Parleys Diesel Performance",
+      "model": "PSI Performance Module for Chevy & GMC 3.0L Duramax LZ0 2023-2026",
+      "year": 0,
+      "price": 425.0
+    },
+    {
+      "id": "12260744754506464977",
+      "title": "Jet Performance Module Stage 1",
+      "brand": null,
+      "source": "Summit Racing",
+      "price_text": "$141.71",
+      "price_value": 141.71,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:12260744754506464977,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "12260744754506464977",
+        "title": "Jet Performance Module Stage 1",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "12260744754506464977"
+      },
+      "offer": {
+        "price": "$141.71",
+        "currency": "USD",
+        "seller": "Summit Racing",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:12260744754506464977,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL"
+          }
+        ]
+      },
+      "_source": "Summit Racing",
+      "_raw": {
+        "title": "Jet Performance Module Stage 1",
+        "source": "Summit Racing",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:12260744754506464977,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$141.71",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSS7RXm61NqdSpKS9NTOD_t2YoXvG189U86K-PEfZkE7zLg2qIdiDErfDu5rWvQsmUzVcYs-Smu2LGZHSFU-9i7MRlIUsHni2zjSbt9zVGSEqb-hh6BN6gL",
+        "productId": "12260744754506464977",
+        "position": 11
+      },
+      "make": "Summit Racing",
+      "model": "Jet Performance Module Stage 1",
+      "year": 0,
+      "price": 141.71
+    },
+    {
+      "id": "5027618287672210732",
+      "title": "Bully Dog Ford F250 6 Position 4 Bank Performance Module",
+      "brand": null,
+      "source": "AutoAccessoriesGarage.com",
+      "price_text": "$449.99",
+      "price_value": 449.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5027618287672210732,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRfnIqo6V1DHHSscpQAZYkE5L9hTeuFJ-p-Mxg3_XMJGO29OchA6K80fppZlK7C3QUXnsE9sn6J30vwMOFsBV2nU0lB6eOP7KyuKlEY92MUYS8GYNMX1K4PpQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "5027618287672210732",
+        "title": "Bully Dog Ford F250 6 Position 4 Bank Performance Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "5027618287672210732"
+      },
+      "offer": {
+        "price": "$449.99",
+        "currency": "USD",
+        "seller": "AutoAccessoriesGarage.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5027618287672210732,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRfnIqo6V1DHHSscpQAZYkE5L9hTeuFJ-p-Mxg3_XMJGO29OchA6K80fppZlK7C3QUXnsE9sn6J30vwMOFsBV2nU0lB6eOP7KyuKlEY92MUYS8GYNMX1K4PpQ"
+          }
+        ]
+      },
+      "_source": "AutoAccessoriesGarage.com",
+      "_raw": {
+        "title": "Bully Dog Ford F250 6 Position 4 Bank Performance Module",
+        "source": "AutoAccessoriesGarage.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5027618287672210732,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$449.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRfnIqo6V1DHHSscpQAZYkE5L9hTeuFJ-p-Mxg3_XMJGO29OchA6K80fppZlK7C3QUXnsE9sn6J30vwMOFsBV2nU0lB6eOP7KyuKlEY92MUYS8GYNMX1K4PpQ",
+        "productId": "5027618287672210732",
+        "position": 13
+      },
+      "make": "AutoAccessoriesGarage.com",
+      "model": "Bully Dog Ford F250 6 Position 4 Bank Performance Module",
+      "year": 0,
+      "price": 449.99
+    },
+    {
+      "id": "3759181811017835451",
+      "title": "Wolf Tooth Performance Headset Lower",
+      "brand": null,
+      "source": "REI",
+      "price_text": "$34.95",
+      "price_value": 34.95,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:3759181811017835451,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTbgBujl-v6dF19pHfpy0aIJO70-MegqocV9ebASpkKPLZL8aK0DCvqDNphISgK_i5Lka71Bx5SO0r64f2sG2TBwWQW3ecpg2b_7ZChacs",
+      "rating": 4.9,
+      "rating_count": 16,
+      "product": {
+        "id": "3759181811017835451",
+        "title": "Wolf Tooth Performance Headset Lower",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "3759181811017835451"
+      },
+      "offer": {
+        "price": "$34.95",
+        "currency": "USD",
+        "seller": "REI",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:3759181811017835451,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTbgBujl-v6dF19pHfpy0aIJO70-MegqocV9ebASpkKPLZL8aK0DCvqDNphISgK_i5Lka71Bx5SO0r64f2sG2TBwWQW3ecpg2b_7ZChacs"
+          }
+        ]
+      },
+      "_source": "REI",
+      "_raw": {
+        "title": "Wolf Tooth Performance Headset Lower",
+        "source": "REI",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:3759181811017835451,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$34.95",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTbgBujl-v6dF19pHfpy0aIJO70-MegqocV9ebASpkKPLZL8aK0DCvqDNphISgK_i5Lka71Bx5SO0r64f2sG2TBwWQW3ecpg2b_7ZChacs",
+        "rating": 4.9,
+        "ratingCount": 16,
+        "productId": "3759181811017835451",
+        "position": 14
+      },
+      "make": "REI",
+      "model": "Wolf Tooth Performance Headset Lower",
+      "year": 0,
+      "price": 34.95
+    },
+    {
+      "id": "1676553312481964276",
+      "title": "Jet Performance Stage 1 Power Control Module",
+      "brand": null,
+      "source": "Summit Racing",
+      "price_text": "$261.21",
+      "price_value": 261.21,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:1676553312481964276,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSfqKZK8tQi-t-tCnlNUHn-SqC2H3Qc9z4qFYJUmcHP6VwM71b5_DHx_tB0bN5QVZkAfW5xXHbNFBlcOjWHEeUO0yOCvZjELMwUvotG57dfx-SpUah1vgr_",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "1676553312481964276",
+        "title": "Jet Performance Stage 1 Power Control Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "1676553312481964276"
+      },
+      "offer": {
+        "price": "$261.21",
+        "currency": "USD",
+        "seller": "Summit Racing",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:1676553312481964276,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSfqKZK8tQi-t-tCnlNUHn-SqC2H3Qc9z4qFYJUmcHP6VwM71b5_DHx_tB0bN5QVZkAfW5xXHbNFBlcOjWHEeUO0yOCvZjELMwUvotG57dfx-SpUah1vgr_"
+          }
+        ]
+      },
+      "_source": "Summit Racing",
+      "_raw": {
+        "title": "Jet Performance Stage 1 Power Control Module",
+        "source": "Summit Racing",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:1676553312481964276,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$261.21",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSfqKZK8tQi-t-tCnlNUHn-SqC2H3Qc9z4qFYJUmcHP6VwM71b5_DHx_tB0bN5QVZkAfW5xXHbNFBlcOjWHEeUO0yOCvZjELMwUvotG57dfx-SpUah1vgr_",
+        "productId": "1676553312481964276",
+        "position": 20
+      },
+      "make": "Summit Racing",
+      "model": "Jet Performance Stage 1 Power Control Module",
+      "year": 0,
+      "price": 261.21
+    },
+    {
+      "id": "16378801415253943245",
+      "title": "RENNtech R1 Performance Package Mercedes-Benz C63 |S AMG 4.0L V8 BiTurbo W205 15-17",
+      "brand": null,
+      "source": "AutoTalent",
+      "price_text": "$6,192.00",
+      "price_value": 6192.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:16378801415253943245,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTV7_QYpvAob-RNrmInMwim7d24R9aBKXn9wXKhinz8UEhF1EKM8hPaufIYWMyf3fsSVYdrZmgqEFhNu7yU8oPGB43um0yZFxO44a8vqFLXXytUsZwAg9x3",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "16378801415253943245",
+        "title": "RENNtech R1 Performance Package Mercedes-Benz C63 |S AMG 4.0L V8 BiTurbo W205 15-17",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "16378801415253943245"
+      },
+      "offer": {
+        "price": "$6,192.00",
+        "currency": "USD",
+        "seller": "AutoTalent",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:16378801415253943245,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTV7_QYpvAob-RNrmInMwim7d24R9aBKXn9wXKhinz8UEhF1EKM8hPaufIYWMyf3fsSVYdrZmgqEFhNu7yU8oPGB43um0yZFxO44a8vqFLXXytUsZwAg9x3"
+          }
+        ]
+      },
+      "_source": "AutoTalent",
+      "_raw": {
+        "title": "RENNtech R1 Performance Package Mercedes-Benz C63 |S AMG 4.0L V8 BiTurbo W205 15-17",
+        "source": "AutoTalent",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:16378801415253943245,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$6,192.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTV7_QYpvAob-RNrmInMwim7d24R9aBKXn9wXKhinz8UEhF1EKM8hPaufIYWMyf3fsSVYdrZmgqEFhNu7yU8oPGB43um0yZFxO44a8vqFLXXytUsZwAg9x3",
+        "productId": "16378801415253943245",
+        "position": 24
+      },
+      "make": "AutoTalent",
+      "model": "RENNtech R1 Performance Package Mercedes-Benz C63 |S AMG 4.0L V8 BiTurbo W205 15-17",
+      "year": 0,
+      "price": 6192.0
+    },
+    {
+      "id": "13322667252950174270",
+      "title": "GMC CK 1500 Performance Chip",
+      "brand": null,
+      "source": "Performance Chips USA",
+      "price_text": "$129.99",
+      "price_value": 129.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:13322667252950174270,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRrzTa1UFC79HM64Z2_8hgl07cR2YkaztWpIjdpT3u4Pa2LL6pN_dYH0b4Q90FJntlDHFK1GR9QSgXypcjs1w5F9HIBr3dOZ4h2b9ef6yU6e5H2vcsCDvJN",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "13322667252950174270",
+        "title": "GMC CK 1500 Performance Chip",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "13322667252950174270"
+      },
+      "offer": {
+        "price": "$129.99",
+        "currency": "USD",
+        "seller": "Performance Chips USA",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:13322667252950174270,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRrzTa1UFC79HM64Z2_8hgl07cR2YkaztWpIjdpT3u4Pa2LL6pN_dYH0b4Q90FJntlDHFK1GR9QSgXypcjs1w5F9HIBr3dOZ4h2b9ef6yU6e5H2vcsCDvJN"
+          }
+        ]
+      },
+      "_source": "Performance Chips USA",
+      "_raw": {
+        "title": "GMC CK 1500 Performance Chip",
+        "source": "Performance Chips USA",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:13322667252950174270,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$129.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRrzTa1UFC79HM64Z2_8hgl07cR2YkaztWpIjdpT3u4Pa2LL6pN_dYH0b4Q90FJntlDHFK1GR9QSgXypcjs1w5F9HIBr3dOZ4h2b9ef6yU6e5H2vcsCDvJN",
+        "productId": "13322667252950174270",
+        "position": 25
+      },
+      "make": "Performance Chips USA",
+      "model": "GMC CK 1500 Performance Chip",
+      "year": 0,
+      "price": 129.99
+    },
+    {
+      "id": "5529720284460635782",
+      "title": "Dinan Sport Performance Tuner",
+      "brand": null,
+      "source": "Dinan",
+      "price_text": "$269.95",
+      "price_value": 269.95,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5529720284460635782,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSVIzIH10Lwpr4CXPDMTIDW8cJK5bR1CHFD331DHJNfPJZhPaasIT2QAANdSycQcIbVQaPQ9j0qdATJOKrlLY1UG0aNS3QAJfk-vkNo-fPNvHRpuO16EZVehQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "5529720284460635782",
+        "title": "Dinan Sport Performance Tuner",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "5529720284460635782"
+      },
+      "offer": {
+        "price": "$269.95",
+        "currency": "USD",
+        "seller": "Dinan",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5529720284460635782,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSVIzIH10Lwpr4CXPDMTIDW8cJK5bR1CHFD331DHJNfPJZhPaasIT2QAANdSycQcIbVQaPQ9j0qdATJOKrlLY1UG0aNS3QAJfk-vkNo-fPNvHRpuO16EZVehQ"
+          }
+        ]
+      },
+      "_source": "Dinan",
+      "_raw": {
+        "title": "Dinan Sport Performance Tuner",
+        "source": "Dinan",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5529720284460635782,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$269.95",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSVIzIH10Lwpr4CXPDMTIDW8cJK5bR1CHFD331DHJNfPJZhPaasIT2QAANdSycQcIbVQaPQ9j0qdATJOKrlLY1UG0aNS3QAJfk-vkNo-fPNvHRpuO16EZVehQ",
+        "productId": "5529720284460635782",
+        "position": 26
+      },
+      "make": "Dinan",
+      "model": "Dinan Sport Performance Tuner",
+      "year": 0,
+      "price": 269.95
+    },
+    {
+      "id": "8568440431196485427",
+      "title": "Jet Performance Stage 1 Jet Power Control Module",
+      "brand": null,
+      "source": "NAPA Auto Parts",
+      "price_text": "$281.21",
+      "price_value": 281.21,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8568440431196485427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRKufs71Q-ZgoqlLAM157IE8ol8UT_H6tBXfbsZrm9bjp0VZp2_EApSvAslU8owXxenIczYCZzG2JEjhH4Ogkvude0PWnrvJcnuqAiAZLFvEt6Fj7dG0O6T",
+      "rating": 4,
+      "rating_count": 2,
+      "product": {
+        "id": "8568440431196485427",
+        "title": "Jet Performance Stage 1 Jet Power Control Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8568440431196485427"
+      },
+      "offer": {
+        "price": "$281.21",
+        "currency": "USD",
+        "seller": "NAPA Auto Parts",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8568440431196485427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRKufs71Q-ZgoqlLAM157IE8ol8UT_H6tBXfbsZrm9bjp0VZp2_EApSvAslU8owXxenIczYCZzG2JEjhH4Ogkvude0PWnrvJcnuqAiAZLFvEt6Fj7dG0O6T"
+          }
+        ]
+      },
+      "_source": "NAPA Auto Parts",
+      "_raw": {
+        "title": "Jet Performance Stage 1 Jet Power Control Module",
+        "source": "NAPA Auto Parts",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8568440431196485427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$281.21",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRKufs71Q-ZgoqlLAM157IE8ol8UT_H6tBXfbsZrm9bjp0VZp2_EApSvAslU8owXxenIczYCZzG2JEjhH4Ogkvude0PWnrvJcnuqAiAZLFvEt6Fj7dG0O6T",
+        "rating": 4,
+        "ratingCount": 2,
+        "productId": "8568440431196485427",
+        "position": 27
+      },
+      "make": "NAPA Auto Parts",
+      "model": "Jet Performance Stage 1 Jet Power Control Module",
+      "year": 0,
+      "price": 281.21
+    },
+    {
+      "id": "8364588845504434680",
+      "title": "Jet Performance Stage 2 Power Control Module",
+      "brand": null,
+      "source": "AmericanTrucks.com",
+      "price_text": "$284.96",
+      "price_value": 284.96,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8364588845504434680,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTavmjAy9Lk7y9ypmcJNYCPLPoy7eHRQ5rPLXi4L8d5uPCdXnaKV7vtouGAr8ihP17sTdhoFdm60W7mFJLCUWHBZp1-yRVN97ZSCyXPQQ9zgp5gAa6ygyhT",
+      "rating": 4.1,
+      "rating_count": 7,
+      "product": {
+        "id": "8364588845504434680",
+        "title": "Jet Performance Stage 2 Power Control Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8364588845504434680"
+      },
+      "offer": {
+        "price": "$284.96",
+        "currency": "USD",
+        "seller": "AmericanTrucks.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8364588845504434680,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTavmjAy9Lk7y9ypmcJNYCPLPoy7eHRQ5rPLXi4L8d5uPCdXnaKV7vtouGAr8ihP17sTdhoFdm60W7mFJLCUWHBZp1-yRVN97ZSCyXPQQ9zgp5gAa6ygyhT"
+          }
+        ]
+      },
+      "_source": "AmericanTrucks.com",
+      "_raw": {
+        "title": "Jet Performance Stage 2 Power Control Module",
+        "source": "AmericanTrucks.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8364588845504434680,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$284.96",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTavmjAy9Lk7y9ypmcJNYCPLPoy7eHRQ5rPLXi4L8d5uPCdXnaKV7vtouGAr8ihP17sTdhoFdm60W7mFJLCUWHBZp1-yRVN97ZSCyXPQQ9zgp5gAa6ygyhT",
+        "rating": 4.1,
+        "ratingCount": 7,
+        "productId": "8364588845504434680",
+        "position": 28
+      },
+      "make": "AmericanTrucks.com",
+      "model": "Jet Performance Stage 2 Power Control Module",
+      "year": 0,
+      "price": 284.96
+    },
+    {
+      "id": "10233101169946658613",
+      "title": "Burger Motorsports JB4 Performance Tuner",
+      "brand": null,
+      "source": "ECS Tuning",
+      "price_text": "$579.00",
+      "price_value": 579.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:10233101169946658613,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTpoudvXHDnRiolPE9j6VA7oNl6eLOWpAlyNFf804PPSOjEAblOh26uNeJ1PIFLMm4_tYDt1L4TlsjKKY_zrbymMDZiY9W6",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "10233101169946658613",
+        "title": "Burger Motorsports JB4 Performance Tuner",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "10233101169946658613"
+      },
+      "offer": {
+        "price": "$579.00",
+        "currency": "USD",
+        "seller": "ECS Tuning",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:10233101169946658613,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTpoudvXHDnRiolPE9j6VA7oNl6eLOWpAlyNFf804PPSOjEAblOh26uNeJ1PIFLMm4_tYDt1L4TlsjKKY_zrbymMDZiY9W6"
+          }
+        ]
+      },
+      "_source": "ECS Tuning",
+      "_raw": {
+        "title": "Burger Motorsports JB4 Performance Tuner",
+        "source": "ECS Tuning",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,productid:10233101169946658613,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$579.00",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcTpoudvXHDnRiolPE9j6VA7oNl6eLOWpAlyNFf804PPSOjEAblOh26uNeJ1PIFLMm4_tYDt1L4TlsjKKY_zrbymMDZiY9W6",
+        "productId": "10233101169946658613",
+        "position": 29
+      },
+      "make": "ECS Tuning",
+      "model": "Burger Motorsports JB4 Performance Tuner",
+      "year": 0,
+      "price": 579.0
+    },
+    {
+      "id": "5784369394169498967",
+      "title": "Performance Programmer",
+      "brand": null,
+      "source": "RealTruck.com",
+      "price_text": "$337.49",
+      "price_value": 337.49,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5784369394169498967,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSD4XnoxKhHBOpEZwSL_PN93Qo5fEH9X0em92DCH-9RcKPWfSffi1j6sdeUhHcUZ6lOWjDlkpYQyZkbeLYmXzS4-thsqZyYflGoEYixvC0E1u76Pqxjls48",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "5784369394169498967",
+        "title": "Performance Programmer",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "5784369394169498967"
+      },
+      "offer": {
+        "price": "$337.49",
+        "currency": "USD",
+        "seller": "RealTruck.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5784369394169498967,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSD4XnoxKhHBOpEZwSL_PN93Qo5fEH9X0em92DCH-9RcKPWfSffi1j6sdeUhHcUZ6lOWjDlkpYQyZkbeLYmXzS4-thsqZyYflGoEYixvC0E1u76Pqxjls48"
+          }
+        ]
+      },
+      "_source": "RealTruck.com",
+      "_raw": {
+        "title": "Performance Programmer",
+        "source": "RealTruck.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:5784369394169498967,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$337.49",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSD4XnoxKhHBOpEZwSL_PN93Qo5fEH9X0em92DCH-9RcKPWfSffi1j6sdeUhHcUZ6lOWjDlkpYQyZkbeLYmXzS4-thsqZyYflGoEYixvC0E1u76Pqxjls48",
+        "productId": "5784369394169498967",
+        "position": 31
+      },
+      "make": "RealTruck.com",
+      "model": "Performance Programmer",
+      "year": 0,
+      "price": 337.49
+    },
+    {
+      "id": "8591842657216704634",
+      "title": "Jet Performance Stage 2 Jet Power Control Module",
+      "brand": null,
+      "source": "AmericanMuscle.com",
+      "price_text": "$284.96",
+      "price_value": 284.96,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8591842657216704634,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQwriNYfEZMdnO0HnKxeoiZzXK5kwRL2vWFXp1sFt52nAmsRU-6zRs8DVqtxCAKA2d2wZ4QWGImFVdoc5OE1xk5l41us6MBZgd3lt9hTgCvu-WYE7VAfMWL_Q",
+      "rating": 4.3,
+      "rating_count": 3,
+      "product": {
+        "id": "8591842657216704634",
+        "title": "Jet Performance Stage 2 Jet Power Control Module",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8591842657216704634"
+      },
+      "offer": {
+        "price": "$284.96",
+        "currency": "USD",
+        "seller": "AmericanMuscle.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8591842657216704634,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQwriNYfEZMdnO0HnKxeoiZzXK5kwRL2vWFXp1sFt52nAmsRU-6zRs8DVqtxCAKA2d2wZ4QWGImFVdoc5OE1xk5l41us6MBZgd3lt9hTgCvu-WYE7VAfMWL_Q"
+          }
+        ]
+      },
+      "_source": "AmericanMuscle.com",
+      "_raw": {
+        "title": "Jet Performance Stage 2 Jet Power Control Module",
+        "source": "AmericanMuscle.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:8591842657216704634,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$284.96",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQwriNYfEZMdnO0HnKxeoiZzXK5kwRL2vWFXp1sFt52nAmsRU-6zRs8DVqtxCAKA2d2wZ4QWGImFVdoc5OE1xk5l41us6MBZgd3lt9hTgCvu-WYE7VAfMWL_Q",
+        "rating": 4.3,
+        "ratingCount": 3,
+        "productId": "8591842657216704634",
+        "position": 34
+      },
+      "make": "AmericanMuscle.com",
+      "model": "Jet Performance Stage 2 Jet Power Control Module",
+      "year": 0,
+      "price": 284.96
+    },
+    {
+      "id": "7564084958894473999",
+      "title": "Jet Performance Stage 1 Computer Chips/ Modules",
+      "brand": null,
+      "source": "NAPA Auto Parts",
+      "price_text": "$141.71",
+      "price_value": 141.71,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:7564084958894473999,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSpG3duPkaMzFOszplZnW8knSsUglpfX4gsjzE4HjTVq1Fwmnsq-N2ClGBpCUID7eBF7mSdXQgb5ezhxLJoa9bXkUhRLGmATZqx-SaoY-aKzPJe708Jgilr",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "7564084958894473999",
+        "title": "Jet Performance Stage 1 Computer Chips/ Modules",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "7564084958894473999"
+      },
+      "offer": {
+        "price": "$141.71",
+        "currency": "USD",
+        "seller": "NAPA Auto Parts",
+        "url": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:7564084958894473999,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSpG3duPkaMzFOszplZnW8knSsUglpfX4gsjzE4HjTVq1Fwmnsq-N2ClGBpCUID7eBF7mSdXQgb5ezhxLJoa9bXkUhRLGmATZqx-SaoY-aKzPJe708Jgilr"
+          }
+        ]
+      },
+      "_source": "NAPA Auto Parts",
+      "_raw": {
+        "title": "Jet Performance Stage 1 Computer Chips/ Modules",
+        "source": "NAPA Auto Parts",
+        "link": "https://www.google.com/search?ibp=oshop&q=performance&prds=localAnnotatedOfferId:1,catalogid:7564084958894473999,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$141.71",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcSpG3duPkaMzFOszplZnW8knSsUglpfX4gsjzE4HjTVq1Fwmnsq-N2ClGBpCUID7eBF7mSdXQgb5ezhxLJoa9bXkUhRLGmATZqx-SaoY-aKzPJe708Jgilr",
+        "productId": "7564084958894473999",
+        "position": 39
+      },
+      "make": "NAPA Auto Parts",
+      "model": "Jet Performance Stage 1 Computer Chips/ Modules",
+      "year": 0,
+      "price": 141.71
+    }
+  ],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. im looking for a new cpu"
+    },
+    {
+      "role": "ai",
+      "content": "Great choice! Are you building a new system or upgrading an existing one? This can help determine compatibility and other needs."
+    },
+    {
+      "role": "human",
+      "content": "Building new system"
+    },
+    {
+      "role": "ai",
+      "content": "Exciting! What's your budget range for the CPU? This will help narrow down the options that best fit your build."
+    },
+    {
+      "role": "human",
+      "content": "300-700"
+    },
+    {
+      "role": "ai",
+      "content": "Thanks for sharing your search criteria for a CPU to build your new system! \n\n- **JET Performance Power Control Module**\n  - Affordable at $141.71\n  - Available from Summit Racing\n  - Great for enhancing performance in system builds\n\nSince performance is a key priority for you, do you have a specific brand or generation of CPU in mind that we can focus on?"
+    }
+  ],
+  "diagnostics": null
+}

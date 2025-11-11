@@ -23,6 +23,7 @@ import logging
 load_dotenv()
 
 from idss_agent import run_agent, create_initial_state, VehicleSearchState
+from idss_agent.utils.conversation_logger import save_conversation_log
 from api.models import (
     ChatRequest,
     ChatResponse,
@@ -184,6 +185,9 @@ async def chat(request: ChatRequest):
         # Update session storage
         sessions[session_id] = updated_state
 
+        # Persist conversation log for debugging
+        save_conversation_log(session_id, updated_state)
+
         # Prepare response
         return ChatResponse(
             response=updated_state.get('ai_response', ''),
@@ -286,6 +290,9 @@ async def chat_stream(request: ChatRequest):
 
             # Update session storage
             sessions[session_id] = updated_state
+
+            # Persist conversation log for debugging
+            save_conversation_log(session_id, updated_state)
 
             # Send final response
             yield {

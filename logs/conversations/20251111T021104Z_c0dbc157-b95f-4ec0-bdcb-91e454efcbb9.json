@@ -1,0 +1,997 @@
+{
+  "session_id": "c0dbc157-b95f-4ec0-bdcb-91e454efcbb9",
+  "timestamp": "20251111T021104Z",
+  "ai_response": "The typical price range for higher-end CPUs is between $300 to $700. Here are some options:\n\n- **AMD Ryzen 7 9800X3D**: $479, 4.9 rating\n- **Intel Core i7-14700K**: $334.99, 4.6 rating\n- **AMD Ryzen 9 7900X**: $374, 4.9 rating\n- **AMD Ryzen 9 9950X3D**: $699, 4.7 rating\n\nFor your new setup, consider a package that includes build, setup, testing, and warranty for just $50. \n\nWhat specific features or components are you looking to include in your new setup?",
+  "explicit_filters": {
+    "body_style": "CPU",
+    "zip": "94305"
+  },
+  "implicit_preferences": {
+    "priorities": [
+      "building a new setup"
+    ],
+    "budget_sensitivity": "moderate",
+    "usage_patterns": "building new"
+  },
+  "recommended_products": [
+    {
+      "id": "10278396144509552686",
+      "title": "Build + Setup + Testing + Warranty",
+      "brand": null,
+      "source": "Build Redux",
+      "price_text": "$50.00",
+      "price_value": 50.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:10278396144509552686,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRLRitCSFhylFVaBO7f5HjSuRydXbJQctVm4uXiV07l5VmBQrjmHrBRdzjSqzJSK6mj571TWTrgcxNCFjz-LdN6hnn5iQDk",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "10278396144509552686",
+        "title": "Build + Setup + Testing + Warranty",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "10278396144509552686"
+      },
+      "offer": {
+        "price": "$50.00",
+        "currency": "USD",
+        "seller": "Build Redux",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:10278396144509552686,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRLRitCSFhylFVaBO7f5HjSuRydXbJQctVm4uXiV07l5VmBQrjmHrBRdzjSqzJSK6mj571TWTrgcxNCFjz-LdN6hnn5iQDk"
+          }
+        ]
+      },
+      "_source": "Build Redux",
+      "_raw": {
+        "title": "Build + Setup + Testing + Warranty",
+        "source": "Build Redux",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:10278396144509552686,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$50.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcRLRitCSFhylFVaBO7f5HjSuRydXbJQctVm4uXiV07l5VmBQrjmHrBRdzjSqzJSK6mj571TWTrgcxNCFjz-LdN6hnn5iQDk",
+        "productId": "10278396144509552686",
+        "position": 1
+      },
+      "make": "Build Redux",
+      "model": "Build + Setup + Testing + Warranty",
+      "year": 0,
+      "price": 50.0
+    },
+    {
+      "id": "232620688322918614",
+      "title": "48x48x20 Steel Barndominium Kit w/ Loft - 13 Windows & Vaulted Ceilings",
+      "brand": null,
+      "source": "Hansen Pole Buildings",
+      "price_text": "$66,488.00",
+      "price_value": 66488.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:232620688322918614,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRPnf6axsRfOrMystcCmGDjG02LWbkriamubZ4oXwUjhhiJPonOj9geIGSoXR3Zy0I29dZeo2uFrig_YTVKAUIxysYoVSe1IMX19ujwBA-Y",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "232620688322918614",
+        "title": "48x48x20 Steel Barndominium Kit w/ Loft - 13 Windows & Vaulted Ceilings",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "232620688322918614"
+      },
+      "offer": {
+        "price": "$66,488.00",
+        "currency": "USD",
+        "seller": "Hansen Pole Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:232620688322918614,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRPnf6axsRfOrMystcCmGDjG02LWbkriamubZ4oXwUjhhiJPonOj9geIGSoXR3Zy0I29dZeo2uFrig_YTVKAUIxysYoVSe1IMX19ujwBA-Y"
+          }
+        ]
+      },
+      "_source": "Hansen Pole Buildings",
+      "_raw": {
+        "title": "48x48x20 Steel Barndominium Kit w/ Loft - 13 Windows & Vaulted Ceilings",
+        "source": "Hansen Pole Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:232620688322918614,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$66,488.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRPnf6axsRfOrMystcCmGDjG02LWbkriamubZ4oXwUjhhiJPonOj9geIGSoXR3Zy0I29dZeo2uFrig_YTVKAUIxysYoVSe1IMX19ujwBA-Y",
+        "productId": "232620688322918614",
+        "position": 5
+      },
+      "make": "Hansen Pole Buildings",
+      "model": "48x48x20 Steel Barndominium Kit w/ Loft - 13 Windows & Vaulted Ceilings",
+      "year": 0,
+      "price": 66488.0
+    },
+    {
+      "id": "15348465765492386983",
+      "title": "Custom Pc Building Requests",
+      "brand": null,
+      "source": "eBay",
+      "price_text": "$1.00",
+      "price_value": 1.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15348465765492386983,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQjvPqgnuvkmsiecLf97Za4zsr3Q3kbnghd7KC1A8H9tTMclVC6BbEf4H2yjk5ucBg3OCX1RVena1ZWcUNrETx_siuaRZAeWAz11zOkCyQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "15348465765492386983",
+        "title": "Custom Pc Building Requests",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "15348465765492386983"
+      },
+      "offer": {
+        "price": "$1.00",
+        "currency": "USD",
+        "seller": "eBay",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15348465765492386983,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQjvPqgnuvkmsiecLf97Za4zsr3Q3kbnghd7KC1A8H9tTMclVC6BbEf4H2yjk5ucBg3OCX1RVena1ZWcUNrETx_siuaRZAeWAz11zOkCyQ"
+          }
+        ]
+      },
+      "_source": "eBay",
+      "_raw": {
+        "title": "Custom Pc Building Requests",
+        "source": "eBay",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15348465765492386983,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1.00",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQjvPqgnuvkmsiecLf97Za4zsr3Q3kbnghd7KC1A8H9tTMclVC6BbEf4H2yjk5ucBg3OCX1RVena1ZWcUNrETx_siuaRZAeWAz11zOkCyQ",
+        "productId": "15348465765492386983",
+        "position": 10
+      },
+      "make": "eBay",
+      "model": "Custom Pc Building Requests",
+      "year": 0,
+      "price": 1.0
+    },
+    {
+      "id": "15909437122834142878",
+      "title": "Hurricane Steel Garages P-Series 30x60 Metal Building Kit",
+      "brand": null,
+      "source": "Curvco Steel Structures",
+      "price_text": "$21,419.00",
+      "price_value": 21419.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15909437122834142878,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQC4p_TLj_xZNxVe4PpZ5pT08drfjd5TSc8Bb0jrZOn5XgbMLtxANGZukFT_ogHENRvN0RC3OLtdD4zw6yje1Uf96kA3_kTeZo3_TNYec4E",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "15909437122834142878",
+        "title": "Hurricane Steel Garages P-Series 30x60 Metal Building Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "15909437122834142878"
+      },
+      "offer": {
+        "price": "$21,419.00",
+        "currency": "USD",
+        "seller": "Curvco Steel Structures",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15909437122834142878,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQC4p_TLj_xZNxVe4PpZ5pT08drfjd5TSc8Bb0jrZOn5XgbMLtxANGZukFT_ogHENRvN0RC3OLtdD4zw6yje1Uf96kA3_kTeZo3_TNYec4E"
+          }
+        ]
+      },
+      "_source": "Curvco Steel Structures",
+      "_raw": {
+        "title": "Hurricane Steel Garages P-Series 30x60 Metal Building Kit",
+        "source": "Curvco Steel Structures",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15909437122834142878,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$21,419.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQC4p_TLj_xZNxVe4PpZ5pT08drfjd5TSc8Bb0jrZOn5XgbMLtxANGZukFT_ogHENRvN0RC3OLtdD4zw6yje1Uf96kA3_kTeZo3_TNYec4E",
+        "productId": "15909437122834142878",
+        "position": 11
+      },
+      "make": "Curvco Steel Structures",
+      "model": "Hurricane Steel Garages P-Series 30x60 Metal Building Kit",
+      "year": 0,
+      "price": 21419.0
+    },
+    {
+      "id": "1809094914499753655",
+      "title": "Larage Building Specialist Bali Barn",
+      "brand": null,
+      "source": "bigbuildingsdirect",
+      "price_text": "$71,400.00",
+      "price_value": 71400.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:1809094914499753655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQdR-R0njOr4GdPDUElagkp3ASqMKXdehGdp-zUFRmuwUQd_Zzg60GsoGrke-P1a40kY4JVhM2bHnrtE8OBOxW9y3el9FaqF8nhR9OjdxU",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "1809094914499753655",
+        "title": "Larage Building Specialist Bali Barn",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "1809094914499753655"
+      },
+      "offer": {
+        "price": "$71,400.00",
+        "currency": "USD",
+        "seller": "bigbuildingsdirect",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:1809094914499753655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQdR-R0njOr4GdPDUElagkp3ASqMKXdehGdp-zUFRmuwUQd_Zzg60GsoGrke-P1a40kY4JVhM2bHnrtE8OBOxW9y3el9FaqF8nhR9OjdxU"
+          }
+        ]
+      },
+      "_source": "bigbuildingsdirect",
+      "_raw": {
+        "title": "Larage Building Specialist Bali Barn",
+        "source": "bigbuildingsdirect",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:1809094914499753655,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$71,400.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQdR-R0njOr4GdPDUElagkp3ASqMKXdehGdp-zUFRmuwUQd_Zzg60GsoGrke-P1a40kY4JVhM2bHnrtE8OBOxW9y3el9FaqF8nhR9OjdxU",
+        "productId": "1809094914499753655",
+        "position": 12
+      },
+      "make": "bigbuildingsdirect",
+      "model": "Larage Building Specialist Bali Barn",
+      "year": 0,
+      "price": 71400.0
+    },
+    {
+      "id": "97730989208245582",
+      "title": "72x100x24 Steel Wedding Venue Building Kit",
+      "brand": null,
+      "source": "Hansen Pole Buildings",
+      "price_text": "$103,381.00",
+      "price_value": 103381.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:97730989208245582,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS8uHn1hyvuaYH8sO3rNNWhCkSopvsGFRs_NPpClEH2WUUMAropl6l6qmEaamvABSfpE95xkWT1EAwlu-CbhCyT4AsmqRfvFpBNT7VgT3M",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "97730989208245582",
+        "title": "72x100x24 Steel Wedding Venue Building Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "97730989208245582"
+      },
+      "offer": {
+        "price": "$103,381.00",
+        "currency": "USD",
+        "seller": "Hansen Pole Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:97730989208245582,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS8uHn1hyvuaYH8sO3rNNWhCkSopvsGFRs_NPpClEH2WUUMAropl6l6qmEaamvABSfpE95xkWT1EAwlu-CbhCyT4AsmqRfvFpBNT7VgT3M"
+          }
+        ]
+      },
+      "_source": "Hansen Pole Buildings",
+      "_raw": {
+        "title": "72x100x24 Steel Wedding Venue Building Kit",
+        "source": "Hansen Pole Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:97730989208245582,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$103,381.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcS8uHn1hyvuaYH8sO3rNNWhCkSopvsGFRs_NPpClEH2WUUMAropl6l6qmEaamvABSfpE95xkWT1EAwlu-CbhCyT4AsmqRfvFpBNT7VgT3M",
+        "productId": "97730989208245582",
+        "position": 13
+      },
+      "make": "Hansen Pole Buildings",
+      "model": "72x100x24 Steel Wedding Venue Building Kit",
+      "year": 0,
+      "price": 103381.0
+    },
+    {
+      "id": "717329038444715639",
+      "title": "The Norman Is A 34x80 2720 Sq ft Commercial Building",
+      "brand": null,
+      "source": "Big Metal Buildings",
+      "price_text": "$30,056.00",
+      "price_value": 30056.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:717329038444715639,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfIANGQaw7HZpXaBvelY-B3qfm7uWoSW2cQZE8Ku2GSzezk3d6e8TnjH382UxKz5VYpUXoy5_HLDdMm5IZElmlhvh8YNJG4YjQ7HpACa4",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "717329038444715639",
+        "title": "The Norman Is A 34x80 2720 Sq ft Commercial Building",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "717329038444715639"
+      },
+      "offer": {
+        "price": "$30,056.00",
+        "currency": "USD",
+        "seller": "Big Metal Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:717329038444715639,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfIANGQaw7HZpXaBvelY-B3qfm7uWoSW2cQZE8Ku2GSzezk3d6e8TnjH382UxKz5VYpUXoy5_HLDdMm5IZElmlhvh8YNJG4YjQ7HpACa4"
+          }
+        ]
+      },
+      "_source": "Big Metal Buildings",
+      "_raw": {
+        "title": "The Norman Is A 34x80 2720 Sq ft Commercial Building",
+        "source": "Big Metal Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,catalogid:717329038444715639,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$30,056.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQfIANGQaw7HZpXaBvelY-B3qfm7uWoSW2cQZE8Ku2GSzezk3d6e8TnjH382UxKz5VYpUXoy5_HLDdMm5IZElmlhvh8YNJG4YjQ7HpACa4",
+        "productId": "717329038444715639",
+        "position": 15
+      },
+      "make": "Big Metal Buildings",
+      "model": "The Norman Is A 34x80 2720 Sq ft Commercial Building",
+      "year": 0,
+      "price": 30056.0
+    },
+    {
+      "id": "4266424013280580175",
+      "title": "Pole Barn DIY Kit",
+      "brand": null,
+      "source": "Keens Buildings",
+      "price_text": "$4,359.63",
+      "price_value": 4359.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4266424013280580175,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQtwjECbVcXCM5L6bvPfoqK7Z3unXgV5A_qAHYZHfnB9Li8H6odzyemt5J1oUHDDyzvaRFqWuXgSKNwAITwXx6vapaSE358WmbPaj5_yLY",
+      "rating": 5,
+      "rating_count": 2,
+      "product": {
+        "id": "4266424013280580175",
+        "title": "Pole Barn DIY Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4266424013280580175"
+      },
+      "offer": {
+        "price": "$4,359.63",
+        "currency": "USD",
+        "seller": "Keens Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4266424013280580175,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQtwjECbVcXCM5L6bvPfoqK7Z3unXgV5A_qAHYZHfnB9Li8H6odzyemt5J1oUHDDyzvaRFqWuXgSKNwAITwXx6vapaSE358WmbPaj5_yLY"
+          }
+        ]
+      },
+      "_source": "Keens Buildings",
+      "_raw": {
+        "title": "Pole Barn DIY Kit",
+        "source": "Keens Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4266424013280580175,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$4,359.63",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQtwjECbVcXCM5L6bvPfoqK7Z3unXgV5A_qAHYZHfnB9Li8H6odzyemt5J1oUHDDyzvaRFqWuXgSKNwAITwXx6vapaSE358WmbPaj5_yLY",
+        "rating": 5,
+        "ratingCount": 2,
+        "productId": "4266424013280580175",
+        "position": 17
+      },
+      "make": "Keens Buildings",
+      "model": "Pole Barn DIY Kit",
+      "year": 0,
+      "price": 4359.0
+    },
+    {
+      "id": "6711263818044105822",
+      "title": "ria J68d 1275 sq. ft. Multi Room D.I.Y Log Home Building Kit",
+      "brand": null,
+      "source": "Hud-1 EZ Buildings",
+      "price_text": "$69,383.46",
+      "price_value": 69383.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:6711263818044105822,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSFRsHdanGNCBbmYVzoO8hoZUffQ0PLv3Xt7d3U8YNjr3V2943EirKHQOwwmMNQAZLt3csBGVf0MmVeMEq_sAF6USiPe4CRy2usEMi_IFA",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "6711263818044105822",
+        "title": "ria J68d 1275 sq. ft. Multi Room D.I.Y Log Home Building Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "6711263818044105822"
+      },
+      "offer": {
+        "price": "$69,383.46",
+        "currency": "USD",
+        "seller": "Hud-1 EZ Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:6711263818044105822,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSFRsHdanGNCBbmYVzoO8hoZUffQ0PLv3Xt7d3U8YNjr3V2943EirKHQOwwmMNQAZLt3csBGVf0MmVeMEq_sAF6USiPe4CRy2usEMi_IFA"
+          }
+        ]
+      },
+      "_source": "Hud-1 EZ Buildings",
+      "_raw": {
+        "title": "ria J68d 1275 sq. ft. Multi Room D.I.Y Log Home Building Kit",
+        "source": "Hud-1 EZ Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:6711263818044105822,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$69,383.46",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSFRsHdanGNCBbmYVzoO8hoZUffQ0PLv3Xt7d3U8YNjr3V2943EirKHQOwwmMNQAZLt3csBGVf0MmVeMEq_sAF6USiPe4CRy2usEMi_IFA",
+        "productId": "6711263818044105822",
+        "position": 22
+      },
+      "make": "Hud-1 EZ Buildings",
+      "model": "ria J68d 1275 sq. ft. Multi Room D.I.Y Log Home Building Kit",
+      "year": 0,
+      "price": 69383.0
+    },
+    {
+      "id": "8576328492715343163",
+      "title": "The James 42x50 Commercial Building",
+      "brand": null,
+      "source": "Big Metal Buildings",
+      "price_text": "$5,505.00",
+      "price_value": 5505.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:8576328492715343163,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQxZeWwAAWZ7wbXmNROtGTBeLGHFiJdKjslxxq9RBxDNI5cZxM80tHjbFAfTwx5TmQ_3csQerkraYb7izYZntJUp5Kl7MUpyg",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "8576328492715343163",
+        "title": "The James 42x50 Commercial Building",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8576328492715343163"
+      },
+      "offer": {
+        "price": "$5,505.00",
+        "currency": "USD",
+        "seller": "Big Metal Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:8576328492715343163,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQxZeWwAAWZ7wbXmNROtGTBeLGHFiJdKjslxxq9RBxDNI5cZxM80tHjbFAfTwx5TmQ_3csQerkraYb7izYZntJUp5Kl7MUpyg"
+          }
+        ]
+      },
+      "_source": "Big Metal Buildings",
+      "_raw": {
+        "title": "The James 42x50 Commercial Building",
+        "source": "Big Metal Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:8576328492715343163,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$5,505.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQxZeWwAAWZ7wbXmNROtGTBeLGHFiJdKjslxxq9RBxDNI5cZxM80tHjbFAfTwx5TmQ_3csQerkraYb7izYZntJUp5Kl7MUpyg",
+        "productId": "8576328492715343163",
+        "position": 23
+      },
+      "make": "Big Metal Buildings",
+      "model": "The James 42x50 Commercial Building",
+      "year": 0,
+      "price": 5505.0
+    },
+    {
+      "id": "15005674154039016783",
+      "title": "Quonset Hut Kit S-Model",
+      "brand": null,
+      "source": "SteelMaster Buildings",
+      "price_text": "$8,960.00",
+      "price_value": 8960.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15005674154039016783,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcStRJXtzn7SpUYH75W_TFvMHJKEC-gK_awyOUQxv6DoUEi7LyAoDuKBeTUgO4lxFSPUl1GK4uFtyk1xWF2mwAfsG9y06rLhEeQFEY8rtNM",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "15005674154039016783",
+        "title": "Quonset Hut Kit S-Model",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "15005674154039016783"
+      },
+      "offer": {
+        "price": "$8,960.00",
+        "currency": "USD",
+        "seller": "SteelMaster Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15005674154039016783,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcStRJXtzn7SpUYH75W_TFvMHJKEC-gK_awyOUQxv6DoUEi7LyAoDuKBeTUgO4lxFSPUl1GK4uFtyk1xWF2mwAfsG9y06rLhEeQFEY8rtNM"
+          }
+        ]
+      },
+      "_source": "SteelMaster Buildings",
+      "_raw": {
+        "title": "Quonset Hut Kit S-Model",
+        "source": "SteelMaster Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15005674154039016783,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$8,960.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcStRJXtzn7SpUYH75W_TFvMHJKEC-gK_awyOUQxv6DoUEi7LyAoDuKBeTUgO4lxFSPUl1GK4uFtyk1xWF2mwAfsG9y06rLhEeQFEY8rtNM",
+        "productId": "15005674154039016783",
+        "position": 24
+      },
+      "make": "SteelMaster Buildings",
+      "model": "Quonset Hut Kit S-Model",
+      "year": 0,
+      "price": 8960.0
+    },
+    {
+      "id": "15823585530130094199",
+      "title": "Prefab DIY Steel Buildings Farm Building Quonset Hut Kit",
+      "brand": null,
+      "source": "Curvco Steel Structures",
+      "price_text": "$32,640.00",
+      "price_value": 32640.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15823585530130094199,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQ8o3g28LQZdxGFNd2CxBr7yeTsZADs7ZopLCtl8jmmOTMF2kSXdQLQAZnYGnHAlE0yGTMz4eF4Rmj93CIcjfKsucCGxCW7iElfdwsQIB5U",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "15823585530130094199",
+        "title": "Prefab DIY Steel Buildings Farm Building Quonset Hut Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "15823585530130094199"
+      },
+      "offer": {
+        "price": "$32,640.00",
+        "currency": "USD",
+        "seller": "Curvco Steel Structures",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15823585530130094199,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQ8o3g28LQZdxGFNd2CxBr7yeTsZADs7ZopLCtl8jmmOTMF2kSXdQLQAZnYGnHAlE0yGTMz4eF4Rmj93CIcjfKsucCGxCW7iElfdwsQIB5U"
+          }
+        ]
+      },
+      "_source": "Curvco Steel Structures",
+      "_raw": {
+        "title": "Prefab DIY Steel Buildings Farm Building Quonset Hut Kit",
+        "source": "Curvco Steel Structures",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15823585530130094199,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$32,640.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQ8o3g28LQZdxGFNd2CxBr7yeTsZADs7ZopLCtl8jmmOTMF2kSXdQLQAZnYGnHAlE0yGTMz4eF4Rmj93CIcjfKsucCGxCW7iElfdwsQIB5U",
+        "productId": "15823585530130094199",
+        "position": 25
+      },
+      "make": "Curvco Steel Structures",
+      "model": "Prefab DIY Steel Buildings Farm Building Quonset Hut Kit",
+      "year": 0,
+      "price": 32640.0
+    },
+    {
+      "id": "13051445281558813294",
+      "title": "Custom Website Setup | Launch Your Own Site!",
+      "brand": null,
+      "source": "Whatnot",
+      "price_text": "$300.00",
+      "price_value": 300.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:13051445281558813294,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSLOD_guA4R5L8qM27EBiNe8DHV2ugwpZUNViyR8nr1TVmcNPlqNK2rTlqD67t_8a_usvnKefYQWrfKgVChPkeg2fzR0GJflok84BNvI9415jL7-EMtBTqm",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "13051445281558813294",
+        "title": "Custom Website Setup | Launch Your Own Site!",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "13051445281558813294"
+      },
+      "offer": {
+        "price": "$300.00",
+        "currency": "USD",
+        "seller": "Whatnot",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:13051445281558813294,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSLOD_guA4R5L8qM27EBiNe8DHV2ugwpZUNViyR8nr1TVmcNPlqNK2rTlqD67t_8a_usvnKefYQWrfKgVChPkeg2fzR0GJflok84BNvI9415jL7-EMtBTqm"
+          }
+        ]
+      },
+      "_source": "Whatnot",
+      "_raw": {
+        "title": "Custom Website Setup | Launch Your Own Site!",
+        "source": "Whatnot",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:13051445281558813294,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$300.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSLOD_guA4R5L8qM27EBiNe8DHV2ugwpZUNViyR8nr1TVmcNPlqNK2rTlqD67t_8a_usvnKefYQWrfKgVChPkeg2fzR0GJflok84BNvI9415jL7-EMtBTqm",
+        "productId": "13051445281558813294",
+        "position": 26
+      },
+      "make": "Whatnot",
+      "model": "Custom Website Setup | Launch Your Own Site!",
+      "year": 0,
+      "price": 300.0
+    },
+    {
+      "id": "7458826107770831869",
+      "title": "The Best New Home Design Build Construction Checklist",
+      "brand": null,
+      "source": "Etsy - HappyHomeCustomRose",
+      "price_text": "$36.00",
+      "price_value": 36.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:7458826107770831869,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRP5j4rdWEvTKraB8Xe6Pba1ecwnwFism-ppAxKlaV2sQXbnNAHVHHPsWHodKySDE1LnCoiIN2EnzVQfVsiqsYRIBJo3sUMta0F56TZZmo",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "7458826107770831869",
+        "title": "The Best New Home Design Build Construction Checklist",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "7458826107770831869"
+      },
+      "offer": {
+        "price": "$36.00",
+        "currency": "USD",
+        "seller": "Etsy - HappyHomeCustomRose",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:7458826107770831869,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRP5j4rdWEvTKraB8Xe6Pba1ecwnwFism-ppAxKlaV2sQXbnNAHVHHPsWHodKySDE1LnCoiIN2EnzVQfVsiqsYRIBJo3sUMta0F56TZZmo"
+          }
+        ]
+      },
+      "_source": "Etsy - HappyHomeCustomRose",
+      "_raw": {
+        "title": "The Best New Home Design Build Construction Checklist",
+        "source": "Etsy - HappyHomeCustomRose",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:7458826107770831869,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$36.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRP5j4rdWEvTKraB8Xe6Pba1ecwnwFism-ppAxKlaV2sQXbnNAHVHHPsWHodKySDE1LnCoiIN2EnzVQfVsiqsYRIBJo3sUMta0F56TZZmo",
+        "productId": "7458826107770831869",
+        "position": 27
+      },
+      "make": "Etsy - HappyHomeCustomRose",
+      "model": "The Best New Home Design Build Construction Checklist",
+      "year": 0,
+      "price": 36.0
+    },
+    {
+      "id": "4287552441972159533",
+      "title": "30 x 60 Barndominium Steel Building Kit",
+      "brand": null,
+      "source": "Great Western Building Systems",
+      "price_text": "$49,000.00",
+      "price_value": 49000.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4287552441972159533,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSJSn6wr6l0vle8TEQ6OiMRErPR8UHTiCcWrW-R3bS5tLz0pdDFk921iuy8BUsjg9lkjjvTsMdWMo9yQPgyS8g8YELrzmgevaaLA3trCHE",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "4287552441972159533",
+        "title": "30 x 60 Barndominium Steel Building Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4287552441972159533"
+      },
+      "offer": {
+        "price": "$49,000.00",
+        "currency": "USD",
+        "seller": "Great Western Building Systems",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4287552441972159533,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSJSn6wr6l0vle8TEQ6OiMRErPR8UHTiCcWrW-R3bS5tLz0pdDFk921iuy8BUsjg9lkjjvTsMdWMo9yQPgyS8g8YELrzmgevaaLA3trCHE"
+          }
+        ]
+      },
+      "_source": "Great Western Building Systems",
+      "_raw": {
+        "title": "30 x 60 Barndominium Steel Building Kit",
+        "source": "Great Western Building Systems",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:4287552441972159533,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$49,000.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcSJSn6wr6l0vle8TEQ6OiMRErPR8UHTiCcWrW-R3bS5tLz0pdDFk921iuy8BUsjg9lkjjvTsMdWMo9yQPgyS8g8YELrzmgevaaLA3trCHE",
+        "productId": "4287552441972159533",
+        "position": 29
+      },
+      "make": "Great Western Building Systems",
+      "model": "30 x 60 Barndominium Steel Building Kit",
+      "year": 0,
+      "price": 49000.0
+    },
+    {
+      "id": "11475438414600398580",
+      "title": "3 Bay Compliant Modular Building",
+      "brand": null,
+      "source": "First Choice Shipping Containers",
+      "price_text": "$70,000.00",
+      "price_value": 70000.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:11475438414600398580,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTB2PEF-gkwpPqdhFPP3hv_2oZYaaHOJ4Qldn1gZndGMHaudQxPe1cGA6n8rvofo8y9YfYUn7qhBEeh_E2QbGuIeSOa_4tEMt4hFujErzFK",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "11475438414600398580",
+        "title": "3 Bay Compliant Modular Building",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "11475438414600398580"
+      },
+      "offer": {
+        "price": "$70,000.00",
+        "currency": "USD",
+        "seller": "First Choice Shipping Containers",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:11475438414600398580,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTB2PEF-gkwpPqdhFPP3hv_2oZYaaHOJ4Qldn1gZndGMHaudQxPe1cGA6n8rvofo8y9YfYUn7qhBEeh_E2QbGuIeSOa_4tEMt4hFujErzFK"
+          }
+        ]
+      },
+      "_source": "First Choice Shipping Containers",
+      "_raw": {
+        "title": "3 Bay Compliant Modular Building",
+        "source": "First Choice Shipping Containers",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:11475438414600398580,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$70,000.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTB2PEF-gkwpPqdhFPP3hv_2oZYaaHOJ4Qldn1gZndGMHaudQxPe1cGA6n8rvofo8y9YfYUn7qhBEeh_E2QbGuIeSOa_4tEMt4hFujErzFK",
+        "productId": "11475438414600398580",
+        "position": 30
+      },
+      "make": "First Choice Shipping Containers",
+      "model": "3 Bay Compliant Modular Building",
+      "year": 0,
+      "price": 70000.0
+    },
+    {
+      "id": "3524416196366695345",
+      "title": "Jackson P32 24 ft. x 34 ft. Multi Room Log Cabin Building Kit",
+      "brand": null,
+      "source": "Hud-1 EZ Buildings",
+      "price_text": "$68,421.07",
+      "price_value": 68421.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:3524416196366695345,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQlgJTlpHabI3q2sjQ0B0JnXi51WhnJ8Ao447L2-mOJcLMF8GP94U51cPQdGaBVsS-PDE09xCLLND5jjXkIIx1H14G8Z7xt8UBEUfBnHtkzHfRLKJlkO7AN",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "3524416196366695345",
+        "title": "Jackson P32 24 ft. x 34 ft. Multi Room Log Cabin Building Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "3524416196366695345"
+      },
+      "offer": {
+        "price": "$68,421.07",
+        "currency": "USD",
+        "seller": "Hud-1 EZ Buildings",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:3524416196366695345,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQlgJTlpHabI3q2sjQ0B0JnXi51WhnJ8Ao447L2-mOJcLMF8GP94U51cPQdGaBVsS-PDE09xCLLND5jjXkIIx1H14G8Z7xt8UBEUfBnHtkzHfRLKJlkO7AN"
+          }
+        ]
+      },
+      "_source": "Hud-1 EZ Buildings",
+      "_raw": {
+        "title": "Jackson P32 24 ft. x 34 ft. Multi Room Log Cabin Building Kit",
+        "source": "Hud-1 EZ Buildings",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:3524416196366695345,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$68,421.07",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQlgJTlpHabI3q2sjQ0B0JnXi51WhnJ8Ao447L2-mOJcLMF8GP94U51cPQdGaBVsS-PDE09xCLLND5jjXkIIx1H14G8Z7xt8UBEUfBnHtkzHfRLKJlkO7AN",
+        "productId": "3524416196366695345",
+        "position": 32
+      },
+      "make": "Hud-1 EZ Buildings",
+      "model": "Jackson P32 24 ft. x 34 ft. Multi Room Log Cabin Building Kit",
+      "year": 0,
+      "price": 68421.0
+    },
+    {
+      "id": "15323973150996207739",
+      "title": "Pole Building Exterior Kit",
+      "brand": null,
+      "source": "PBS Direct",
+      "price_text": "$6,900.67",
+      "price_value": 6900.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15323973150996207739,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR5zdjK_55KZld_Yiwh5j70Se5WW6ZPgXu0ZEh99B3rvYJpTHyXUipNM5qFFT7opnUdluXaoKA2_2Rt86IT4BQpVbgvGby6tgX_T6THqYgZWaJ31irZ4pJM",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "15323973150996207739",
+        "title": "Pole Building Exterior Kit",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "15323973150996207739"
+      },
+      "offer": {
+        "price": "$6,900.67",
+        "currency": "USD",
+        "seller": "PBS Direct",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15323973150996207739,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR5zdjK_55KZld_Yiwh5j70Se5WW6ZPgXu0ZEh99B3rvYJpTHyXUipNM5qFFT7opnUdluXaoKA2_2Rt86IT4BQpVbgvGby6tgX_T6THqYgZWaJ31irZ4pJM"
+          }
+        ]
+      },
+      "_source": "PBS Direct",
+      "_raw": {
+        "title": "Pole Building Exterior Kit",
+        "source": "PBS Direct",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:15323973150996207739,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$6,900.67",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcR5zdjK_55KZld_Yiwh5j70Se5WW6ZPgXu0ZEh99B3rvYJpTHyXUipNM5qFFT7opnUdluXaoKA2_2Rt86IT4BQpVbgvGby6tgX_T6THqYgZWaJ31irZ4pJM",
+        "productId": "15323973150996207739",
+        "position": 39
+      },
+      "make": "PBS Direct",
+      "model": "Pole Building Exterior Kit",
+      "year": 0,
+      "price": 6900.0
+    },
+    {
+      "id": "9970878850318335228",
+      "title": "In-Person Beginner Rod Building Workshop",
+      "brand": null,
+      "source": "Mud Hole Custom Tackle",
+      "price_text": "$199.00",
+      "price_value": 199.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:9970878850318335228,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQTPIb5kANaz3oVE8_poo1sQopeW5uI6U6kRtDosWH--y3bFgUzaT44gc_J1fUpqcTWaiFGIN_NU1XMO4Zg8HDsr5sCB73oPqtKg7TqaBY",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "9970878850318335228",
+        "title": "In-Person Beginner Rod Building Workshop",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "9970878850318335228"
+      },
+      "offer": {
+        "price": "$199.00",
+        "currency": "USD",
+        "seller": "Mud Hole Custom Tackle",
+        "url": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:9970878850318335228,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQTPIb5kANaz3oVE8_poo1sQopeW5uI6U6kRtDosWH--y3bFgUzaT44gc_J1fUpqcTWaiFGIN_NU1XMO4Zg8HDsr5sCB73oPqtKg7TqaBY"
+          }
+        ]
+      },
+      "_source": "Mud Hole Custom Tackle",
+      "_raw": {
+        "title": "In-Person Beginner Rod Building Workshop",
+        "source": "Mud Hole Custom Tackle",
+        "link": "https://www.google.com/search?ibp=oshop&q=building a new setup&prds=localAnnotatedOfferId:1,productid:9970878850318335228,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$199.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQTPIb5kANaz3oVE8_poo1sQopeW5uI6U6kRtDosWH--y3bFgUzaT44gc_J1fUpqcTWaiFGIN_NU1XMO4Zg8HDsr5sCB73oPqtKg7TqaBY",
+        "productId": "9970878850318335228",
+        "position": 40
+      },
+      "make": "Mud Hole Custom Tackle",
+      "model": "In-Person Beginner Rod Building Workshop",
+      "year": 0,
+      "price": 199.0
+    }
+  ],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. I'm looking for cpus"
+    },
+    {
+      "role": "ai",
+      "content": "Great! Are you planning to upgrade your current setup or building a new one from scratch?"
+    },
+    {
+      "role": "human",
+      "content": "Building new"
+    },
+    {
+      "role": "ai",
+      "content": "Exciting! Do you have a particular budget range in mind for the CPU? That will help narrow down the options."
+    },
+    {
+      "role": "human",
+      "content": "whats the typical price range for a higher end model?"
+    },
+    {
+      "role": "ai",
+      "content": "The typical price range for higher-end CPUs is between $300 to $700. Here are some options:\n\n- **AMD Ryzen 7 9800X3D**: $479, 4.9 rating\n- **Intel Core i7-14700K**: $334.99, 4.6 rating\n- **AMD Ryzen 9 7900X**: $374, 4.9 rating\n- **AMD Ryzen 9 9950X3D**: $699, 4.7 rating\n\nFor your new setup, consider a package that includes build, setup, testing, and warranty for just $50. \n\nWhat specific features or components are you looking to include in your new setup?"
+    }
+  ],
+  "diagnostics": null
+}

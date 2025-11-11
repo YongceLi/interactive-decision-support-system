@@ -7,9 +7,10 @@ Refactored architecture:
 3. ResponseSynthesizer - handles response synthesis logic
 4. Clear data structures with proper typing
 """
-from typing import Optional, Callable, Dict, Any, List
+from typing import Optional, Callable, Dict, Any, List, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
+from concurrent.futures import ThreadPoolExecutor
 
 from idss_agent.state.schema import VehicleSearchState
 from idss_agent.core.request_analyzer import analyze_request, RequestAnalysis
@@ -21,6 +22,7 @@ from idss_agent.agents.general import run_general_mode
 from idss_agent.workflows.interview import run_interview_workflow
 from idss_agent.processing.llm_synthesizer import llm_synthesize_multi_mode
 from idss_agent.utils.logger import get_logger
+from idss_agent.utils.telemetry import start_span, finish_span, append_span
 
 
 class AgentMode(str, Enum):
@@ -345,12 +347,12 @@ class ResponseSynthesizer:
             Default response
         """
         return {
-            'response': "I'm here to help you find the perfect vehicle. What are you looking for?",
+            'response': "I'm here to help you find the right product. What are you shopping for today?",
             'quick_replies': None,
             'suggested_followups': [
-                "I want to buy a car",
-                "Show me vehicles",
-                "What's a good car for..."
+                "Help me choose a CPU",
+                "Show me products",
+                "What's a good option for..."
             ]
         }
 
@@ -389,16 +391,13 @@ class SupervisorOrchestrator:
         """
         self.logger.info("Processing request...")
 
+        request_span = start_span("supervisor.process_request")
+
         # Clear comparison table at start of each request
         state['comparison_table'] = None
 
-        # Step 1: Analyze request to detect intents
-        analysis = analyze_request(user_input, state)
-
-        # Step 2: Parse filters from conversation
-        state = semantic_parser_node(state, self.progress_callback)
-        # Mark that semantic parsing is done to avoid duplicate parsing in sub-workflows
-        state['_semantic_parsing_done'] = True
+        # Step 1 & 2: Run analyzer and semantic parser in parallel to reduce latency
+        analysis, state = self._run_parallel_intent_and_parsing(user_input, state)
 
         # Step 3: Determine execution plan
         execution_plan = self._create_execution_plan(analysis, state)
@@ -424,7 +423,50 @@ class SupervisorOrchestrator:
 
         self.logger.info(f"Response generated ({len(synthesis['response'])} chars)")
 
+        append_span(state, finish_span(request_span))
         return state
+
+    def _run_parallel_intent_and_parsing(
+        self,
+        user_input: str,
+        state: VehicleSearchState
+    ) -> Tuple[RequestAnalysis, VehicleSearchState]:
+        """
+        Run intent analysis and semantic parsing concurrently.
+
+        Args:
+            user_input: Latest user utterance
+            state: Current conversation state
+
+        Returns:
+            Tuple containing request analysis and updated state
+        """
+        state_for_parser = state.copy()
+        parallel_span = start_span("supervisor.intent_and_parsing")
+
+        def _wrapped_analyze() -> Tuple[RequestAnalysis, Dict[str, Any]]:
+            span = start_span("intent_analysis")
+            result = analyze_request(user_input, state)
+            return result, finish_span(span)
+
+        def _wrapped_parse() -> Tuple[VehicleSearchState, Dict[str, Any]]:
+            span = start_span("semantic_parser")
+            parsed = semantic_parser_node(state_for_parser, self.progress_callback)
+            return parsed, finish_span(span)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            analysis_future = executor.submit(_wrapped_analyze)
+            parser_future = executor.submit(_wrapped_parse)
+
+            analysis, analysis_span = analysis_future.result()
+            parsed_state, parser_span = parser_future.result()
+
+        append_span(parsed_state, analysis_span)
+        append_span(parsed_state, parser_span)
+        append_span(parsed_state, finish_span(parallel_span))
+
+        parsed_state['_semantic_parsing_done'] = True
+        return analysis, parsed_state
 
     def _create_execution_plan(
         self,

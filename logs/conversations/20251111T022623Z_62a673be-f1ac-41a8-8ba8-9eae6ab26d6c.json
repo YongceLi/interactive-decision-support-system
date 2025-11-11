@@ -1,0 +1,23 @@
+{
+  "session_id": "62a673be-f1ac-41a8-8ba8-9eae6ab26d6c",
+  "timestamp": "20251111T022623Z",
+  "ai_response": "Great choice! Are you building a new system or upgrading an existing one? This can help determine compatibility and other needs.",
+  "explicit_filters": {
+    "body_style": "CPU",
+    "state": "CA",
+    "zip": "94305"
+  },
+  "implicit_preferences": {},
+  "recommended_products": [],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. im looking for a new cpu"
+    },
+    {
+      "role": "ai",
+      "content": "Great choice! Are you building a new system or upgrading an existing one? This can help determine compatibility and other needs."
+    }
+  ],
+  "diagnostics": null
+}

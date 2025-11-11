@@ -1,0 +1,1136 @@
+{
+  "session_id": "931ded4f-60d0-4656-905b-d33b1b397eb8",
+  "timestamp": "20251111T025103Z",
+  "ai_response": "Thanks for letting me know about your preferred budget range for GPUs.\n\n- **PNY NVIDIA GeForce RTX 5070**: Great performance for the price, priced at $626.62.\n- **Impressive ratings**: 4.3 stars from 118 reviews, highlighting customer satisfaction.\n- **Available on Grooves-Inc.com**: Convenient online purchase option.\n\nAre there any specific brands you prefer for your GPU, or are you open to any brand that fits your needs?",
+  "explicit_filters": {
+    "make": "",
+    "model": "",
+    "year": "",
+    "trim": "",
+    "engine": "",
+    "transmission": "",
+    "drivetrain": "",
+    "fuel_type": "",
+    "exterior_color": "",
+    "interior_color": "",
+    "price": "400-800",
+    "mileage": "",
+    "product": "GPU"
+  },
+  "implicit_preferences": {
+    "priorities": [],
+    "budget_sensitivity": "moderate",
+    "brand_affinity": [],
+    "concerns": [],
+    "notes": "User is looking for GPUs within a specific budget range."
+  },
+  "recommended_products": [
+    {
+      "id": "14408695434386548540",
+      "title": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$879.99",
+      "price_value": 879.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14408695434386548540,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQK5RtjzYNVsbpNfctAYHXy1Du0RzNvyQBzf1d2P95qtONbOh6RgkpAdsN3SXh-s9vHkQw893ywJy62ND_kPXQlQXGnbyX0NvTSrS-WzHIQsahESNvWrB9O",
+      "rating": 3.7,
+      "rating_count": 12,
+      "product": {
+        "id": "14408695434386548540",
+        "title": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14408695434386548540"
+      },
+      "offer": {
+        "price": "$879.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14408695434386548540,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQK5RtjzYNVsbpNfctAYHXy1Du0RzNvyQBzf1d2P95qtONbOh6RgkpAdsN3SXh-s9vHkQw893ywJy62ND_kPXQlQXGnbyX0NvTSrS-WzHIQsahESNvWrB9O"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14408695434386548540,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$879.99",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQK5RtjzYNVsbpNfctAYHXy1Du0RzNvyQBzf1d2P95qtONbOh6RgkpAdsN3SXh-s9vHkQw893ywJy62ND_kPXQlQXGnbyX0NvTSrS-WzHIQsahESNvWrB9O",
+        "rating": 3.7,
+        "ratingCount": 12,
+        "productId": "14408695434386548540",
+        "position": 1
+      },
+      "product_brand": "Best Buy",
+      "product_name": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+      "model_number": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+      "make": "Best Buy",
+      "model": "XFX Gaming Radeon RX 7900 XTX 24GB GDDR6 Video Card",
+      "year": 0,
+      "price": 879.99
+    },
+    {
+      "id": "12696226273131554338",
+      "title": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+      "brand": null,
+      "source": "Grooves-Inc.com",
+      "price_text": "$626.62",
+      "price_value": 626.62,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12696226273131554338,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQuanXZyDMXXFA3UyBbWrjD6e6PmMsiSGhy_Y9STb_IihMSK2KEd13SCGuzhr7wwkxiGMNbGgQxQqUd-DoKQmoXLFDNWsShoM_s0RNedadK2TxCXq8On3cPyg",
+      "rating": 4.3,
+      "rating_count": 118,
+      "product": {
+        "id": "12696226273131554338",
+        "title": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "12696226273131554338"
+      },
+      "offer": {
+        "price": "$626.62",
+        "currency": "USD",
+        "seller": "Grooves-Inc.com",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12696226273131554338,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQuanXZyDMXXFA3UyBbWrjD6e6PmMsiSGhy_Y9STb_IihMSK2KEd13SCGuzhr7wwkxiGMNbGgQxQqUd-DoKQmoXLFDNWsShoM_s0RNedadK2TxCXq8On3cPyg"
+          }
+        ]
+      },
+      "_source": "Grooves-Inc.com",
+      "_raw": {
+        "title": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+        "source": "Grooves-Inc.com",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12696226273131554338,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$626.62",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQuanXZyDMXXFA3UyBbWrjD6e6PmMsiSGhy_Y9STb_IihMSK2KEd13SCGuzhr7wwkxiGMNbGgQxQqUd-DoKQmoXLFDNWsShoM_s0RNedadK2TxCXq8On3cPyg",
+        "rating": 4.3,
+        "ratingCount": 118,
+        "productId": "12696226273131554338",
+        "position": 2
+      },
+      "product_brand": "Grooves-Inc.com",
+      "product_name": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+      "model_number": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+      "make": "Grooves-Inc.com",
+      "model": "PNY NVIDIA GeForce RTX 5070 Graphic Card",
+      "year": 0,
+      "price": 626.62
+    },
+    {
+      "id": "17837982069031443839",
+      "title": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+      "brand": null,
+      "source": "eSaitech",
+      "price_text": "$9,119.00",
+      "price_value": 9119.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:17837982069031443839,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "17837982069031443839",
+        "title": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17837982069031443839"
+      },
+      "offer": {
+        "price": "$9,119.00",
+        "currency": "USD",
+        "seller": "eSaitech",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:17837982069031443839,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ"
+          }
+        ]
+      },
+      "_source": "eSaitech",
+      "_raw": {
+        "title": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+        "source": "eSaitech",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:17837982069031443839,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$9,119.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ",
+        "productId": "17837982069031443839",
+        "position": 3
+      },
+      "product_brand": "eSaitech",
+      "product_name": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+      "model_number": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+      "make": "eSaitech",
+      "model": "Nvidia718-DG7013+P2EDR18 DGX A100 SYSTL 8X 80GB GPU",
+      "year": 0,
+      "price": 9119.0
+    },
+    {
+      "id": "17401448527029856948",
+      "title": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+      "brand": null,
+      "source": "StockX",
+      "price_text": "$655.00",
+      "price_value": 655.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17401448527029856948,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQBUdfTA6a7f2DIk7YgwrSWGV3A1QcOm9mmTjV2ackXZAskDAkkHE4ezr_6aX2ZW1h6QcYOpCgac-A4kxu02v2TCZtqj_wEGLB9ra9N91ZUlGXwC4mxOQin",
+      "rating": 4.6,
+      "rating_count": 72,
+      "product": {
+        "id": "17401448527029856948",
+        "title": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17401448527029856948"
+      },
+      "offer": {
+        "price": "$655.00",
+        "currency": "USD",
+        "seller": "StockX",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17401448527029856948,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQBUdfTA6a7f2DIk7YgwrSWGV3A1QcOm9mmTjV2ackXZAskDAkkHE4ezr_6aX2ZW1h6QcYOpCgac-A4kxu02v2TCZtqj_wEGLB9ra9N91ZUlGXwC4mxOQin"
+          }
+        ]
+      },
+      "_source": "StockX",
+      "_raw": {
+        "title": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+        "source": "StockX",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17401448527029856948,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$655.00",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQBUdfTA6a7f2DIk7YgwrSWGV3A1QcOm9mmTjV2ackXZAskDAkkHE4ezr_6aX2ZW1h6QcYOpCgac-A4kxu02v2TCZtqj_wEGLB9ra9N91ZUlGXwC4mxOQin",
+        "rating": 4.6,
+        "ratingCount": 72,
+        "productId": "17401448527029856948",
+        "position": 4
+      },
+      "product_brand": "StockX",
+      "product_name": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+      "model_number": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+      "make": "StockX",
+      "model": "Gigabyte GeForce RTX 3060 Ti Vision OC Graphics Card",
+      "year": 0,
+      "price": 655.0
+    },
+    {
+      "id": "14434859179327365611",
+      "title": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+      "brand": null,
+      "source": "AliExpress",
+      "price_text": "$75.04",
+      "price_value": 75.04,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:14434859179327365611,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTXbBMrht2RKQo4ui2vhTk0CE5VKA1Rgnqwk6Vq5ir_TGWFo2C4PDuQB78-iflTnK6_x6OvxJ7bM43zyNViIZj8U08jhEloQilWyQQ1v-dsAIZnD6vfijs3",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "14434859179327365611",
+        "title": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14434859179327365611"
+      },
+      "offer": {
+        "price": "$75.04",
+        "currency": "USD",
+        "seller": "AliExpress",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:14434859179327365611,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTXbBMrht2RKQo4ui2vhTk0CE5VKA1Rgnqwk6Vq5ir_TGWFo2C4PDuQB78-iflTnK6_x6OvxJ7bM43zyNViIZj8U08jhEloQilWyQQ1v-dsAIZnD6vfijs3"
+          }
+        ]
+      },
+      "_source": "AliExpress",
+      "_raw": {
+        "title": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+        "source": "AliExpress",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:14434859179327365611,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$75.04",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTXbBMrht2RKQo4ui2vhTk0CE5VKA1Rgnqwk6Vq5ir_TGWFo2C4PDuQB78-iflTnK6_x6OvxJ7bM43zyNViIZj8U08jhEloQilWyQQ1v-dsAIZnD6vfijs3",
+        "productId": "14434859179327365611",
+        "position": 5
+      },
+      "product_brand": "AliExpress",
+      "product_name": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+      "model_number": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+      "make": "AliExpress",
+      "model": "Original ZOTAC Graphics Cards GeForce GTX 660 2GB GPU 192Bit GDDR5 Video Card for nVIDIA Map GTX660",
+      "year": 0,
+      "price": 75.04
+    },
+    {
+      "id": "8030433426135816866",
+      "title": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+      "brand": null,
+      "source": "MSI Online Store",
+      "price_text": "$569.99",
+      "price_value": 569.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8030433426135816866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQUVjaTKN5pEfoZvo7MYwKOcANU_Mapszq9Cv52MjpQ5sUg3V6clLvLNkTfeGhwp2gmQcCIurhqi5B12S7-R-Bjsf523gr4Xp3ofyrfeG6FAum2mZFjHlueOw",
+      "rating": 4.8,
+      "rating_count": 49,
+      "product": {
+        "id": "8030433426135816866",
+        "title": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8030433426135816866"
+      },
+      "offer": {
+        "price": "$569.99",
+        "currency": "USD",
+        "seller": "MSI Online Store",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8030433426135816866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQUVjaTKN5pEfoZvo7MYwKOcANU_Mapszq9Cv52MjpQ5sUg3V6clLvLNkTfeGhwp2gmQcCIurhqi5B12S7-R-Bjsf523gr4Xp3ofyrfeG6FAum2mZFjHlueOw"
+          }
+        ]
+      },
+      "_source": "MSI Online Store",
+      "_raw": {
+        "title": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+        "source": "MSI Online Store",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8030433426135816866,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$569.99",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcQUVjaTKN5pEfoZvo7MYwKOcANU_Mapszq9Cv52MjpQ5sUg3V6clLvLNkTfeGhwp2gmQcCIurhqi5B12S7-R-Bjsf523gr4Xp3ofyrfeG6FAum2mZFjHlueOw",
+        "rating": 4.8,
+        "ratingCount": 49,
+        "productId": "8030433426135816866",
+        "position": 6
+      },
+      "product_brand": "MSI Online Store",
+      "product_name": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+      "model_number": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+      "make": "MSI Online Store",
+      "model": "MSI RTX 5070 12G VENTUS 3X OC Graphics Card",
+      "year": 0,
+      "price": 569.99
+    },
+    {
+      "id": "146697367268643097",
+      "title": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+      "brand": null,
+      "source": "Walmart - Newegg Inc.",
+      "price_text": "$669.99",
+      "price_value": 669.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:146697367268643097,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQt9rHE0PwcaHub2Vtpd8SM93q98kgnDdfVFEj5X4ahRYVsGj9cxyDkE24PlaUpu3BAvQIay58PxcMgVUmm22T6U3W_ThLoBNNbZSpt44S1",
+      "rating": 4.6,
+      "rating_count": 175,
+      "product": {
+        "id": "146697367268643097",
+        "title": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "146697367268643097"
+      },
+      "offer": {
+        "price": "$669.99",
+        "currency": "USD",
+        "seller": "Walmart - Newegg Inc.",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:146697367268643097,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQt9rHE0PwcaHub2Vtpd8SM93q98kgnDdfVFEj5X4ahRYVsGj9cxyDkE24PlaUpu3BAvQIay58PxcMgVUmm22T6U3W_ThLoBNNbZSpt44S1"
+          }
+        ]
+      },
+      "_source": "Walmart - Newegg Inc.",
+      "_raw": {
+        "title": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+        "source": "Walmart - Newegg Inc.",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:146697367268643097,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$669.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQt9rHE0PwcaHub2Vtpd8SM93q98kgnDdfVFEj5X4ahRYVsGj9cxyDkE24PlaUpu3BAvQIay58PxcMgVUmm22T6U3W_ThLoBNNbZSpt44S1",
+        "rating": 4.6,
+        "ratingCount": 175,
+        "productId": "146697367268643097",
+        "position": 7
+      },
+      "product_brand": "Walmart - Newegg Inc.",
+      "product_name": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+      "model_number": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+      "make": "Walmart - Newegg Inc.",
+      "model": "PowerColor RX 9070 XT Reaper 16GB GDDR6 Graphic Card",
+      "year": 0,
+      "price": 669.99
+    },
+    {
+      "id": "3558299801503408390",
+      "title": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+      "brand": null,
+      "source": "Sears - FastMedia",
+      "price_text": "$521.57",
+      "price_value": 521.57,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3558299801503408390,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRrB829wogApnTnBiUIE4QinUJPbmpiHYTqacVqdoBcMH0ZQZdAnOMVA4vXki9oO0q9ciOqHT4Rz-IqZpgeeZ5mUoLfRIBhDlgeJeMZKViyZdAkcH0ACY5f7w",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "3558299801503408390",
+        "title": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "3558299801503408390"
+      },
+      "offer": {
+        "price": "$521.57",
+        "currency": "USD",
+        "seller": "Sears - FastMedia",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3558299801503408390,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRrB829wogApnTnBiUIE4QinUJPbmpiHYTqacVqdoBcMH0ZQZdAnOMVA4vXki9oO0q9ciOqHT4Rz-IqZpgeeZ5mUoLfRIBhDlgeJeMZKViyZdAkcH0ACY5f7w"
+          }
+        ]
+      },
+      "_source": "Sears - FastMedia",
+      "_raw": {
+        "title": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+        "source": "Sears - FastMedia",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:3558299801503408390,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$521.57",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcRrB829wogApnTnBiUIE4QinUJPbmpiHYTqacVqdoBcMH0ZQZdAnOMVA4vXki9oO0q9ciOqHT4Rz-IqZpgeeZ5mUoLfRIBhDlgeJeMZKViyZdAkcH0ACY5f7w",
+        "productId": "3558299801503408390",
+        "position": 8
+      },
+      "product_brand": "Sears - FastMedia",
+      "product_name": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+      "model_number": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+      "make": "Sears - FastMedia",
+      "model": "EVGA GeForce GTX 960 4GB SSC Gaming ACX 2.0+ Whisper Silent Cooling Graphics",
+      "year": 0,
+      "price": 521.57
+    },
+    {
+      "id": "17048180403134421259",
+      "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "brand": null,
+      "source": "Altex Electronics",
+      "price_text": "$1,349.99",
+      "price_value": 1349.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSpcje_J-7Q6376zQ09NThS1DNCXvhC5lS9d26FxkpJEpAB9ZKjj1SlkrqQrU8lZ-C2uUWoFQmYizeuR1XsKMbeUGYxC95rO3zNF1GpJVMfTAxlwxAJp0FqjQ",
+      "rating": 4.6,
+      "rating_count": 387,
+      "product": {
+        "id": "17048180403134421259",
+        "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17048180403134421259"
+      },
+      "offer": {
+        "price": "$1,349.99",
+        "currency": "USD",
+        "seller": "Altex Electronics",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSpcje_J-7Q6376zQ09NThS1DNCXvhC5lS9d26FxkpJEpAB9ZKjj1SlkrqQrU8lZ-C2uUWoFQmYizeuR1XsKMbeUGYxC95rO3zNF1GpJVMfTAxlwxAJp0FqjQ"
+          }
+        ]
+      },
+      "_source": "Altex Electronics",
+      "_raw": {
+        "title": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+        "source": "Altex Electronics",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17048180403134421259,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1,349.99",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSpcje_J-7Q6376zQ09NThS1DNCXvhC5lS9d26FxkpJEpAB9ZKjj1SlkrqQrU8lZ-C2uUWoFQmYizeuR1XsKMbeUGYxC95rO3zNF1GpJVMfTAxlwxAJp0FqjQ",
+        "rating": 4.6,
+        "ratingCount": 387,
+        "productId": "17048180403134421259",
+        "position": 9
+      },
+      "product_brand": "Altex Electronics",
+      "product_name": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "model_number": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "make": "Altex Electronics",
+      "model": "Asus TUF Gaming GeForce RTX 5080 OC Edition",
+      "year": 0,
+      "price": 1349.0
+    },
+    {
+      "id": "12496722822591486437",
+      "title": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+      "brand": null,
+      "source": "eBay - spznnmarket",
+      "price_text": "$170.00",
+      "price_value": 170.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12496722822591486437,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSW1GZL1eTeQRRAt1Fb3rqxNWFqaj3WAPaMS4wbZv6J5zmRWf_v-o54EYafsfcMDn-CufZMr5Tk7kEOL_h6WVnB2Zrf_2Wn39DrHBqkvGO8BbWjK-xoOi7FuQ",
+      "rating": 4.3,
+      "rating_count": 229,
+      "product": {
+        "id": "12496722822591486437",
+        "title": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "12496722822591486437"
+      },
+      "offer": {
+        "price": "$170.00",
+        "currency": "USD",
+        "seller": "eBay - spznnmarket",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12496722822591486437,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSW1GZL1eTeQRRAt1Fb3rqxNWFqaj3WAPaMS4wbZv6J5zmRWf_v-o54EYafsfcMDn-CufZMr5Tk7kEOL_h6WVnB2Zrf_2Wn39DrHBqkvGO8BbWjK-xoOi7FuQ"
+          }
+        ]
+      },
+      "_source": "eBay - spznnmarket",
+      "_raw": {
+        "title": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+        "source": "eBay - spznnmarket",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:12496722822591486437,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$170.00",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSW1GZL1eTeQRRAt1Fb3rqxNWFqaj3WAPaMS4wbZv6J5zmRWf_v-o54EYafsfcMDn-CufZMr5Tk7kEOL_h6WVnB2Zrf_2Wn39DrHBqkvGO8BbWjK-xoOi7FuQ",
+        "rating": 4.3,
+        "ratingCount": 229,
+        "productId": "12496722822591486437",
+        "position": 10
+      },
+      "product_brand": "eBay - spznnmarket",
+      "product_name": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+      "model_number": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+      "make": "eBay - spznnmarket",
+      "model": "Sapphire Pulse Radeon RX 5600 XT Graphics Card",
+      "year": 0,
+      "price": 170.0
+    },
+    {
+      "id": "7821394842990905138",
+      "title": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+      "brand": null,
+      "source": "Provantage",
+      "price_text": "$584.12",
+      "price_value": 584.12,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:7821394842990905138,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSM9XoiBGf3zLUYVkoxWTGkKA5YfW5xX_vBx7RWiAFcu00WoGKfizhve8UbBJgdybMrIuKjSOnYnzBaj6coCuur1cyTNExcp2_bVu_1c2tVA9c1vsj0WMnRqgU",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "7821394842990905138",
+        "title": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "7821394842990905138"
+      },
+      "offer": {
+        "price": "$584.12",
+        "currency": "USD",
+        "seller": "Provantage",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:7821394842990905138,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSM9XoiBGf3zLUYVkoxWTGkKA5YfW5xX_vBx7RWiAFcu00WoGKfizhve8UbBJgdybMrIuKjSOnYnzBaj6coCuur1cyTNExcp2_bVu_1c2tVA9c1vsj0WMnRqgU"
+          }
+        ]
+      },
+      "_source": "Provantage",
+      "_raw": {
+        "title": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+        "source": "Provantage",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:7821394842990905138,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$584.12",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcSM9XoiBGf3zLUYVkoxWTGkKA5YfW5xX_vBx7RWiAFcu00WoGKfizhve8UbBJgdybMrIuKjSOnYnzBaj6coCuur1cyTNExcp2_bVu_1c2tVA9c1vsj0WMnRqgU",
+        "productId": "7821394842990905138",
+        "position": 11
+      },
+      "product_brand": "Provantage",
+      "product_name": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+      "model_number": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+      "make": "Provantage",
+      "model": "Lenovo NVIDIA T1000E 8 GB mini-DP*4 GDDR6 Graphics Card",
+      "year": 0,
+      "price": 584.12
+    },
+    {
+      "id": "14268554259970461952",
+      "title": "Intel Arc B580 Limited Edition Graphics Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$249.99",
+      "price_value": 249.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1",
+      "rating": 4.5,
+      "rating_count": 391,
+      "product": {
+        "id": "14268554259970461952",
+        "title": "Intel Arc B580 Limited Edition Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "14268554259970461952"
+      },
+      "offer": {
+        "price": "$249.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "Intel Arc B580 Limited Edition Graphics Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:14268554259970461952,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$249.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcTuEiPsK9M1zNQlmnlaAY5Rn1QKXCi7_loaG9qvDoE9sCCsmeIe7d4VDsepUoj2RyeH4bt03dNo03j4qTftn_jX3S6UDEFwJSl0YdUssPi1",
+        "rating": 4.5,
+        "ratingCount": 391,
+        "productId": "14268554259970461952",
+        "position": 12
+      },
+      "product_brand": "Best Buy",
+      "product_name": "Intel Arc B580 Limited Edition Graphics Card",
+      "model_number": "Intel Arc B580 Limited Edition Graphics Card",
+      "make": "Best Buy",
+      "model": "Intel Arc B580 Limited Edition Graphics Card",
+      "year": 0,
+      "price": 249.99
+    },
+    {
+      "id": "17745486979710795124",
+      "title": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+      "brand": null,
+      "source": "PC Server & Parts",
+      "price_text": "$89.99",
+      "price_value": 89.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17745486979710795124,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTtkY8RyPtmU2GcnVuCgTzqiUFAX_YlNHD4EYMdXYMBbGCMGDoyBef2T4Bt92fvCA979mt644BN_Wq4SGVmYOBa7-MGU5kDo1wdKFj7Y0C0G6c6-9bVZmNE",
+      "rating": 5,
+      "rating_count": 5,
+      "product": {
+        "id": "17745486979710795124",
+        "title": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "17745486979710795124"
+      },
+      "offer": {
+        "price": "$89.99",
+        "currency": "USD",
+        "seller": "PC Server & Parts",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17745486979710795124,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTtkY8RyPtmU2GcnVuCgTzqiUFAX_YlNHD4EYMdXYMBbGCMGDoyBef2T4Bt92fvCA979mt644BN_Wq4SGVmYOBa7-MGU5kDo1wdKFj7Y0C0G6c6-9bVZmNE"
+          }
+        ]
+      },
+      "_source": "PC Server & Parts",
+      "_raw": {
+        "title": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+        "source": "PC Server & Parts",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:17745486979710795124,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$89.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcTtkY8RyPtmU2GcnVuCgTzqiUFAX_YlNHD4EYMdXYMBbGCMGDoyBef2T4Bt92fvCA979mt644BN_Wq4SGVmYOBa7-MGU5kDo1wdKFj7Y0C0G6c6-9bVZmNE",
+        "rating": 5,
+        "ratingCount": 5,
+        "productId": "17745486979710795124",
+        "position": 13
+      },
+      "product_brand": "PC Server & Parts",
+      "product_name": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+      "model_number": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+      "make": "PC Server & Parts",
+      "model": "HP m6v52at Quadro M4000 8GB GDDR5 PCI Express 3.0 x16 Video Graphics Card",
+      "year": 0,
+      "price": 89.99
+    },
+    {
+      "id": "4830375545371205724",
+      "title": "AMD Radeon Pro W7700 Graphics Card",
+      "brand": null,
+      "source": "B&H Photo-Video-Audio",
+      "price_text": "$969.00",
+      "price_value": 969.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4830375545371205724,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcR0S_MNb2lAduF574ayjMbkNke6vJ11DcpMpbeWa_yujGf5oJ-5MR-2Bld4uVwgsTXByqQABh4F-5nvRqzdku23LKh5bK1agyjImQCYZybzkOqMB8aLNR7R",
+      "rating": 5,
+      "rating_count": 1,
+      "product": {
+        "id": "4830375545371205724",
+        "title": "AMD Radeon Pro W7700 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "4830375545371205724"
+      },
+      "offer": {
+        "price": "$969.00",
+        "currency": "USD",
+        "seller": "B&H Photo-Video-Audio",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4830375545371205724,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcR0S_MNb2lAduF574ayjMbkNke6vJ11DcpMpbeWa_yujGf5oJ-5MR-2Bld4uVwgsTXByqQABh4F-5nvRqzdku23LKh5bK1agyjImQCYZybzkOqMB8aLNR7R"
+          }
+        ]
+      },
+      "_source": "B&H Photo-Video-Audio",
+      "_raw": {
+        "title": "AMD Radeon Pro W7700 Graphics Card",
+        "source": "B&H Photo-Video-Audio",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:4830375545371205724,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$969.00",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcR0S_MNb2lAduF574ayjMbkNke6vJ11DcpMpbeWa_yujGf5oJ-5MR-2Bld4uVwgsTXByqQABh4F-5nvRqzdku23LKh5bK1agyjImQCYZybzkOqMB8aLNR7R",
+        "rating": 5,
+        "ratingCount": 1,
+        "productId": "4830375545371205724",
+        "position": 14
+      },
+      "product_brand": "B&H Photo-Video-Audio",
+      "product_name": "AMD Radeon Pro W7700 Graphics Card",
+      "model_number": "AMD Radeon Pro W7700 Graphics Card",
+      "make": "B&H Photo-Video-Audio",
+      "model": "AMD Radeon Pro W7700 Graphics Card",
+      "year": 0,
+      "price": 969.0
+    },
+    {
+      "id": "16276422099211437689",
+      "title": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+      "brand": null,
+      "source": "CompSource",
+      "price_text": "$1,389.93",
+      "price_value": 1389.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16276422099211437689,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQrqLAUnTD7tBoiCK_wIVgZQBbsCSr5KzKWSNTMvS5t5I_GUGKWgehz-dF85ARa6FLqajpl0rl3h9dzoxaX5Xa6ezZLW8AxDO1yvkNkf5V28GXaDREj0b5PQA",
+      "rating": 4.9,
+      "rating_count": 9,
+      "product": {
+        "id": "16276422099211437689",
+        "title": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "16276422099211437689"
+      },
+      "offer": {
+        "price": "$1,389.93",
+        "currency": "USD",
+        "seller": "CompSource",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16276422099211437689,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQrqLAUnTD7tBoiCK_wIVgZQBbsCSr5KzKWSNTMvS5t5I_GUGKWgehz-dF85ARa6FLqajpl0rl3h9dzoxaX5Xa6ezZLW8AxDO1yvkNkf5V28GXaDREj0b5PQA"
+          }
+        ]
+      },
+      "_source": "CompSource",
+      "_raw": {
+        "title": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+        "source": "CompSource",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16276422099211437689,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$1,389.93",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQrqLAUnTD7tBoiCK_wIVgZQBbsCSr5KzKWSNTMvS5t5I_GUGKWgehz-dF85ARa6FLqajpl0rl3h9dzoxaX5Xa6ezZLW8AxDO1yvkNkf5V28GXaDREj0b5PQA",
+        "rating": 4.9,
+        "ratingCount": 9,
+        "productId": "16276422099211437689",
+        "position": 15
+      },
+      "product_brand": "CompSource",
+      "product_name": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+      "model_number": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+      "make": "CompSource",
+      "model": "Gigabyte GeForce RTX 5080 Gaming Graphics Card",
+      "year": 0,
+      "price": 1389.0
+    },
+    {
+      "id": "10061086519914394232",
+      "title": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+      "brand": null,
+      "source": "eBay - space-dye*vest",
+      "price_text": "$148.46",
+      "price_value": 148.46,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:10061086519914394232,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSG2DrukavNvZXcOQshPCCYW--fVNS5QnN1EnNzWYYFpXHwp7sj__6Jf3VP1yGzEP7OvF9-pcY7_nQfIKioNkmikA6801dMrtc2IY5VISTJ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "10061086519914394232",
+        "title": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "10061086519914394232"
+      },
+      "offer": {
+        "price": "$148.46",
+        "currency": "USD",
+        "seller": "eBay - space-dye*vest",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:10061086519914394232,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSG2DrukavNvZXcOQshPCCYW--fVNS5QnN1EnNzWYYFpXHwp7sj__6Jf3VP1yGzEP7OvF9-pcY7_nQfIKioNkmikA6801dMrtc2IY5VISTJ"
+          }
+        ]
+      },
+      "_source": "eBay - space-dye*vest",
+      "_raw": {
+        "title": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+        "source": "eBay - space-dye*vest",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,productid:10061086519914394232,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$148.46",
+        "imageUrl": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcSG2DrukavNvZXcOQshPCCYW--fVNS5QnN1EnNzWYYFpXHwp7sj__6Jf3VP1yGzEP7OvF9-pcY7_nQfIKioNkmikA6801dMrtc2IY5VISTJ",
+        "productId": "10061086519914394232",
+        "position": 16
+      },
+      "product_brand": "eBay - space-dye*vest",
+      "product_name": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+      "model_number": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+      "make": "eBay - space-dye*vest",
+      "model": "Radeon Rx 580 8gb Graphics Card, 256bit 2048sp Gddr5 For Pc Gaming, Dp",
+      "year": 0,
+      "price": 148.46
+    },
+    {
+      "id": "1570168257747072630",
+      "title": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+      "brand": null,
+      "source": "eSaitech",
+      "price_text": "$6,584.00",
+      "price_value": 6584.0,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:1570168257747072630,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ",
+      "rating": null,
+      "rating_count": null,
+      "product": {
+        "id": "1570168257747072630",
+        "title": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "1570168257747072630"
+      },
+      "offer": {
+        "price": "$6,584.00",
+        "currency": "USD",
+        "seller": "eSaitech",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:1570168257747072630,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ"
+          }
+        ]
+      },
+      "_source": "eSaitech",
+      "_raw": {
+        "title": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+        "source": "eSaitech",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:1570168257747072630,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$6,584.00",
+        "imageUrl": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcTbWyEngV9w6zYPxAgCejUy0tWhzALvrNyN2d9nH-1GKpvQKrPTdlq7lNn_8e75iWbgxPmJ3IfSlOBRpuHMu1r4Ev4MYSjxuQ",
+        "productId": "1570168257747072630",
+        "position": 17
+      },
+      "product_brand": "eSaitech",
+      "product_name": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+      "model_number": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+      "make": "eSaitech",
+      "model": "NVIDIA RTX 6000 ADA 48GB GDDR6 GPU",
+      "year": 0,
+      "price": 6584.0
+    },
+    {
+      "id": "8186929051071847368",
+      "title": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+      "brand": null,
+      "source": "Lenovo",
+      "price_text": "$354.99",
+      "price_value": 354.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8186929051071847368,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQgejdABWWhBQT7_Yok_4oIWPuVPI2WyH9z45GCPuhVaO1pNx9ZXe1aPmfHAsM23ns7zktYkTNIqu6FftbuWN_KFJCg6SkBHQ",
+      "rating": 5,
+      "rating_count": 3,
+      "product": {
+        "id": "8186929051071847368",
+        "title": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "8186929051071847368"
+      },
+      "offer": {
+        "price": "$354.99",
+        "currency": "USD",
+        "seller": "Lenovo",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8186929051071847368,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQgejdABWWhBQT7_Yok_4oIWPuVPI2WyH9z45GCPuhVaO1pNx9ZXe1aPmfHAsM23ns7zktYkTNIqu6FftbuWN_KFJCg6SkBHQ"
+          }
+        ]
+      },
+      "_source": "Lenovo",
+      "_raw": {
+        "title": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+        "source": "Lenovo",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:8186929051071847368,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$354.99",
+        "imageUrl": "https://encrypted-tbn3.gstatic.com/shopping?q=tbn:ANd9GcQgejdABWWhBQT7_Yok_4oIWPuVPI2WyH9z45GCPuhVaO1pNx9ZXe1aPmfHAsM23ns7zktYkTNIqu6FftbuWN_KFJCg6SkBHQ",
+        "rating": 5,
+        "ratingCount": 3,
+        "productId": "8186929051071847368",
+        "position": 18
+      },
+      "product_brand": "Lenovo",
+      "product_name": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+      "model_number": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+      "make": "Lenovo",
+      "model": "VisionTek Radeon 7750 2GB GDDR5 Graphics Card",
+      "year": 0,
+      "price": 354.99
+    },
+    {
+      "id": "16489708467840090400",
+      "title": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+      "brand": null,
+      "source": "Best Buy",
+      "price_text": "$399.99",
+      "price_value": 399.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16489708467840090400,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRdgDSbGX3PkpIyNA7boo6mZLUN3iWurgBJug17oj_A-p15BzPlsSATJhp6ODRNJDAX0NEPVvyacY_UiKDe6La8QeuXmm65DchVvoScaNU",
+      "rating": 4.5,
+      "rating_count": 11,
+      "product": {
+        "id": "16489708467840090400",
+        "title": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "16489708467840090400"
+      },
+      "offer": {
+        "price": "$399.99",
+        "currency": "USD",
+        "seller": "Best Buy",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16489708467840090400,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRdgDSbGX3PkpIyNA7boo6mZLUN3iWurgBJug17oj_A-p15BzPlsSATJhp6ODRNJDAX0NEPVvyacY_UiKDe6La8QeuXmm65DchVvoScaNU"
+          }
+        ]
+      },
+      "_source": "Best Buy",
+      "_raw": {
+        "title": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+        "source": "Best Buy",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:16489708467840090400,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$399.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcRdgDSbGX3PkpIyNA7boo6mZLUN3iWurgBJug17oj_A-p15BzPlsSATJhp6ODRNJDAX0NEPVvyacY_UiKDe6La8QeuXmm65DchVvoScaNU",
+        "rating": 4.5,
+        "ratingCount": 11,
+        "productId": "16489708467840090400",
+        "position": 19
+      },
+      "product_brand": "Best Buy",
+      "product_name": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+      "model_number": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+      "make": "Best Buy",
+      "model": "MSI GeForce RTX 5060 Ti 8g Gaming OC Graphics Card",
+      "year": 0,
+      "price": 399.99
+    },
+    {
+      "id": "9354608191849590427",
+      "title": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+      "brand": null,
+      "source": "Jawa.gg",
+      "price_text": "$299.99",
+      "price_value": 299.99,
+      "price_currency": "USD",
+      "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:9354608191849590427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+      "image_url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQuvGxaquoc28B33wJSPmA48G4hbci7Av3UwXVffpoJXIpgQJ2EACDK9O1jTEVEAJHi4bsdfhG_-KbJ5-G27z4UvL1e9agjiaB3HYLrKf44-Lviavf2OVPjiQ",
+      "rating": 4.8,
+      "rating_count": 365,
+      "product": {
+        "id": "9354608191849590427",
+        "title": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+        "brand": null,
+        "category": null,
+        "attributes": null,
+        "identifier": "9354608191849590427"
+      },
+      "offer": {
+        "price": "$299.99",
+        "currency": "USD",
+        "seller": "Jawa.gg",
+        "url": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:9354608191849590427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "availability": null
+      },
+      "reviewCount": null,
+      "photos": {
+        "retail": [
+          {
+            "url": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQuvGxaquoc28B33wJSPmA48G4hbci7Av3UwXVffpoJXIpgQJ2EACDK9O1jTEVEAJHi4bsdfhG_-KbJ5-G27z4UvL1e9agjiaB3HYLrKf44-Lviavf2OVPjiQ"
+          }
+        ]
+      },
+      "_source": "Jawa.gg",
+      "_raw": {
+        "title": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+        "source": "Jawa.gg",
+        "link": "https://www.google.com/search?ibp=oshop&q=GPU&prds=localAnnotatedOfferId:1,catalogid:9354608191849590427,pvo:2,pvt:hg,rds:PC_6027158597472037202%7CPROD_PC_6027158597472037202&gl=us&udm=28&pvorigin=2",
+        "price": "$299.99",
+        "imageUrl": "https://encrypted-tbn0.gstatic.com/shopping?q=tbn:ANd9GcQuvGxaquoc28B33wJSPmA48G4hbci7Av3UwXVffpoJXIpgQJ2EACDK9O1jTEVEAJHi4bsdfhG_-KbJ5-G27z4UvL1e9agjiaB3HYLrKf44-Lviavf2OVPjiQ",
+        "rating": 4.8,
+        "ratingCount": 365,
+        "productId": "9354608191849590427",
+        "position": 20
+      },
+      "product_brand": "Jawa.gg",
+      "product_name": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+      "model_number": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+      "make": "Jawa.gg",
+      "model": "ASUS Dual NVIDIA GeForce RTX 4060 Ti 8GB Graphic Card",
+      "year": 0,
+      "price": 299.99
+    }
+  ],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. im looking for gpus"
+    },
+    {
+      "role": "ai",
+      "content": "Great choice looking for a new GPU! \n\n- **ASUS GeForce RTX 5070 Ti TUF Gaming OC**: High performance, excellent cooling, $849.99, rated 4.7 by 511 users.\n\nDo you have a specific budget range in mind, or are there any particular features you're looking for in a GPU?"
+    },
+    {
+      "role": "human",
+      "content": "$400-$800"
+    },
+    {
+      "role": "ai",
+      "content": "Thanks for letting me know about your preferred budget range for GPUs.\n\n- **PNY NVIDIA GeForce RTX 5070**: Great performance for the price, priced at $626.62.\n- **Impressive ratings**: 4.3 stars from 118 reviews, highlighting customer satisfaction.\n- **Available on Grooves-Inc.com**: Convenient online purchase option.\n\nAre there any specific brands you prefer for your GPU, or are you open to any brand that fits your needs?"
+    }
+  ],
+  "diagnostics": null
+}

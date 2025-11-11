@@ -6,7 +6,9 @@ This module handles compound requests like:
 - "Show me Honda Accords and compare top 3" (search + comparison)
 - "What's the safety rating?" (pure analytical, no search)
 """
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import json
+from collections import OrderedDict
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -14,6 +16,8 @@ from idss_agent.state.schema import VehicleSearchState
 from idss_agent.utils.logger import get_logger
 
 logger = get_logger("request_analyzer")
+_REQUEST_ANALYSIS_CACHE_SIZE = 128
+_analysis_cache: "OrderedDict[str, RequestAnalysis]" = OrderedDict()
 
 
 class RequestAnalysis(BaseModel):
@@ -93,21 +97,21 @@ def analyze_request(
 - User has been interviewed: {interviewed}
 - User has provided filters: {has_filters}
 - User has implicit preferences: {has_preferences}
-- Current vehicles shown: {len(state.get('recommended_vehicles', []))}
+- Current products shown: {len(state.get('recommended_vehicles', []))}
 - Current filters: {state.get('explicit_filters', {})}
 - Implicit preferences: {state.get('implicit_preferences', {})}
 """
 
     # Create prompt for analysis
-    system_prompt = """You are a request analyzer for a vehicle search assistant.
+    system_prompt = """You are a request analyzer for an electronics shopping assistant.
 
 Analyze the user's request and detect what they need:
 
 1. **needs_interview**: User needs guided questions to understand their needs
    - Only true if: buying intent + not interviewed + insufficient info
 
-2. **needs_search**: User wants to see vehicles or updated results
-   - Examples: "show me", "I want", "under $X", "black color"
+2. **needs_search**: User wants to see product listings or has provided/updated filters
+   - Examples: "show me GPUs", "I want a 2TB SSD", "under $300", "from Best Buy"
 
 3. **needs_analytical**: User asks questions requiring research
    - Examples: "what's the...", "compare", "which is better", "tell me about"
@@ -115,18 +119,18 @@ Analyze the user's request and detect what they need:
 4. **analytical_questions**: Extract specific questions
    - List each question separately
 
-5. **has_filter_update**: User mentioned vehicle criteria
-   - Make, model, color, price, features, etc.
+5. **has_filter_update**: User mentioned product criteria
+   - Brand, model, specs, price, retailer, features, etc.
 
 6. **is_general_conversation**: Just chatting, not searching
    - Greetings, thank you, What can you do?, etc.
 
 **Important**: A request can have MULTIPLE needs simultaneously!
-Example: "I want a black one, what's the maintenance cost?"
-- needs_search: True (wants black color)
-- needs_analytical: True (asks about maintenance)
-- has_filter_update: True (color = black)
-- analytical_questions: ["What's the maintenance cost?"]
+Example: "I want a 4K monitor under $400 and which one has the best color accuracy?"
+- needs_search: True (wants 4K monitors under $400)
+- needs_analytical: True (asks about color accuracy)
+- has_filter_update: True (4K resolution, price limit)
+- analytical_questions: ["Which one has the best color accuracy?"]
 """
 
     user_prompt = f"""{context}
@@ -135,6 +139,12 @@ Example: "I want a black one, what's the maintenance cost?"
 "{user_input}"
 
 Analyze this request and determine what the user needs."""
+
+    cache_key = _build_cache_key(user_input, state)
+    cached_response = _get_cached_analysis(cache_key)
+    if cached_response:
+        logger.info("Request analysis cache hit")
+        return cached_response
 
     # Call LLM for analysis
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
@@ -145,6 +155,8 @@ Analyze this request and determine what the user needs."""
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_prompt)
         ])
+
+        _store_analysis(cache_key, result)
 
         logger.info(f"Request analysis: interview={result.needs_interview}, "
                    f"search={result.needs_search}, analytical={result.needs_analytical}, "
@@ -165,3 +177,44 @@ Analyze this request and determine what the user needs."""
             is_general_conversation=True,
             reasoning=f"Error during analysis: {str(e)}"
         )
+
+
+def _build_cache_key(user_input: str, state: VehicleSearchState) -> str:
+    """
+    Build a cache key from the latest user input and lightweight state summary.
+    """
+    try:
+        summary = {
+            "filters": state.get("explicit_filters", {}),
+            "preferences": state.get("implicit_preferences", {}),
+            "interviewed": state.get("interviewed", False),
+            "products_count": len(state.get("recommended_vehicles", [])),
+        }
+        serialized = json.dumps(summary, sort_keys=True)
+    except (TypeError, ValueError):
+        serialized = "unserializable"
+
+    return f"{user_input.strip()}::{serialized}"
+
+
+def _get_cached_analysis(cache_key: str) -> Optional[RequestAnalysis]:
+    """
+    Return cached RequestAnalysis if available.
+    """
+    cached = _analysis_cache.get(cache_key)
+    if cached is None:
+        return None
+
+    # Move to end (LRU)
+    _analysis_cache.move_to_end(cache_key)
+    return cached
+
+
+def _store_analysis(cache_key: str, analysis: RequestAnalysis) -> None:
+    """
+    Store analysis result in manual LRU cache.
+    """
+    _analysis_cache[cache_key] = analysis
+    _analysis_cache.move_to_end(cache_key)
+    if len(_analysis_cache) > _REQUEST_ANALYSIS_CACHE_SIZE:
+        _analysis_cache.popitem(last=False)

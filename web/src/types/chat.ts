@@ -24,5 +24,7 @@ export interface ChatResponse {
   filters: Record<string, unknown>;
   preferences: Record<string, unknown>;
   session_id: string;
+  quick_replies?: string[] | null;
+  suggested_followups?: string[];
   comparison_table?: ComparisonTable | null;
 }

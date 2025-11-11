@@ -1,0 +1,21 @@
+{
+  "session_id": "5092d71a-1792-4db6-b7b0-f5cd2eb49b17",
+  "timestamp": "20251111T025122Z",
+  "ai_response": "Great! Are you currently building a new PC, upgrading an existing one, or replacing a faulty CPU?",
+  "explicit_filters": {
+    "product": "CPU"
+  },
+  "implicit_preferences": {},
+  "recommended_products": [],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. im looking for a cpu"
+    },
+    {
+      "role": "ai",
+      "content": "Great! Are you currently building a new PC, upgrading an existing one, or replacing a faulty CPU?"
+    }
+  ],
+  "diagnostics": null
+}

@@ -1,0 +1,22 @@
+{
+  "session_id": "c0dbc157-b95f-4ec0-bdcb-91e454efcbb9",
+  "timestamp": "20251111T020937Z",
+  "ai_response": "Great! Are you planning to upgrade your current setup or building a new one from scratch?",
+  "explicit_filters": {
+    "body_style": "CPU",
+    "zip": "94305"
+  },
+  "implicit_preferences": {},
+  "recommended_products": [],
+  "conversation_history": [
+    {
+      "role": "human",
+      "content": "My location is 94305. I'm looking for cpus"
+    },
+    {
+      "role": "ai",
+      "content": "Great! Are you planning to upgrade your current setup or building a new one from scratch?"
+    }
+  ],
+  "diagnostics": null
+}

@@ -13,6 +13,7 @@ from typing import Optional, Callable
 from idss_agent.utils.logger import get_logger
 from idss_agent.state.schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.core.supervisor import run_supervisor
+from idss_agent.utils.telemetry import start_span, finish_span, append_span
 
 logger = get_logger("agent")
 
@@ -57,7 +58,9 @@ def run_agent(
 
     # Run supervisor to handle request
     logger.info("Running supervisor agent...")
+    turn_span = start_span("turn", {"input_chars": len(user_input)})
     result = run_supervisor(user_input, state, progress_callback)
+    append_span(result, finish_span(turn_span))
 
     # Set mode to 'supervisor' (for backward compatibility tracking)
     result["current_mode"] = "supervisor"

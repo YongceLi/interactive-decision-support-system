@@ -6,7 +6,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional
 
-from idss_agent.state.schema import VehicleSearchState
+from idss_agent.state.schema import VehicleSearchState as ProductSearchState
 from idss_agent.tools.electronics_api import search_products
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
@@ -27,6 +27,7 @@ def _build_search_query(filters: Dict[str, Any], implicit: Dict[str, Any]) -> st
         "search_query",
         "query",
         "keywords",
+        "product",
         "product_name",
         "model",
         "make",
@@ -254,12 +255,23 @@ def _normalize_product(product: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if product_id:
         normalized["product"]["identifier"] = product_id
 
-    # Backwards compatibility with vehicle-centric frontend structure
-    normalized.setdefault("make", brand or source or "Unknown")
-    normalized.setdefault("model", title)
+    # Legacy compatibility with existing frontend schema expectations
+    product_brand = brand or source or "Unknown"
+    product_name = title
+    model_number = product.get("model") or title
+
+    normalized.setdefault("brand", product_brand)
+    normalized.setdefault("product_brand", product_brand)
+    normalized.setdefault("product_name", product_name)
+    normalized.setdefault("model_number", model_number)
+
+    # Legacy aliases for downstream consumers that still expect vehicle-shaped data
+    normalized.setdefault("make", product_brand)
+    normalized.setdefault("model", product_name)
     normalized.setdefault("year", product.get("year") or 0)
-    if price_value is not None:
-        normalized.setdefault("price", price_value)
+
+    if price_value is not None and "price" not in normalized:
+        normalized["price"] = price_value
 
     if image_url and not normalized.get("photos"):
         normalized["photos"] = {"retail": [{"url": image_url}]}
@@ -303,10 +315,10 @@ def _deduplicate_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
 
 def update_recommendation_list(
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None,
-) -> VehicleSearchState:
-    """Populate ``state['recommended_vehicles']`` with RapidAPI products."""
+) -> ProductSearchState:
+    """Populate recommendation slots in state with RapidAPI electronics products."""
 
     if progress_callback:
         progress_callback(
@@ -327,6 +339,7 @@ def update_recommendation_list(
         response_text = search_products.invoke(search_params)
     except Exception as exc:  # pragma: no cover - tool invocation wrapper
         logger.error("RapidAPI search invocation failed: %s", exc)
+        state["recommended_products"] = []
         state["recommended_vehicles"] = []
         state["search_error"] = str(exc)
         return state
@@ -346,7 +359,9 @@ def update_recommendation_list(
     config = get_config()
     max_items = config.limits.get("max_recommended_items", 20)
 
-    state["recommended_vehicles"] = deduped_products[:max_items]
+    top_products = deduped_products[:max_items]
+    state["recommended_products"] = top_products
+    state["recommended_vehicles"] = top_products  # Legacy alias for existing UI callers
     state["fallback_message"] = None
     state["previous_filters"] = filters
     state.pop("suggestion_reasoning", None)
@@ -354,7 +369,7 @@ def update_recommendation_list(
 
     logger.info(
         "✓ Recommendation complete: %d products in state",
-        len(state["recommended_vehicles"]),
+        len(top_products),
     )
 
     if progress_callback:
@@ -362,7 +377,7 @@ def update_recommendation_list(
             {
             "step_id": "updating_recommendations",
                 "description": (
-                    f"Found {len(state['recommended_vehicles'])} products"
+                    f"Found {len(top_products)} products"
                 ),
                 "status": "completed",
             }

@@ -28,11 +28,11 @@ def run_general_mode(
     Uses simple LLM response with last 3 messages for context.
 
     Args:
-        state: Current vehicle search state
+        state: Current product search state
         progress_callback: Optional callback for progress updates
 
     Returns:
-        Updated state with ai_response (no vehicles)
+        Updated state with ai_response (no product listings)
     """
     logger.info("General mode: Handling general conversation")
 
