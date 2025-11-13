@@ -147,6 +147,18 @@ and records the origin of each row in the `source` column (`autodev` or
 For a detailed description of every field, refer to
 [`unified_schema_reference.md`](./unified_schema_reference.md).
 
+### Normalize legacy unified databases
+
+Older unified databases may lack the canonical body type, fuel type, and usage flags.
+Run the normalization helper to backfill the new columns in-place:
+
+```bash
+python dataset_builder/normalize_unified_database.py data/unified_vehicles.db
+```
+
+The script adds any missing columns and normalizes their values using the priority
+rules described in the updated schema reference.
+
 ### Fetch directly into the unified schema
 
 Skip the intermediate source-specific databases by fetching Auto.dev or
