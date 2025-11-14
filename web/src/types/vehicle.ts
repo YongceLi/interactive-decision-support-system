@@ -1,4 +1,4 @@
-export interface Vehicle {
+export interface Product {
   id: string;
   make: string;
   model: string;
@@ -50,7 +50,7 @@ export interface Vehicle {
   raw?: Record<string, unknown>;
 }
 
-export interface VehicleFilters {
+export interface ProductFilters {
   make?: string;
   model?: string;
   year?: string;

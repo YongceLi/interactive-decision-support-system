@@ -4,7 +4,7 @@ General conversation agent - handles greetings, thanks, meta questions.
 from typing import Optional, Callable
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import AIMessage, SystemMessage
-from idss_agent.state.schema import VehicleSearchState, AgentResponse
+from idss_agent.state.schema import ProductSearchState, AgentResponse
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.utils.logger import get_logger
@@ -13,9 +13,9 @@ logger = get_logger("agents.general")
 
 
 def run_general_mode(
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
     General mode handler - simple conversational responses.
 

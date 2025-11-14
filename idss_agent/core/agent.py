@@ -1,5 +1,5 @@
 """
-Complete vehicle search agent with SUPERVISOR architecture.
+Complete product search agent with SUPERVISOR architecture.
 
 Architecture:
 1. Add user message to history
@@ -11,7 +11,7 @@ Architecture:
 from datetime import datetime
 from typing import Optional, Callable, Dict, Any
 from idss_agent.utils.logger import get_logger
-from idss_agent.state.schema import VehicleSearchState, create_initial_state, add_user_message, add_ai_message
+from idss_agent.state.schema import ProductSearchState, create_initial_state, add_user_message, add_ai_message
 from idss_agent.core.supervisor import run_supervisor
 from idss_agent.utils.telemetry import start_span, finish_span, append_span
 
@@ -20,11 +20,11 @@ logger = get_logger("agent")
 
 def run_agent(
     user_input: str,
-    state: VehicleSearchState = None,
+    state: ProductSearchState = None,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
-    Run the vehicle search agent with SUPERVISOR architecture.
+    Run the product search agent with SUPERVISOR architecture.
 
     Flow:
     1. Add user message to history

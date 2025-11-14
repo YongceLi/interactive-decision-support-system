@@ -49,19 +49,23 @@ def save_conversation_log(
         _ensure_directory(log_dir)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        filename = f"{session_id or 'unknown'}.json"
+        # Include timestamp in filename to avoid overwriting previous logs
+        filename = f"{timestamp}_{session_id or 'unknown'}.json"
         log_path = log_dir / filename
 
         conversation: Iterable[BaseMessage] = state.get("conversation_history", [])
         serialized_history = [_serialize_message(msg) for msg in conversation]
 
+        # Get products/vehicles - check both fields for compatibility
+        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+        
         payload = {
             "session_id": session_id,
             "timestamp": timestamp,
             "ai_response": state.get("ai_response"),
             "explicit_filters": state.get("explicit_filters"),
             "implicit_preferences": state.get("implicit_preferences"),
-            "recommended_products": state.get("recommended_vehicles", [])[:20],
+            "recommended_products": recommended_products[:20] if recommended_products else [],
             "conversation_history": serialized_history,
             "diagnostics": state.get("diagnostics"),
             "latency": state.get("_latency"),

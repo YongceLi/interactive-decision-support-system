@@ -7,7 +7,8 @@ import ItemDetailModal from '@/components/ItemDetailModal';
 import FilterMenu from '@/components/FilterMenu';
 import FavoritesPage from '@/components/FavoritesPage';
 import ComparisonTable from '@/components/ComparisonTable';
-import { Vehicle } from '@/types/vehicle';
+import CompatibilityResult from '@/components/CompatibilityResult';
+import { Product } from '@/types/vehicle';
 import { ChatMessage } from '@/types/chat';
 import { idssApiService } from '@/services/api';
 import { LoggingService } from '@/services/logging';
@@ -94,16 +95,16 @@ function parseMarkdown(text: string): string {
 }
 
 export default function Home() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Vehicle | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Product | null>(null);
   const [hasReceivedRecommendations, setHasReceivedRecommendations] = useState(false);
   const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>({});
   const [showDetails, setShowDetails] = useState(false);
   const [detailViewStartTime, setDetailViewStartTime] = useState<number | null>(null);
-  const [favorites, setFavorites] = useState<Vehicle[]>([]);
+  const [favorites, setFavorites] = useState<Product[]>([]);
   const [showFavorites, setShowFavorites] = useState(false);
   const [previousView, setPreviousView] = useState<'carousel' | 'favorites' | null>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -136,20 +137,20 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  const toggleFavorite = async (vehicle: Vehicle) => {
-    const currentlyFavorited = favorites.some(v => v.id === vehicle.id);
+  const toggleFavorite = async (product: Product) => {
+    const currentlyFavorited = favorites.some(p => p.id === product.id);
     const newFavoritedState = !currentlyFavorited;
     const action = newFavoritedState ? 'favorited' : 'unfavorited';
 
     // Log the favorite action
-    console.log(`User ${action} vehicle:`, vehicle);
+    console.log(`User ${action} product:`, product);
 
     // Update local favorites state
     setFavorites(prev => {
       if (currentlyFavorited) {
-        return prev.filter(v => v.id !== vehicle.id);
+        return prev.filter(p => p.id !== product.id);
       } else {
-        return [...prev, vehicle];
+        return [...prev, product];
       }
     });
 
@@ -158,12 +159,12 @@ export default function Home() {
       try {
         console.log('Sending favorite action to backend:', {
           sessionId,
-          vehicleVin: vehicle.vin,
+          vehicleVin: product.vin,
           isFavorited: newFavoritedState
         });
 
         // Call the new favorite endpoint
-        const response = await idssApiService.sendFavoriteAction(sessionId, vehicle, newFavoritedState);
+        const response = await idssApiService.sendFavoriteAction(sessionId, product, newFavoritedState);
 
         console.log('Received response from backend:', response);
 
@@ -189,15 +190,15 @@ export default function Home() {
       // Also log to analytics event API (non-blocking, keep for backward compatibility)
       LoggingService.logFavoriteToggle(
         sessionId,
-        vehicle.id,
-        vehicle.vin || 'unknown',
+        product.id,
+        product.vin || 'unknown',
         newFavoritedState
       ).catch(err => console.error('Error logging favorite to analytics:', err));
     }
   };
 
-  const isFavorite = (vehicleId: string) => {
-    return favorites.some(v => v.id === vehicleId);
+  const isFavorite = (productId: string) => {
+    return favorites.some(p => p.id === productId);
   };
 
   // Request user location on first load
@@ -389,16 +390,17 @@ export default function Home() {
         timestamp: new Date(),
         quick_replies: data.quick_replies,
         suggested_followups: data.suggested_followups || [],
-        comparison_table: data.comparison_table || null
+        comparison_table: data.comparison_table || null,
+        compatibility_result: data.compatibility_result || null
       };
       setChatMessages(prev => [...prev, assistantMessage]);
 
-      // Update vehicles - convert API format to our format
+      // Update products - convert API format to our format
       if (data.vehicles && data.vehicles.length > 0) {
-        const convertedVehicles = data.vehicles.map((apiVehicle: Record<string, unknown>) => {
-          return idssApiService.convertVehicle(apiVehicle);
+        const convertedProducts = data.vehicles.map((apiProduct: Record<string, unknown>) => {
+          return idssApiService.convertVehicle(apiProduct);
         });
-        setVehicles(convertedVehicles);
+        setProducts(convertedProducts);
         setHasReceivedRecommendations(true);
       }
 
@@ -423,7 +425,7 @@ export default function Home() {
     setCurrentFilters(filters);
     
     // Create a message to send to the agent with the filter preferences
-    const filterMessage = `Please find vehicles with these preferences: ${JSON.stringify(filters)}`;
+    const filterMessage = `Please find products with these preferences: ${JSON.stringify(filters)}`;
     
     setIsLoading(true);
     start(); // Start verbose loading
@@ -454,12 +456,12 @@ export default function Home() {
         setSessionId(data.session_id);
       }
 
-      // Update vehicles - convert API format to our format
+      // Update products - convert API format to our format
       if (data.vehicles && data.vehicles.length > 0) {
-        const convertedVehicles = data.vehicles.map((apiVehicle: Record<string, unknown>) => {
-          return idssApiService.convertVehicle(apiVehicle);
+        const convertedProducts = data.vehicles.map((apiProduct: Record<string, unknown>) => {
+          return idssApiService.convertVehicle(apiProduct);
         });
-        setVehicles(convertedVehicles);
+        setProducts(convertedProducts);
         setHasReceivedRecommendations(true);
       }
 
@@ -480,31 +482,31 @@ export default function Home() {
     }
   };
 
-  const handleItemSelect = async (vehicle: Vehicle) => {
+  const handleItemSelect = async (product: Product) => {
     // Remember where we came from
     setPreviousView(showFavorites ? 'favorites' : 'carousel');
     // Hide favorites when showing details
     if (showFavorites) {
       setShowFavorites(false);
     }
-    setSelectedItem(vehicle);
+    setSelectedItem(product);
     setShowDetails(true);
     setDetailViewStartTime(Date.now());
     
-    // Log the vehicle view event
+    // Log the product view event
     if (sessionId) {
-      await LoggingService.logVehicleView(sessionId, vehicle.id, vehicle.vin);
+      await LoggingService.logVehicleView(sessionId, product.id, product.vin);
     }
   };
 
-  const handleItemSelectSync = (vehicle: Vehicle) => {
-    handleItemSelect(vehicle);
+  const handleItemSelectSync = (product: Product) => {
+    handleItemSelect(product);
   };
 
-  // Find the index of the selected vehicle
-  const getSelectedVehicleIndex = () => {
+  // Find the index of the selected product
+  const getSelectedProductIndex = () => {
     if (!selectedItem) return 0;
-    return vehicles.findIndex(v => v.id === selectedItem.id) + 1;
+    return products.findIndex(p => p.id === selectedItem.id) + 1;
   };
 
   const handleBackToRecommendations = async () => {
@@ -599,7 +601,7 @@ export default function Home() {
                     </svg>
                   </button>
                   
-                  {/* Vehicle Details */}
+                  {/* Product Details */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 pr-8">
                     {/* Image */}
                     <div className="aspect-video bg-gradient-to-br from-[#750013] to-white rounded-lg flex items-center justify-center overflow-hidden relative">
@@ -620,7 +622,7 @@ export default function Home() {
                       
                       {/* Number indicator */}
                       <div className="absolute bottom-0 right-0 w-8 h-8 bg-white border border-[#750013] text-[#750013] rounded-lg flex items-center justify-center text-base font-bold shadow-sm">
-                        {getSelectedVehicleIndex()}
+                        {getSelectedProductIndex()}
                       </div>
                     </div>
                     
@@ -693,7 +695,7 @@ export default function Home() {
                         )}
                       </div>
                       
-                      {/* Vehicle Specs Grid */}
+                      {/* Product Specs Grid */}
                       <div className="grid grid-cols-2 gap-1">
                         {selectedItem.body_style && (
                           <div className="bg-white border border-[#8b959e]/30 rounded p-2">
@@ -769,7 +771,7 @@ export default function Home() {
               ) : (
                 <div className="h-full overflow-y-auto">
                   <RecommendationCarousel 
-                    vehicles={vehicles} 
+                    vehicles={products} 
                     onItemSelect={handleItemSelectSync}
                     showPlaceholders={false}
                     onToggleFavorite={toggleFavorite}
@@ -823,6 +825,11 @@ export default function Home() {
                     {/* Display comparison table if present */}
                     {message.comparison_table && (
                       <ComparisonTable comparison={message.comparison_table} />
+                    )}
+                    
+                    {/* Display compatibility result if present */}
+                    {message.compatibility_result && (
+                      <CompatibilityResult result={message.compatibility_result} />
                     )}
                   </div>
                 </div>

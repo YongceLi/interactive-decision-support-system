@@ -1,11 +1,7 @@
 """Build a local SQLite database of consumer electronics products.
 
-This script mirrors the California vehicle dataset builder but targets
-consumer electronics sourced from:
-
-1. PCPartPicker (HTML scrape, when a category is supported)
-2. Best Buy (HTML scrape)
-3. RapidAPI (configurable, defaults to Newegg data API)
+This script fetches product data from RapidAPI (shopping API) and stores it
+in a normalized SQLite database.
 
 The resulting database matches the normalized structure defined in
 ``dataset_builder/pc_parts_schema.sql`` and keeps the complete raw payload
@@ -27,7 +23,6 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -55,267 +50,59 @@ if not logger.handlers:
 # Configuration
 # ---------------------------------------------------------------------------
 
-ELECTRONICS_CATEGORIES: Dict[str, Dict[str, Optional[str]]] = {
-    "cpu": {
-        "pcpartpicker_slug": "cpu",
-        "bestbuy_query": "CPU",
-        "rapid_query": "desktop cpu",
-    },
-    "gpu": {
-        "pcpartpicker_slug": "video-card",
-        "bestbuy_query": "graphics card",
-        "rapid_query": "graphics card",
-    },
-    "motherboard": {
-        "pcpartpicker_slug": "motherboard",
-        "bestbuy_query": "motherboard",
-        "rapid_query": "motherboard",
-    },
-    "psu": {
-        "pcpartpicker_slug": "power-supply",
-        "bestbuy_query": "power supply",
-        "rapid_query": "power supply",
-    },
-    "case": {
-        "pcpartpicker_slug": "case",
-        "bestbuy_query": "pc case",
-        "rapid_query": "pc case",
-    },
-    "cooling": {
-        "pcpartpicker_slug": "cpu-cooler",
-        "bestbuy_query": "cpu cooler",
-        "rapid_query": "cpu cooler",
-    },
-    "ram": {
-        "pcpartpicker_slug": "memory",
-        "bestbuy_query": "ram",
-        "rapid_query": "ram",
-    },
-    "internal_storage": {
-        "pcpartpicker_slug": "internal-hard-drive",
-        "bestbuy_query": "internal ssd",
-        "rapid_query": "internal ssd",
-    },
-    "external_storage": {
-        "pcpartpicker_slug": "external-hard-drive",
-        "bestbuy_query": "external hard drive",
-        "rapid_query": "external ssd",
-    },
-    "laptop": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "laptop",
-        "rapid_query": "laptop computer",
-    },
-    "desktop_pc": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "desktop computer",
-        "rapid_query": "desktop pc",
-    },
-    "monitor": {
-        "pcpartpicker_slug": "monitor",
-        "bestbuy_query": "computer monitor",
-        "rapid_query": "computer monitor",
-    },
-    "keyboard": {
-        "pcpartpicker_slug": "keyboard",
-        "bestbuy_query": "mechanical keyboard",
-        "rapid_query": "mechanical keyboard",
-    },
-    "mouse": {
-        "pcpartpicker_slug": "mouse",
-        "bestbuy_query": "gaming mouse",
-        "rapid_query": "gaming mouse",
-    },
-    "headset": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "gaming headset",
-        "rapid_query": "gaming headset",
-    },
-    "headphones": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "wireless headphones",
-        "rapid_query": "wireless headphones",
-    },
-    "speakers": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "bluetooth speaker",
-        "rapid_query": "bluetooth speaker",
-    },
-    "soundbar": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "sound bar",
-        "rapid_query": "soundbar",
-    },
-    "microphone": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "usb microphone",
-        "rapid_query": "usb microphone",
-    },
-    "webcam": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "webcam",
-        "rapid_query": "webcam",
-    },
-    "gaming_console": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "gaming console",
-        "rapid_query": "gaming console",
-    },
-    "vr_headset": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "vr headset",
-        "rapid_query": "vr headset",
-    },
-    "smartphone": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smartphone unlocked",
-        "rapid_query": "unlocked smartphone",
-    },
-    "tablet": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "tablet",
-        "rapid_query": "tablet",
-    },
-    "smartwatch": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smartwatch",
-        "rapid_query": "smart watch",
-    },
-    "fitness_tracker": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "fitness tracker",
-        "rapid_query": "fitness tracker",
-    },
-    "camera": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "mirrorless camera",
-        "rapid_query": "mirrorless camera",
-    },
-    "action_camera": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "action camera",
-        "rapid_query": "action camera",
-    },
-    "drone": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "camera drone",
-        "rapid_query": "camera drone",
-    },
-    "printer": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "wireless printer",
-        "rapid_query": "wireless printer",
-    },
-    "router": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "wifi router",
-        "rapid_query": "wifi router",
-    },
-    "network_switch": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "network switch",
-        "rapid_query": "network switch",
-    },
-    "modem": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "cable modem",
-        "rapid_query": "cable modem",
-    },
-    "mesh_wifi": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "mesh wifi",
-        "rapid_query": "mesh wifi system",
-    },
-    "smart_home_hub": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart home hub",
-        "rapid_query": "smart home hub",
-    },
-    "smart_speaker": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart speaker",
-        "rapid_query": "smart speaker",
-    },
-    "smart_display": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart display",
-        "rapid_query": "smart display",
-    },
-    "smart_light": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart light",
-        "rapid_query": "smart light",
-    },
-    "smart_thermostat": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart thermostat",
-        "rapid_query": "smart thermostat",
-    },
-    "smart_lock": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "smart lock",
-        "rapid_query": "smart lock",
-    },
-    "security_camera": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "security camera",
-        "rapid_query": "security camera",
-    },
-    "video_doorbell": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "video doorbell",
-        "rapid_query": "video doorbell",
-    },
-    "tv": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "4k tv",
-        "rapid_query": "4k television",
-    },
-    "projector": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "home theater projector",
-        "rapid_query": "home theater projector",
-    },
-    "streaming_device": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "streaming media player",
-        "rapid_query": "streaming media player",
-    },
-    "portable_charger": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "portable charger",
-        "rapid_query": "portable charger",
-    },
-    "charging_station": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "charging station",
-        "rapid_query": "charging station",
-    },
-    "car_audio": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "car stereo",
-        "rapid_query": "car stereo",
-    },
-    "dash_cam": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "dash cam",
-        "rapid_query": "dash cam",
-    },
-    "gps": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "gps navigation",
-        "rapid_query": "gps navigation",
-    },
-    "e_reader": {
-        "pcpartpicker_slug": None,
-        "bestbuy_query": "ereader",
-        "rapid_query": "ebook reader",
-    },
+ELECTRONICS_CATEGORIES: Dict[str, Dict[str, str]] = {
+    "cpu": {"query": "desktop cpu"},
+    "gpu": {"query": "graphics card"},
+    "motherboard": {"query": "motherboard"},
+    "psu": {"query": "power supply"},
+    "case": {"query": "pc case"},
+    "cooling": {"query": "cpu cooler"},
+    "ram": {"query": "ram"},
+    "internal_storage": {"query": "internal ssd"},
+    "external_storage": {"query": "external ssd"},
+    "laptop": {"query": "laptop computer"},
+    "desktop_pc": {"query": "desktop pc"},
+    "monitor": {"query": "computer monitor"},
+    "keyboard": {"query": "mechanical keyboard"},
+    "mouse": {"query": "gaming mouse"},
+    "headset": {"query": "gaming headset"},
+    "headphones": {"query": "wireless headphones"},
+    "speakers": {"query": "bluetooth speaker"},
+    "soundbar": {"query": "soundbar"},
+    "microphone": {"query": "usb microphone"},
+    "webcam": {"query": "webcam"},
+    "gaming_console": {"query": "gaming console"},
+    "vr_headset": {"query": "vr headset"},
+    "smartphone": {"query": "unlocked smartphone"},
+    "tablet": {"query": "tablet"},
+    "smartwatch": {"query": "smart watch"},
+    "fitness_tracker": {"query": "fitness tracker"},
+    "camera": {"query": "mirrorless camera"},
+    "action_camera": {"query": "action camera"},
+    "drone": {"query": "camera drone"},
+    "printer": {"query": "wireless printer"},
+    "router": {"query": "wifi router"},
+    "network_switch": {"query": "network switch"},
+    "modem": {"query": "cable modem"},
+    "mesh_wifi": {"query": "mesh wifi system"},
+    "smart_home_hub": {"query": "smart home hub"},
+    "smart_speaker": {"query": "smart speaker"},
+    "smart_display": {"query": "smart display"},
+    "smart_light": {"query": "smart light"},
+    "smart_thermostat": {"query": "smart thermostat"},
+    "smart_lock": {"query": "smart lock"},
+    "security_camera": {"query": "security camera"},
+    "video_doorbell": {"query": "video doorbell"},
+    "tv": {"query": "4k television"},
+    "projector": {"query": "home theater projector"},
+    "streaming_device": {"query": "streaming media player"},
+    "portable_charger": {"query": "portable charger"},
+    "charging_station": {"query": "charging station"},
+    "car_audio": {"query": "car stereo"},
+    "dash_cam": {"query": "dash cam"},
+    "gps": {"query": "gps navigation"},
+    "e_reader": {"query": "ebook reader"},
 }
-
-
-PCPARTPICKER_BASE = "https://pcpartpicker.com"
-BESTBUY_SEARCH_URL = "https://www.bestbuy.com/site/searchpage.jsp"
 
 
 # Defaults for RapidAPI integration (can be overridden via environment)
@@ -408,7 +195,6 @@ class PCPartRecord:
     product_name: str
     data_fetched_at: str
 
-    manufacturer: Optional[str] = None
     model_number: Optional[str] = None
     series: Optional[str] = None
     price: Optional[float] = None
@@ -430,7 +216,6 @@ class PCPartRecord:
             "part_id": self.part_id,
             "source": self.source,
             "part_type": self.part_type,
-            "manufacturer": self.manufacturer,
             "product_name": self.product_name,
             "model_number": self.model_number,
             "series": self.series,
@@ -455,276 +240,6 @@ class PCPartRecord:
 # ---------------------------------------------------------------------------
 # Source-specific collectors
 # ---------------------------------------------------------------------------
-
-
-class PCPartPickerScraper:
-    """Scrape component listings directly from PCPartPicker."""
-
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://pcpartpicker.com/list/",
-        "Cache-Control": "no-cache",
-    }
-
-    def __init__(self, session: Optional[requests.Session] = None) -> None:
-        self.session = session or _create_session()
-
-    def fetch(self, category: str, slug: str, limit: Optional[int] = 50) -> List[PCPartRecord]:
-        logger.info("Scraping PCPartPicker %s (slug=%s, limit=%s)", category, slug, limit or "unlimited")
-        records: List[PCPartRecord] = []
-        page = 1
-
-        while limit is None or len(records) < limit:
-            url = f"{PCPARTPICKER_BASE}/products/{slug}/"
-            params = {"page": page, "sort": "price"}
-            try:
-                response = self.session.get(
-                    url,
-                    params=params,
-                    headers=self.HEADERS,
-                    timeout=DEFAULT_TIMEOUT,
-                )
-            except requests.RequestException as exc:
-                logger.warning("PCPartPicker request error for %s: %s", category, exc)
-                break
-
-            if response.status_code != 200:
-                logger.warning(
-                    "PCPartPicker request failed (%s): %s",
-                    response.status_code,
-                    response.text[:160],
-                )
-                break
-
-            soup = BeautifulSoup(response.text, "html.parser")
-            rows = soup.select("tr.tr__product")
-            if not rows:
-                logger.info("No more rows found for %s page %d", category, page)
-                break
-
-            for row in rows:
-                if limit is not None and len(records) >= limit:
-                    break
-
-                data_raw: Dict[str, Any] = {}
-
-                part_key = row.get("data-product-id") or row.get("data-id")
-                name_link = row.select_one("td.td__name a")
-                if not name_link:
-                    continue
-
-                product_name = name_link.get_text(strip=True)
-                url_path = name_link.get("href")
-                product_url = (
-                    f"{PCPARTPICKER_BASE}{url_path}" if url_path and url_path.startswith("/") else url_path
-                )
-
-                manufacturer = row.select_one("td.td__name span")
-                manufacturer_text = manufacturer.get_text(strip=True) if manufacturer else None
-
-                price_cell = row.select_one("td.td__price span") or row.select_one("td.td__price")
-                price_value = _safe_float(price_cell.get_text(strip=True) if price_cell else None)
-
-                rating_cell = row.select_one("td.td__rating span")
-                rating_value = _safe_float(rating_cell.get("data-rating")) if rating_cell else None
-
-                reviews_cell = row.select_one("td.td__rating a")
-                review_count = _safe_int(reviews_cell.get_text(strip=True) if reviews_cell else None)
-
-                spec_cells = row.select("td.td__spec")
-                specs: Dict[str, Any] = {}
-                for spec_cell in spec_cells:
-                    label = spec_cell.get("data-spec-filter") or spec_cell.get("data-spec-name")
-                    value = spec_cell.get_text(strip=True)
-                    if label:
-                        specs[label] = value
-
-                data_raw = {
-                    "product_name": product_name,
-                    "manufacturer": manufacturer_text,
-                    "price": price_value,
-                    "rating": rating_value,
-                    "review_count": review_count,
-                    "specs": specs,
-                    "url": product_url,
-                }
-
-                part_id = _canonical_part_id(
-                    "pcpartpicker",
-                    part_key,
-                    (category, product_name, manufacturer_text or ""),
-                )
-
-                record = PCPartRecord(
-                    part_id=part_id,
-                    source="pcpartpicker",
-                    part_type=category,
-                    product_name=product_name,
-                    manufacturer=manufacturer_text,
-                    price=price_value,
-                    rating=rating_value,
-                    review_count=review_count,
-                    url=product_url,
-                    specs=specs,
-                    raw=data_raw,
-                    data_fetched_at=_now_iso(),
-                )
-
-                records.append(record)
-
-            page += 1
-            time.sleep(1.0)  # Respectful crawl rate
-
-        logger.info("PCPartPicker %s: collected %d records", category, len(records))
-        return records
-
-
-class BestBuyScraper:
-    """Scrape Best Buy search results for PC components."""
-
-    SEARCH_URL = BESTBUY_SEARCH_URL
-    COMPONENTS_URL = "https://www.bestbuy.com/site/all-computers-tablets-on-sale/computer-components-on-sale/pcmcat1720704931473.c?id=pcmcat1720704931473"
-
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://www.bestbuy.com/",
-        "Cache-Control": "no-cache",
-    }
-
-    def __init__(self, session: Optional[requests.Session] = None) -> None:
-        self.session = session or _create_session()
-
-    def fetch(self, category: str, query: str, limit: Optional[int] = 40) -> List[PCPartRecord]:
-        logger.info("Scraping BestBuy %s (query=%s, limit=%s)", category, query, limit or "unlimited")
-        records: List[PCPartRecord] = []
-        page = 1
-
-        while limit is None or len(records) < limit:
-            params = {"st": query, "cp": page}
-            try:
-                response = self.session.get(
-                    self.SEARCH_URL,
-                    params=params,
-                    headers=self.HEADERS,
-                    timeout=DEFAULT_TIMEOUT,
-                )
-            except requests.RequestException as exc:
-                logger.warning("BestBuy request error for %s: %s", category, exc)
-                break
-
-            if response.status_code != 200 or "Access Denied" in response.text:
-                logger.warning(
-                    "BestBuy request failed (%s): %s",
-                    response.status_code,
-                    response.text[:160],
-                )
-                # Fallback to the components sale page if standard search fails
-                if page == 1:
-                    try:
-                        response = self.session.get(
-                            self.COMPONENTS_URL,
-                            headers=self.HEADERS,
-                            timeout=DEFAULT_TIMEOUT,
-                        )
-                    except requests.RequestException:
-                        break
-                    if response.status_code != 200:
-                        break
-                else:
-                    break
-
-            soup = BeautifulSoup(response.text, "html.parser")
-            items = soup.select("li.sku-item")
-            if not items:
-                logger.info("No more BestBuy items for %s page %d", category, page)
-                break
-
-            for item in items:
-                if limit is not None and len(records) >= limit:
-                    break
-
-                sku = item.get("data-sku-id") or item.get("data-sku")
-                title_tag = item.select_one("h4.sku-title a")
-                if not title_tag:
-                    continue
-                product_name = title_tag.get_text(strip=True)
-                product_url = title_tag.get("href")
-                if product_url and product_url.startswith("/"):
-                    product_url = f"https://www.bestbuy.com{product_url}"
-
-                price_tag = item.select_one("div.priceView-customer-price span")
-                price_value = _safe_float(price_tag.get_text(strip=True) if price_tag else None)
-
-                availability_tag = item.select_one("div.fulfillment-fulfillment-summary")
-                availability_text = availability_tag.get_text(" ", strip=True) if availability_tag else None
-
-                rating_tag = item.select_one("div.c-reviews-v4 a, span.c-reviews-v4__rating")
-                rating_value = None
-                review_count = None
-                if rating_tag:
-                    rating_value = _safe_float(rating_tag.get("aria-label"))
-                    if rating_value is None:
-                        rating_value = _safe_float(rating_tag.get_text(strip=True))
-
-                reviews_count_tag = item.select_one("span.c-reviews-v4__count")
-                if reviews_count_tag:
-                    review_count = _safe_int(reviews_count_tag.get_text(strip=True))
-
-                image_tag = item.select_one("img.product-image")
-                image_url = image_tag.get("src") if image_tag else None
-
-                record = PCPartRecord(
-                    part_id=_canonical_part_id(
-                        "bestbuy",
-                        sku,
-                        (category, product_name),
-                    ),
-                    source="bestbuy",
-                    part_type=category,
-                    product_name=product_name,
-                    price=price_value,
-                    availability=availability_text,
-                    stock_status=self._normalize_stock(availability_text),
-                    rating=rating_value,
-                    review_count=review_count,
-                    seller="Best Buy",
-                    url=product_url,
-                    image_url=image_url,
-                    raw={
-                        "sku": sku,
-                        "product_name": product_name,
-                        "price": price_value,
-                        "availability": availability_text,
-                        "rating": rating_value,
-                        "review_count": review_count,
-                        "url": product_url,
-                        "image_url": image_url,
-                    },
-                    data_fetched_at=_now_iso(),
-                )
-
-                records.append(record)
-
-            page += 1
-            time.sleep(0.75)
-
-        logger.info("BestBuy %s: collected %d records", category, len(records))
-        return records
-
-    @staticmethod
-    def _normalize_stock(text: Optional[str]) -> Optional[str]:
-        if not text:
-            return None
-        lower = text.lower()
-        if "available today" in lower or "get it today" in lower or "ready to ship" in lower:
-            return "in_stock"
-        if "sold out" in lower or "unavailable" in lower:
-            return "out_of_stock"
-        if "pre-order" in lower or "preorder" in lower:
-            return "preorder"
-        return "unknown"
 
 
 class RapidAPISource:
@@ -831,12 +346,12 @@ class RapidAPISource:
                     source="rapidapi",
                     part_type=category,
                     product_name=name,
-                    manufacturer=product.get("brand") or product.get("manufacturer") or product.get("source"),
                     model_number=product.get("modelNumber") or product.get("model") or product.get("item_number"),
                     price=_safe_float(str(price_value) if price_value is not None else None),
                     availability=product.get("availability"),
                     stock_status=self._normalize_stock(product.get("availability")),
-                    seller=product.get("seller") or product.get("sellerName"),
+                    # For shopping API, "source" field is the seller (e.g., "Walmart")
+                    seller=product.get("source") or product.get("seller") or product.get("sellerName"),
                     rating=_safe_float(str(product.get("rating"))),
                     review_count=_safe_int(str(product.get("reviewCount") or product.get("reviews") or product.get("ratingCount"))),
                     url=product.get("url") or product.get("productUrl"),
@@ -906,22 +421,14 @@ class PCPartsDatasetBuilder:
         self,
         db_path: str = "data/pc_parts.db",
         limit_per_source: Optional[int] = None,
-        enabled_sources: Optional[Iterable[str]] = None,
     ) -> None:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.limit_per_source = limit_per_source if limit_per_source and limit_per_source > 0 else None
-        if enabled_sources:
-            self.enabled_sources_order: List[str] = [source.lower() for source in enabled_sources]
-        else:
-            self.enabled_sources_order = ["rapidapi", "pcpartpicker", "bestbuy"]
-        self.enabled_sources: Set[str] = set(self.enabled_sources_order)
 
         self._init_database()
 
         shared_session = _create_session()
-        self.pcpartpicker = PCPartPickerScraper(session=shared_session)
-        self.bestbuy = BestBuyScraper(session=shared_session)
         self.rapidapi = RapidAPISource(session=shared_session)
         self._existing_part_ids = self._load_existing_part_ids()
 
@@ -950,63 +457,22 @@ class PCPartsDatasetBuilder:
             logger.info("=== Collecting data for %s ===", part_type)
             collected: List[PCPartRecord] = []
 
-            for source in self.enabled_sources_order:
-                if source not in self.enabled_sources:
-                    continue
+            query = config.get("query")
+            if not query:
+                self._mark_progress("rapidapi", part_type, 0, status="skipped", error="no_query")
+                continue
 
-                if source == "pcpartpicker":
-                    slug = config.get("pcpartpicker_slug")
-                    if not slug:
-                        self._mark_progress("pcpartpicker", part_type, 0, status="skipped", error="no_slug")
-                        continue
-                    try:
-                        pcpp_records = self.pcpartpicker.fetch(
-                            category=part_type,
-                            slug=slug,
-                            limit=self.limit_per_source,
-                        )
-                        collected.extend(pcpp_records)
-                        self._mark_progress("pcpartpicker", part_type, len(pcpp_records))
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception("PCPartPicker scrape failed for %s: %s", part_type, exc)
-                        self._mark_progress("pcpartpicker", part_type, 0, status="failed", error=str(exc))
-
-                elif source == "bestbuy":
-                    query = config.get("bestbuy_query")
-                    if not query:
-                        self._mark_progress("bestbuy", part_type, 0, status="skipped", error="no_query")
-                        continue
-                    try:
-                        bestbuy_records = self.bestbuy.fetch(
-                            category=part_type,
-                            query=query,
-                            limit=self.limit_per_source,
-                        )
-                        collected.extend(bestbuy_records)
-                        self._mark_progress("bestbuy", part_type, len(bestbuy_records))
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception("BestBuy scrape failed for %s: %s", part_type, exc)
-                        self._mark_progress("bestbuy", part_type, 0, status="failed", error=str(exc))
-
-                elif source == "rapidapi":
-                    query = config.get("rapid_query")
-                    if not query:
-                        self._mark_progress("rapidapi", part_type, 0, status="skipped", error="no_query")
-                        continue
-                    try:
-                        rapid_records = self.rapidapi.fetch(
-                            category=part_type,
-                            query=query,
-                            limit=self.limit_per_source,
-                        )
-                        collected.extend(rapid_records)
-                        self._mark_progress("rapidapi", part_type, len(rapid_records))
-                    except Exception as exc:  # noqa: BLE001
-                        logger.exception("RapidAPI fetch failed for %s: %s", part_type, exc)
-                        self._mark_progress("rapidapi", part_type, 0, status="failed", error=str(exc))
-
-                else:
-                    logger.warning("Unknown source %s requested; skipping", source)
+            try:
+                rapid_records = self.rapidapi.fetch(
+                    category=part_type,
+                    query=query,
+                    limit=self.limit_per_source,
+                )
+                collected.extend(rapid_records)
+                self._mark_progress("rapidapi", part_type, len(rapid_records))
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("RapidAPI fetch failed for %s: %s", part_type, exc)
+                self._mark_progress("rapidapi", part_type, 0, status="failed", error=str(exc))
 
             inserted = self._save_records(collected)
             total_inserted += inserted
@@ -1028,13 +494,12 @@ class PCPartsDatasetBuilder:
 
         unique_rows: List[Dict[str, Any]] = []
         seen_ids: Set[str] = set()
-        seen_name_keys: Set[Tuple[str, str, str]] = set()
+        seen_name_keys: Set[Tuple[str, str]] = set()
 
         for record in records:
             part_id = record.part_id
             name_key = (
                 record.source,
-                (record.manufacturer or "").strip().lower(),
                 record.product_name.strip().lower(),
             )
 
@@ -1044,9 +509,8 @@ class PCPartsDatasetBuilder:
 
             if name_key in seen_name_keys:
                 logger.debug(
-                    "Skipping duplicate product %s (%s) from %s due to name match",
+                    "Skipping duplicate product %s from %s due to name match",
                     record.product_name,
-                    record.manufacturer,
                     record.source,
                 )
                 continue
@@ -1063,18 +527,17 @@ class PCPartsDatasetBuilder:
             cursor.executemany(
                 """
                 INSERT INTO pc_parts (
-                    part_id, source, part_type, manufacturer, product_name, model_number,
+                    part_id, source, part_type, product_name, model_number,
                     series, price, currency, availability, stock_status, seller, rating,
                     review_count, url, image_url, description, specs_json, attributes_json,
                     data_fetched_at, last_seen_at, raw_json
                 ) VALUES (
-                    :part_id, :source, :part_type, :manufacturer, :product_name, :model_number,
+                    :part_id, :source, :part_type, :product_name, :model_number,
                     :series, :price, :currency, :availability, :stock_status, :seller, :rating,
                     :review_count, :url, :image_url, :description, :specs_json, :attributes_json,
                     :data_fetched_at, :last_seen_at, :raw_json
                 )
                 ON CONFLICT(part_id) DO UPDATE SET
-                    manufacturer=excluded.manufacturer,
                     product_name=excluded.product_name,
                     model_number=excluded.model_number,
                     series=excluded.series,
@@ -1167,14 +630,7 @@ def main() -> None:
         "--limit",
         type=int,
         default=0,
-        help="Number of records to fetch per source/category (default: 0 meaning unlimited)",
-    )
-    parser.add_argument(
-        "--sources",
-        nargs="+",
-        choices=["pcpartpicker", "bestbuy", "rapidapi"],
-        default=["pcpartpicker", "bestbuy", "rapidapi"],
-        help="Subset of data sources to enable (default: all)",
+        help="Number of records to fetch per category (default: 0 meaning unlimited)",
     )
 
     args = parser.parse_args()
@@ -1182,7 +638,6 @@ def main() -> None:
     builder = PCPartsDatasetBuilder(
         db_path=args.db_path,
         limit_per_source=args.limit,
-        enabled_sources=args.sources,
     )
     builder.build()
 

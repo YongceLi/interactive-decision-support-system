@@ -13,9 +13,9 @@ from idss_agent.utils.logger import get_logger
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.state.schema import (
-    VehicleSearchState,
+    ProductSearchState,
     get_latest_user_message,
-    VehicleFiltersPydantic,
+    ProductFiltersPydantic,
     ImplicitPreferencesPydantic,
     AgentResponse
 )
@@ -46,9 +46,9 @@ class InterviewResponse(BaseModel):
 # Structured output schema for extraction
 class ExtractionResult(BaseModel):
     """Structured extraction from interview conversation."""
-    explicit_filters: VehicleFiltersPydantic = Field(
-        default_factory=VehicleFiltersPydantic,
-        description="Explicit vehicle filters with specific fields"
+    explicit_filters: ProductFiltersPydantic = Field(
+        default_factory=ProductFiltersPydantic,
+        description="Explicit product filters with specific fields"
     )
     implicit_preferences: ImplicitPreferencesPydantic = Field(
         default_factory=ImplicitPreferencesPydantic,
@@ -65,7 +65,7 @@ class ExtractionResult(BaseModel):
     )
 
 
-def should_end_interview(state: VehicleSearchState) -> bool:
+def should_end_interview(state: ProductSearchState) -> bool:
     """
     Check if interview should end based on LLM's decision or max turns.
 
@@ -90,7 +90,7 @@ def should_end_interview(state: VehicleSearchState) -> bool:
     return False
 
 
-def interview_node(state: VehicleSearchState) -> VehicleSearchState:
+def interview_node(state: ProductSearchState) -> ProductSearchState:
     """
     Interview node that asks questions like a salesperson.
 
@@ -187,7 +187,7 @@ def interview_node(state: VehicleSearchState) -> VehicleSearchState:
     return state
 
 
-def make_initial_recommendation(state: VehicleSearchState) -> VehicleSearchState:
+def make_initial_recommendation(state: ProductSearchState) -> ProductSearchState:
     """
     Called once at the end of interview to:
     1. Parse entire interview conversation for filters/preferences using structured output
@@ -279,7 +279,7 @@ CONVERSATION:
     return state
 
 
-def decide_next_step(state: VehicleSearchState) -> str:
+def decide_next_step(state: ProductSearchState) -> str:
     """Router to decide if interview should continue or make recommendations."""
     if should_end_interview(state):
         return "make_recommendation"
@@ -287,7 +287,7 @@ def decide_next_step(state: VehicleSearchState) -> str:
 
 
 # Create wrapper for semantic_parser_node that extracts callback from state
-def semantic_parser_wrapper(state: VehicleSearchState) -> VehicleSearchState:
+def semantic_parser_wrapper(state: ProductSearchState) -> ProductSearchState:
     """
     Wrapper to pass progress_callback from state to semantic_parser_node.
 
@@ -308,7 +308,7 @@ def semantic_parser_wrapper(state: VehicleSearchState) -> VehicleSearchState:
 # Create LangGraph StateGraph for interview workflow
 def create_interview_graph():
     """Create the interview workflow graph."""
-    workflow = StateGraph(VehicleSearchState)
+    workflow = StateGraph(ProductSearchState)
 
     # Add nodes (using wrapper for semantic_parser to pass callback)
     workflow.add_node("semantic_parser", semantic_parser_wrapper)
@@ -344,9 +344,9 @@ def get_interview_graph():
 
 def run_interview_workflow(
     user_input: str,
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
     Main interview workflow entry point.
 

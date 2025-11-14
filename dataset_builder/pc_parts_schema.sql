@@ -8,11 +8,10 @@ CREATE TABLE IF NOT EXISTS pc_parts (
 
     -- Unique identifiers
     part_id TEXT NOT NULL UNIQUE,        -- Canonical identifier (source:id)
-    source TEXT NOT NULL,                -- Data source (pcpartpicker, bestbuy, rapidapi)
+    source TEXT NOT NULL,                -- Data source (rapidapi)
 
     -- Core product metadata
     part_type TEXT NOT NULL,             -- Component category (cpu, gpu, motherboard, etc.)
-    manufacturer TEXT,
     product_name TEXT NOT NULL,
     model_number TEXT,
     series TEXT,
@@ -22,7 +21,7 @@ CREATE TABLE IF NOT EXISTS pc_parts (
     currency TEXT DEFAULT 'USD',
     availability TEXT,                   -- Free-form availability text
     stock_status TEXT,                   -- Normalized stock status (in_stock, out_of_stock, preorder, unknown)
-    seller TEXT,                         -- Retailer or marketplace name
+    seller TEXT,                         -- Retailer or marketplace name (e.g., "Walmart", "Best Buy", "Newegg")
 
     -- Ratings & engagement
     rating REAL,
@@ -47,10 +46,9 @@ CREATE TABLE IF NOT EXISTS pc_parts (
 
 -- Indexes to support fast filtering (mirrors vehicle dataset philosophy)
 CREATE INDEX IF NOT EXISTS idx_pc_parts_type ON pc_parts(part_type);
-CREATE INDEX IF NOT EXISTS idx_pc_parts_manufacturer ON pc_parts(manufacturer);
+CREATE INDEX IF NOT EXISTS idx_pc_parts_seller ON pc_parts(seller);
 CREATE INDEX IF NOT EXISTS idx_pc_parts_price ON pc_parts(price);
 CREATE INDEX IF NOT EXISTS idx_pc_parts_source ON pc_parts(source);
-CREATE INDEX IF NOT EXISTS idx_pc_parts_type_manufacturer ON pc_parts(part_type, manufacturer);
 
 -- Progress tracking table (inspired by fetch_progress in vehicle dataset)
 CREATE TABLE IF NOT EXISTS pc_parts_fetch_progress (

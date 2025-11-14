@@ -12,7 +12,7 @@ from collections import OrderedDict
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from idss_agent.state.schema import VehicleSearchState
+from idss_agent.state.schema import ProductSearchState
 from idss_agent.utils.logger import get_logger
 
 logger = get_logger("request_analyzer")
@@ -72,7 +72,7 @@ class RequestAnalysis(BaseModel):
 
 def analyze_request(
     user_input: str,
-    state: VehicleSearchState
+    state: ProductSearchState
 ) -> RequestAnalysis:
     """
     Analyze user request to detect multiple intents and needs.
@@ -89,7 +89,7 @@ def analyze_request(
     interviewed = state.get('interviewed', False)
     has_filters = bool(state.get('explicit_filters', {}))
     has_preferences = bool(state.get('implicit_preferences', {}))
-    has_vehicles = len(state.get('recommended_vehicles', [])) > 0
+    has_products = len(state.get('recommended_products', []) or state.get('recommended_vehicles', [])) > 0
 
     # Build context for LLM
     context = f"""
@@ -97,7 +97,7 @@ def analyze_request(
 - User has been interviewed: {interviewed}
 - User has provided filters: {has_filters}
 - User has implicit preferences: {has_preferences}
-- Current products shown: {len(state.get('recommended_vehicles', []))}
+- Current products shown: {len(state.get('recommended_products', []) or state.get('recommended_vehicles', []))}
 - Current filters: {state.get('explicit_filters', {})}
 - Implicit preferences: {state.get('implicit_preferences', {})}
 """
@@ -179,7 +179,7 @@ Analyze this request and determine what the user needs."""
         )
 
 
-def _build_cache_key(user_input: str, state: VehicleSearchState) -> str:
+def _build_cache_key(user_input: str, state: ProductSearchState) -> str:
     """
     Build a cache key from the latest user input and lightweight state summary.
     """
@@ -188,7 +188,7 @@ def _build_cache_key(user_input: str, state: VehicleSearchState) -> str:
             "filters": state.get("explicit_filters", {}),
             "preferences": state.get("implicit_preferences", {}),
             "interviewed": state.get("interviewed", False),
-            "products_count": len(state.get("recommended_vehicles", [])),
+            "products_count": len(state.get("recommended_products", []) or state.get("recommended_vehicles", [])),
         }
         serialized = json.dumps(summary, sort_keys=True)
     except (TypeError, ValueError):

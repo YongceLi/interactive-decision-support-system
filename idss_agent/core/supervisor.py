@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from concurrent.futures import ThreadPoolExecutor
 
-from idss_agent.state.schema import VehicleSearchState
+from idss_agent.state.schema import ProductSearchState
 from idss_agent.core.request_analyzer import analyze_request, RequestAnalysis
 from idss_agent.processing.semantic_parser import semantic_parser_node
 from idss_agent.processing.recommendation import update_recommendation_list
@@ -43,7 +43,7 @@ class SubAgentResult:
     filters: Optional[Dict] = None
     quick_replies: Optional[List[str]] = None
     suggested_followups: List[str] = field(default_factory=list)
-    updated_state: Optional[VehicleSearchState] = None
+    updated_state: Optional[ProductSearchState] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -57,7 +57,7 @@ class SubAgentRunner:
     def run_analytical(
         self,
         questions: List[str],
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> SubAgentResult:
         """
         Run analytical sub-agent.
@@ -81,7 +81,7 @@ class SubAgentRunner:
             suggested_followups=state_copy.get('suggested_followups', [])
         )
 
-    def run_search(self, state: VehicleSearchState) -> SubAgentResult:
+    def run_search(self, state: ProductSearchState) -> SubAgentResult:
         """
         Run search sub-agent.
 
@@ -98,7 +98,7 @@ class SubAgentRunner:
 
         return SubAgentResult(
             mode=AgentMode.SEARCH,
-            vehicles=state_copy.get('recommended_vehicles', []),
+            vehicles=state_copy.get('recommended_products') or state_copy.get('recommended_vehicles', []),
             filters=state_copy.get('explicit_filters', {}),
             metadata={'suggestion_reasoning': state_copy.get('suggestion_reasoning')}
         )
@@ -106,7 +106,7 @@ class SubAgentRunner:
     def run_interview(
         self,
         user_input: str,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> SubAgentResult:
         """
         Run interview workflow.
@@ -131,7 +131,7 @@ class SubAgentRunner:
             metadata={'interviewed': result_state.get('interviewed', False)}
         )
 
-    def run_general(self, state: VehicleSearchState) -> SubAgentResult:
+    def run_general(self, state: ProductSearchState) -> SubAgentResult:
         """
         Run general conversation mode.
 
@@ -163,7 +163,7 @@ class ResponseSynthesizer:
         self,
         results: List[SubAgentResult],
         analysis: RequestAnalysis,
-        state: VehicleSearchState,
+        state: ProductSearchState,
         user_input: str
     ) -> Dict[str, Any]:
         """
@@ -189,7 +189,7 @@ class ResponseSynthesizer:
     def _handle_single_mode(
         self,
         result: SubAgentResult,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> Dict[str, Any]:
         """
         Handle single mode response.
@@ -237,7 +237,7 @@ class ResponseSynthesizer:
         self,
         results: List[SubAgentResult],
         user_input: str,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> Dict[str, Any]:
         """
         Handle multi-mode response with LLM synthesis.
@@ -277,8 +277,8 @@ class ResponseSynthesizer:
     def _present_search_results(
         self,
         result: SubAgentResult,
-        state: VehicleSearchState
-    ) -> VehicleSearchState:
+        state: ProductSearchState
+    ) -> ProductSearchState:
         """
         Present search results using discovery agent.
 
@@ -290,14 +290,17 @@ class ResponseSynthesizer:
             Updated state with discovery agent response
         """
         state_copy = state.copy()
-        state_copy['recommended_vehicles'] = result.vehicles or []
+        # Update recommended_products (preferred) and recommended_vehicles (legacy)
+        if result.vehicles:
+            state_copy['recommended_products'] = result.vehicles
+            state_copy['recommended_vehicles'] = result.vehicles  # Legacy compatibility
 
         if result.metadata.get('suggestion_reasoning'):
             state_copy['suggestion_reasoning'] = result.metadata['suggestion_reasoning']
 
         return discovery_agent(state_copy, self.progress_callback)
 
-    def _build_context(self, state: VehicleSearchState) -> str:
+    def _build_context(self, state: ProductSearchState) -> str:
         """
         Build context string for synthesis.
 
@@ -369,8 +372,8 @@ class SupervisorOrchestrator:
     def process_request(
         self,
         user_input: str,
-        state: VehicleSearchState
-    ) -> VehicleSearchState:
+        state: ProductSearchState
+    ) -> ProductSearchState:
         """
         Main entry point - orchestrates request processing.
 
@@ -429,8 +432,8 @@ class SupervisorOrchestrator:
     def _run_parallel_intent_and_parsing(
         self,
         user_input: str,
-        state: VehicleSearchState
-    ) -> Tuple[RequestAnalysis, VehicleSearchState]:
+        state: ProductSearchState
+    ) -> Tuple[RequestAnalysis, ProductSearchState]:
         """
         Run intent analysis and semantic parsing concurrently.
 
@@ -449,7 +452,7 @@ class SupervisorOrchestrator:
             result = analyze_request(user_input, state)
             return result, finish_span(span)
 
-        def _wrapped_parse() -> Tuple[VehicleSearchState, Dict[str, Any]]:
+        def _wrapped_parse() -> Tuple[ProductSearchState, Dict[str, Any]]:
             span = start_span("semantic_parser")
             parsed = semantic_parser_node(state_for_parser, self.progress_callback)
             return parsed, finish_span(span)
@@ -471,7 +474,7 @@ class SupervisorOrchestrator:
     def _create_execution_plan(
         self,
         analysis: RequestAnalysis,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> Dict[AgentMode, Dict[str, Any]]:
         """
         Determine which sub-agents should run and with what parameters.
@@ -509,7 +512,7 @@ class SupervisorOrchestrator:
         self,
         plan: Dict[AgentMode, Dict[str, Any]],
         user_input: str,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> List[SubAgentResult]:
         """
         Execute sub-agents according to plan.
@@ -546,8 +549,8 @@ class SupervisorOrchestrator:
     def _handle_special_cases(
         self,
         results: List[SubAgentResult],
-        state: VehicleSearchState
-    ) -> Optional[VehicleSearchState]:
+        state: ProductSearchState
+    ) -> Optional[ProductSearchState]:
         """
         Handle special cases that bypass normal synthesis.
 
@@ -582,8 +585,8 @@ class SupervisorOrchestrator:
     def _update_state_from_results(
         self,
         results: List[SubAgentResult],
-        state: VehicleSearchState
-    ) -> VehicleSearchState:
+        state: ProductSearchState
+    ) -> ProductSearchState:
         """
         Update state with data from sub-agent results.
 
@@ -599,9 +602,10 @@ class SupervisorOrchestrator:
             if result.comparison_table:
                 state['comparison_table'] = result.comparison_table
 
-            # Update vehicles from search agent
+            # Update products from search agent
             if result.mode == AgentMode.SEARCH and result.vehicles is not None:
-                state['recommended_vehicles'] = result.vehicles
+                state['recommended_products'] = result.vehicles
+                state['recommended_vehicles'] = result.vehicles  # Legacy compatibility
                 state['previous_filters'] = state['explicit_filters'].copy()
 
                 if result.metadata.get('suggestion_reasoning'):
@@ -634,7 +638,7 @@ class SupervisorOrchestrator:
     def _should_run_search(
         self,
         analysis: RequestAnalysis,
-        state: VehicleSearchState
+        state: ProductSearchState
     ) -> bool:
         """
         Determine if search sub-agent should run.
@@ -647,28 +651,28 @@ class SupervisorOrchestrator:
             True if search should run
         """
         filters_changed = state['explicit_filters'] != state.get('previous_filters', {})
-        has_vehicles = len(state.get('recommended_vehicles', [])) > 0
+        has_products = len(state.get('recommended_products', []) or state.get('recommended_vehicles', [])) > 0
 
         # Should search if:
         # - User explicitly needs search OR
         # - Filters changed OR
-        # - User updated filters but no vehicles yet
+        # - User updated filters but no products yet
         should_search = (
             analysis.needs_search
             or filters_changed
-            or (analysis.has_filter_update and not has_vehicles)
+            or (analysis.has_filter_update and not has_products)
         )
 
-        # Only actually run if filters changed or no vehicles
-        return should_search and (filters_changed or not has_vehicles)
+        # Only actually run if filters changed or no products
+        return should_search and (filters_changed or not has_products)
 
 
 # Public API
 def run_supervisor(
     user_input: str,
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
     Supervisor agent - orchestrates sub-agents to handle compound requests.
 

@@ -1,5 +1,5 @@
 """
-State schema for the vehicle search agent.
+State schema for the product search agent.
 """
 from typing import TypedDict, Optional, List, Dict, Any, Annotated, Literal
 from pydantic import BaseModel, Field
@@ -8,12 +8,12 @@ from langgraph.graph.message import add_messages
 from datetime import datetime
 
 
-class VehicleFilters(TypedDict, total=False):
+class ProductFilters(TypedDict, total=False):
     """
-    Explicit vehicle search filters extracted from user input.
+    Explicit product search filters extracted from user input.
     Types match AutoDev API tool parameters.
     """
-    # Vehicle specification filters
+    # Product specification filters
     make: Optional[str]  # e.g., "Toyota" or "Ford,Chevrolet" (comma-separated for multiple)
     model: Optional[str]  # e.g., "Camry" or "F-150,Silverado"
     year: Optional[str]  # e.g., "2018" or "2018-2020" (range format)
@@ -35,7 +35,7 @@ class VehicleFilters(TypedDict, total=False):
     # Retail listing filters
     price: Optional[str]  # e.g., "10000-30000" (range format)
     state: Optional[str]  # e.g., "CA", "NY"
-    mileage: Optional[str]  # Vehicle's odometer reading, e.g., "0-50000" (range format)
+    mileage: Optional[str]  # Product mileage/usage, e.g., "0-50000" (range format)
 
     # Location filters
     zip: Optional[str]  # 5-digit ZIP code (only as fallback if browser location denied; gets converted to lat/long)
@@ -55,9 +55,9 @@ class ImplicitPreferences(TypedDict, total=False):
 
 # Pydantic versions for LLM structured output (mirror TypedDict structure)
 
-class VehicleFiltersPydantic(BaseModel):
-    """Pydantic version of VehicleFilters for LLM structured output."""
-    # Vehicle specification filters
+class ProductFiltersPydantic(BaseModel):
+    """Pydantic version of ProductFilters for LLM structured output."""
+    # Product specification filters
     make: Optional[str] = Field(None, description="e.g., 'Toyota' or 'Ford,Chevrolet' (comma-separated)")
     model: Optional[str] = Field(None, description="e.g., 'Camry' or 'F-150,Silverado'")
     year: Optional[str] = Field(None, description="e.g., '2018' or '2018-2020' (range format)")
@@ -79,11 +79,11 @@ class VehicleFiltersPydantic(BaseModel):
     # Retail listing filters
     price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
     state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
-    mileage: Optional[str] = Field(None, description="Vehicle's odometer reading in miles (e.g., '0-50000' for cars with under 50k miles on odometer)")
+    mileage: Optional[str] = Field(None, description="Product mileage/usage (e.g., '0-50000' for range format)")
 
     # Location filters
-    zip: Optional[str] = Field(None, description="5-digit US ZIP code (only used as fallback if browser geolocation is denied; automatically converted to coordinates for distance search)")
-    search_radius: Optional[int] = Field(None, description="Maximum distance in miles you're willing to travel to pick up the vehicle from dealer (e.g., 50 for within 50 miles of your location)")
+    zip: Optional[str] = Field(None, description="5-digit US ZIP code (optional location filter)")
+    search_radius: Optional[int] = Field(None, description="Maximum distance in miles (optional location filter)")
 
 
 class ImplicitPreferencesPydantic(BaseModel):
@@ -92,7 +92,7 @@ class ImplicitPreferencesPydantic(BaseModel):
         None,
         description=(
             "User's top priorities inferred from phrases like 'safe', 'reliable', 'fuel efficient', 'luxurious', 'spacious'. "
-            "Extract from: 'safe car' → ['safety'], 'reliable vehicle' → ['reliability'], 'good on gas' → ['fuel_efficiency']. "
+            "Extract from: 'safe product' → ['safety'], 'reliable product' → ['reliability'], 'good performance' → ['performance']. "
             "Common values: 'safety', 'reliability', 'fuel_efficiency', 'luxury', 'performance', 'space', 'technology'"
         )
     )
@@ -130,9 +130,9 @@ class ImplicitPreferencesPydantic(BaseModel):
     usage_patterns: Optional[str] = Field(
         None,
         description=(
-            "How the user plans to use the vehicle, inferred from purpose statements. "
-            "Extract from: 'drive to work every day' → 'daily commuter', 'for my teenager' → 'teenage driver', 'road trips with family' → 'family road trips'. "
-            "Common values: 'daily commuter', 'weekend trips', 'family road trips', 'teenage driver', 'work vehicle', 'occasional use'"
+            "How the user plans to use the product, inferred from purpose statements. "
+            "Extract from: 'for gaming' → 'gaming', 'for work' → 'professional', 'for content creation' → 'content creation'. "
+            "Common values: 'gaming', 'professional', 'content creation', 'general use', 'high performance', 'budget'"
         )
     )
     notes: Optional[str] = Field(
@@ -143,18 +143,18 @@ class ImplicitPreferencesPydantic(BaseModel):
 
 class ComparisonTable(BaseModel):
     """
-    Structured comparison table for comparing vehicles.
+    Structured comparison table for comparing products.
 
-    Used when user asks to compare 2-4 vehicles (e.g., "compare Honda Accord vs Toyota Camry").
+    Used when user asks to compare 2-4 products (e.g., "compare Product A vs Product B").
     """
     headers: List[str] = Field(
-        description="Column headers: first is 'Attribute', rest are vehicle names like 'Honda Accord 2024'"
+        description="Column headers: first is 'Attribute', rest are product names"
     )
     rows: List[List[str]] = Field(
         description=(
             "Each row is a list of values. First value is the attribute name, "
-            "rest are values for each vehicle. "
-            "Example attributes: 'Price Range', 'Safety Rating', 'Fuel Economy (City)', etc."
+            "rest are values for each product. "
+            "Example attributes: 'Price', 'Rating', 'Specifications', etc."
         )
     )
 
@@ -189,46 +189,47 @@ class AgentResponse(BaseModel):
     comparison_table: Optional[ComparisonTable] = Field(
         default=None,
         description=(
-            "Comparison table for when user asks to compare 2-4 vehicles. "
+            "Comparison table for when user asks to compare 2-4 products. "
             "Leave null if not a comparison query. "
-            "When provided, include key attributes like price, safety, fuel economy, etc."
+            "When provided, include key attributes like price, rating, specifications, etc."
         )
     )
 
 
-class VehicleSearchState(TypedDict):
+class ProductSearchState(TypedDict):
     """
-    Complete state for the vehicle search agent.
+    Complete state for the product search agent.
 
     This state is updated throughout the conversation and maintains:
     - Explicit filters from user requests
     - Conversation history using LangChain messages (with add_messages reducer)
     - Implicit preferences inferred from dialogue
-    - Recommended vehicles (up to 20, updated each turn)
+    - Recommended products (up to 20, updated each turn)
     - Questions asked to avoid repetition
     - AI response for current turn
     - User interaction events for tracking engagement
     - Interview mode tracking and insights
     """
     # Core data
-    explicit_filters: VehicleFilters
+    explicit_filters: ProductFilters
     conversation_history: Annotated[List[BaseMessage], add_messages]
     implicit_preferences: ImplicitPreferences
 
-    # User location (from browser geolocation)
-    user_latitude: Optional[float]  # User's latitude for distance calculations
-    user_longitude: Optional[float]  # User's longitude for distance calculations
+    # User location (from browser geolocation) - optional, not used for electronics
+    user_latitude: Optional[float]  # User's latitude (optional)
+    user_longitude: Optional[float]  # User's longitude (optional)
 
-    # Results (up to MAX_RECOMMENDED_VEHICLES vehicles, updated each turn)
-    recommended_vehicles: List[Dict[str, Any]]
+    # Results (up to MAX_RECOMMENDED_PRODUCTS products, updated each turn)
+    recommended_products: List[Dict[str, Any]]
+    recommended_vehicles: List[Dict[str, Any]]  # Legacy field for backward compatibility
 
     # Metadata
     questions_asked: List[str]  # Track questions to avoid repetition
-    previous_filters: VehicleFilters  # Track previous filters to detect changes
+    previous_filters: ProductFilters  # Track previous filters to detect changes
 
     # User interaction tracking
     interaction_events: List[Dict[str, Any]]  # Track user interactions with UI
-    favorites: List[Dict[str, Any]]  # List of vehicles favorited by user
+    favorites: List[Dict[str, Any]]  # List of products favorited by user
 
     # Interview phase tracking
     interviewed: bool  # False = in interview workflow, True = interview complete
@@ -242,22 +243,24 @@ class VehicleSearchState(TypedDict):
     ai_response: str
     quick_replies: Optional[List[str]]  # Short answer options (1-3 words, 2-4 options) for direct questions
     suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
-    comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare vehicles
+    comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare products
+    compatibility_result: Optional[Dict[str, Any]]  # Compatibility check result (for binary compatibility queries)
     _latency: Optional[Dict[str, Any]]  # Latency snapshot for the latest turn
     _latency_stats: Optional[Dict[str, Any]]  # Aggregated latency statistics for the session
 
 
-def create_initial_state() -> VehicleSearchState:
-    """Create an empty initial state for the vehicle search agent."""
-    return VehicleSearchState(
-        explicit_filters=VehicleFilters(),
+def create_initial_state() -> ProductSearchState:
+    """Create an empty initial state for the product search agent."""
+    return ProductSearchState(
+        explicit_filters=ProductFilters(),
         conversation_history=[],
         implicit_preferences=ImplicitPreferences(),
         user_latitude=None,
         user_longitude=None,
-        recommended_vehicles=[],
+        recommended_products=[],
+        recommended_vehicles=[],  # Legacy field for backward compatibility
         questions_asked=[],
-        previous_filters=VehicleFilters(),
+        previous_filters=ProductFilters(),
         interaction_events=[],
         favorites=[],
         interviewed=False,  # Start in interview workflow
@@ -268,6 +271,7 @@ def create_initial_state() -> VehicleSearchState:
         quick_replies=None,
         suggested_followups=[],
         comparison_table=None,
+        compatibility_result=None,
         _latency=None,
         _latency_stats={
             "turn_count": 0,
@@ -277,7 +281,7 @@ def create_initial_state() -> VehicleSearchState:
     )
 
 
-def add_user_message(state: VehicleSearchState, content: str) -> VehicleSearchState:
+def add_user_message(state: ProductSearchState, content: str) -> ProductSearchState:
     """
     Add a user message to the conversation history.
     """
@@ -285,7 +289,7 @@ def add_user_message(state: VehicleSearchState, content: str) -> VehicleSearchSt
     return state
 
 
-def add_ai_message(state: VehicleSearchState, content: str) -> VehicleSearchState:
+def add_ai_message(state: ProductSearchState, content: str) -> ProductSearchState:
     """
     Add an AI message to the conversation history.
     """
@@ -293,7 +297,7 @@ def add_ai_message(state: VehicleSearchState, content: str) -> VehicleSearchStat
     return state
 
 
-def get_latest_user_message(state: VehicleSearchState) -> Optional[str]:
+def get_latest_user_message(state: ProductSearchState) -> Optional[str]:
     """Get the content of the most recent user message."""
     for message in reversed(state["conversation_history"]):
         if isinstance(message, HumanMessage):

@@ -22,7 +22,7 @@ import logging
 
 load_dotenv()
 
-from idss_agent import run_agent, create_initial_state, VehicleSearchState
+from idss_agent import run_agent, create_initial_state, ProductSearchState
 from idss_agent.utils.conversation_logger import save_conversation_log
 from api.models import (
     ChatRequest,
@@ -63,7 +63,7 @@ app.add_middleware(
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-sessions: Dict[str, VehicleSearchState] = {}
+sessions: Dict[str, ProductSearchState] = {}
 
 # Helper Functions
 def reverse_geocode(latitude: float, longitude: float) -> Optional[str]:
@@ -116,7 +116,7 @@ def reverse_geocode(latitude: float, longitude: float) -> Optional[str]:
         print(f"Error in reverse geocoding: {e}")
         return None
 
-def get_or_create_session(session_id: Optional[str] = None) -> tuple[str, VehicleSearchState]:
+def get_or_create_session(session_id: Optional[str] = None) -> tuple[str, ProductSearchState]:
     """Get existing session or create new one."""
     if session_id and session_id in sessions:
         return session_id, sessions[session_id]
@@ -126,7 +126,7 @@ def get_or_create_session(session_id: Optional[str] = None) -> tuple[str, Vehicl
     sessions[new_session_id] = create_initial_state()
     return new_session_id, sessions[new_session_id]
 
-def format_conversation_history(state: VehicleSearchState) -> List[Dict[str, Any]]:
+def format_conversation_history(state: ProductSearchState) -> List[Dict[str, Any]]:
     """Format conversation history for API response."""
     history = []
     for msg in state.get('conversation_history', []):
@@ -154,33 +154,17 @@ async def chat(request: ChatRequest):
     """
     Main conversation endpoint.
 
-    Handles user messages, updates state, and returns AI response with vehicles.
+    Handles user messages, updates state, and returns AI response with products.
     """
     try:
         # Get or create session
         session_id, state = get_or_create_session(request.session_id)
 
-        # Store user location in state for distance calculations
-        if request.latitude and request.longitude:
-            state['user_latitude'] = request.latitude
-            state['user_longitude'] = request.longitude
+        # Note: Location/latitude/longitude are ignored for electronics domain
+        # (previously used for car domain distance calculations)
 
-        # Prepare message - include location as a hidden chat message if provided
-        message = request.message
-        if request.latitude and request.longitude:
-            zip_code = reverse_geocode(request.latitude, request.longitude)
-            if zip_code:
-                # Prepend location message to the user's message
-                # This will be in conversation history but not shown in UI
-                location_message = f"My location is {zip_code}. "
-                message = location_message + request.message
-            else:
-                # If reverse geocoding fails, use coordinates
-                location_message = f"My location is {request.latitude}, {request.longitude}. "
-                message = location_message + request.message
-
-        # Run the agent
-        updated_state = run_agent(message, state)
+        # Run the agent with the user's message directly
+        updated_state = run_agent(request.message, state)
 
         # Update session storage
         sessions[session_id] = updated_state
@@ -188,17 +172,21 @@ async def chat(request: ChatRequest):
         # Persist conversation log for debugging
         save_conversation_log(session_id, updated_state)
 
+        # Get products/vehicles - check both fields for compatibility
+        recommended_products = updated_state.get('recommended_products') or updated_state.get('recommended_vehicles', [])
+        
         # Prepare response
         return ChatResponse(
             response=updated_state.get('ai_response', ''),
-            vehicles=updated_state.get('recommended_vehicles', [])[:20],
+            vehicles=recommended_products[:20] if recommended_products else [],
             filters=updated_state.get('explicit_filters', {}),
             preferences=updated_state.get('implicit_preferences', {}),
             session_id=session_id,
             interviewed=updated_state.get('interviewed', False),
             quick_replies=updated_state.get('quick_replies'),
             suggested_followups=updated_state.get('suggested_followups', []),
-            comparison_table=updated_state.get('comparison_table')
+            comparison_table=updated_state.get('comparison_table'),
+            compatibility_result=updated_state.get('compatibility_result')
         )
 
     except Exception as e:
@@ -225,19 +213,9 @@ async def chat_stream(request: ChatRequest):
             # Get or create session
             session_id, state = get_or_create_session(request.session_id)
 
-            # Prepare message - include location as a hidden chat message if provided
+            # Note: Location/latitude/longitude are ignored for electronics domain
+            # (previously used for car domain distance calculations)
             message = request.message
-            if request.latitude and request.longitude:
-                zip_code = reverse_geocode(request.latitude, request.longitude)
-                if zip_code:
-                    # Prepend location message to the user's message
-                    # This will be in conversation history but not shown in UI
-                    location_message = f"My location is {zip_code}. "
-                    message = location_message + request.message
-                else:
-                    # If reverse geocoding fails, use coordinates
-                    location_message = f"My location is {request.latitude}, {request.longitude}. "
-                    message = location_message + request.message
 
             # Create progress queue for async communication
             progress_queue = asyncio.Queue()
@@ -294,19 +272,23 @@ async def chat_stream(request: ChatRequest):
             # Persist conversation log for debugging
             save_conversation_log(session_id, updated_state)
 
+            # Get products/vehicles - check both fields for compatibility
+            recommended_products = updated_state.get('recommended_products') or updated_state.get('recommended_vehicles', [])
+
             # Send final response
             yield {
                 "event": "complete",
                 "data": json.dumps({
                     "response": updated_state.get('ai_response', ''),
-                    "vehicles": updated_state.get('recommended_vehicles', [])[:20],
+                    "vehicles": recommended_products[:20] if recommended_products else [],
                     "filters": updated_state.get('explicit_filters', {}),
                     "preferences": updated_state.get('implicit_preferences', {}),
                     "session_id": session_id,
                     "interviewed": updated_state.get('interviewed', False),
                     "quick_replies": updated_state.get('quick_replies'),
                     "suggested_followups": updated_state.get('suggested_followups', []),
-                    "comparison_table": updated_state.get('comparison_table')
+                    "comparison_table": updated_state.get('comparison_table'),
+                    "compatibility_result": updated_state.get('compatibility_result')
                 })
             }
 
@@ -339,11 +321,14 @@ async def get_session(session_id: str):
 
     state = sessions[session_id]
 
+    # Get products/vehicles - check both fields for compatibility
+    recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+    
     return SessionResponse(
         session_id=session_id,
         filters=state.get('explicit_filters', {}),
         preferences=state.get('implicit_preferences', {}),
-        vehicles=state.get('recommended_vehicles', [])[:10],
+        vehicles=recommended_products[:10] if recommended_products else [],
         conversation_history=format_conversation_history(state)
     )
 
@@ -505,12 +490,15 @@ async def handle_favorite(
         # Generate proactive response using LLM
         from idss_agent.processing.proactive_responses import generate_favorite_response
 
+        # Get products/vehicles - check both fields for compatibility
+        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+        
         try:
             proactive_response = generate_favorite_response(request.vehicle, state)
 
             return ChatResponse(
                 response=proactive_response.ai_response,
-                vehicles=state.get("recommended_vehicles", []),
+                vehicles=recommended_products if recommended_products else [],
                 filters=state.get("explicit_filters", {}),
                 preferences=state.get("implicit_preferences", {}),
                 session_id=session_id,
@@ -524,7 +512,7 @@ async def handle_favorite(
             # Return empty response on error
             return ChatResponse(
                 response="",
-                vehicles=state.get("recommended_vehicles", []),
+                vehicles=recommended_products if recommended_products else [],
                 filters=state.get("explicit_filters", {}),
                 preferences=state.get("implicit_preferences", {}),
                 session_id=session_id,
@@ -538,10 +526,13 @@ async def handle_favorite(
         state["favorites"] = [fav for fav in state["favorites"] if fav.get("vin") != vin]
         logger.info(f"Session {session_id}: Removed vehicle {vin} from favorites. Total: {len(state['favorites'])}")
 
+        # Get products/vehicles - check both fields for compatibility
+        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+
         # No proactive response for unfavorite
         return ChatResponse(
             response="",
-            vehicles=state.get("recommended_vehicles", []),
+            vehicles=recommended_products if recommended_products else [],
             filters=state.get("explicit_filters", {}),
             preferences=state.get("implicit_preferences", {}),
             session_id=session_id,

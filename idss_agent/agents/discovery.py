@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
-from idss_agent.state.schema import VehicleSearchState, AgentResponse
+from idss_agent.state.schema import ProductSearchState, AgentResponse
 
 
 def format_products_for_llm(products: List[Dict[str, Any]], limit: int = 3, max_chars: int = 4000) -> str:
@@ -26,9 +26,9 @@ def format_products_for_llm(products: List[Dict[str, Any]], limit: int = 3, max_
 
 
 def discovery_agent(
-    state: VehicleSearchState,
+    state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None
-) -> VehicleSearchState:
+) -> ProductSearchState:
     """
     Discovery agent - generates product overview and elicitation questions.
 
@@ -59,7 +59,7 @@ def discovery_agent(
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
-    products = state['recommended_vehicles']
+    products = state.get('recommended_products') or state.get('recommended_vehicles', [])
     already_asked = state.get('questions_asked', [])
 
     model_config = config.get_model_config('discovery')
@@ -153,7 +153,7 @@ Generate your response:
     return state
 
 
-def extract_questions_asked(state: VehicleSearchState, ai_response: str) -> VehicleSearchState:
+def extract_questions_asked(state: ProductSearchState, ai_response: str) -> ProductSearchState:
     """
     Use LLM to extract which topics were asked about in the response.
 

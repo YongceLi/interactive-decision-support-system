@@ -1,5 +1,5 @@
 import { ChatRequest, ChatResponse } from '@/types/chat';
-import { Vehicle } from '@/types/vehicle';
+import { Product } from '@/types/vehicle';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -90,33 +90,33 @@ class IDSSApiService {
     return this.sessionId;
   }
 
-  async sendFavoriteAction(sessionId: string, vehicle: Vehicle, isFavorited: boolean): Promise<ChatResponse> {
+  async sendFavoriteAction(sessionId: string, product: Product, isFavorited: boolean): Promise<ChatResponse> {
     try {
       if (!sessionId) {
         throw new Error('No session ID available');
       }
 
-      // Clean vehicle object for serialization
-      const vehicleData = {
-        vin: vehicle.vin,
-        make: vehicle.make,
-        model: vehicle.model,
-        year: vehicle.year,
-        price: vehicle.price,
-        mileage: vehicle.mileage,
-        miles: vehicle.mileage,  // Backend might expect 'miles'
-        location: vehicle.location,
-        condition: vehicle.condition,
-        trim: vehicle.trim,
-        body_style: vehicle.body_style,
-        engine: vehicle.engine,
-        transmission: vehicle.transmission,
-        exterior_color: vehicle.exterior_color,
-        features: vehicle.features
+      // Clean product object for serialization
+      const productData = {
+        vin: product.vin,
+        make: product.make,
+        model: product.model,
+        year: product.year,
+        price: product.price,
+        mileage: product.mileage,
+        miles: product.mileage,  // Backend might expect 'miles'
+        location: product.location,
+        condition: product.condition,
+        trim: product.trim,
+        body_style: product.body_style,
+        engine: product.engine,
+        transmission: product.transmission,
+        exterior_color: product.exterior_color,
+        features: product.features
       };
 
       console.log('Sending to:', `${API_BASE_URL}/session/${sessionId}/favorite`);
-      console.log('Request body:', { vehicle: vehicleData, is_favorited: isFavorited });
+      console.log('Request body:', { vehicle: productData, is_favorited: isFavorited });
 
       const response = await fetch(`${API_BASE_URL}/session/${sessionId}/favorite`, {
         method: 'POST',
@@ -124,7 +124,7 @@ class IDSSApiService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          vehicle: vehicleData,
+          vehicle: productData,  // API still expects 'vehicle' field name for backward compatibility
           is_favorited: isFavorited,
         }),
       });
@@ -143,8 +143,8 @@ class IDSSApiService {
     }
   }
 
-  // Convert API vehicle data to our Vehicle type
-  convertVehicle(apiVehicle: Record<string, unknown>): Vehicle {
+  // Convert API product data to our Product type
+  convertVehicle(apiVehicle: Record<string, unknown>): Product {
     const vehicle = (apiVehicle.vehicle as Record<string, unknown>) || apiVehicle;
     const retailListing = (apiVehicle.retailListing as Record<string, unknown>) || {};
     const product = (apiVehicle.product as Record<string, unknown>) || {};

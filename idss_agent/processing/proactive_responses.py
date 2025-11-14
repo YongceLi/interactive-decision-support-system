@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage
-from idss_agent.state.schema import VehicleSearchState
+from idss_agent.state.schema import ProductSearchState
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.utils.logger import get_logger
@@ -27,7 +27,7 @@ class ProactiveResponse(BaseModel):
 
 def generate_favorite_response(
     vehicle: Dict[str, Any],
-    state: VehicleSearchState
+    state: ProductSearchState
 ) -> ProactiveResponse:
     """
     Generate contextual proactive response when user favorites a vehicle.

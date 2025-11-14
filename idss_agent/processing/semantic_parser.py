@@ -7,9 +7,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from idss_agent.utils.logger import get_logger
 from idss_agent.state.schema import (
-    VehicleSearchState as ProductSearchState,
+    ProductSearchState,
     get_latest_user_message,
-    VehicleFiltersPydantic as ProductFiltersPydantic,
+    ProductFiltersPydantic,
     ImplicitPreferencesPydantic,
 )
 from idss_agent.utils.config import get_config

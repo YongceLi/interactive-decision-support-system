@@ -3,6 +3,15 @@ export interface ComparisonTable {
   rows: string[][];
 }
 
+export interface CompatibilityResult {
+  compatible: boolean;
+  explanation: string;
+  part1_name?: string;
+  part2_name?: string;
+  compatibility_types?: string[];
+  error?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -11,6 +20,7 @@ export interface ChatMessage {
   quick_replies?: string[] | null;
   suggested_followups?: string[];
   comparison_table?: ComparisonTable | null;
+  compatibility_result?: CompatibilityResult | null;
 }
 
 export interface ChatRequest {
@@ -27,4 +37,5 @@ export interface ChatResponse {
   quick_replies?: string[] | null;
   suggested_followups?: string[];
   comparison_table?: ComparisonTable | null;
+  compatibility_result?: CompatibilityResult | null;
 }

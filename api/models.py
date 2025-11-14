@@ -17,14 +17,15 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """Response model for chat endpoint."""
     response: str
-    vehicles: List[Dict[str, Any]]
+    vehicles: List[Dict[str, Any]]  # Field name kept as 'vehicles' for API compatibility, contains products
     filters: Dict[str, Any]
     preferences: Dict[str, Any]
     session_id: str
     interviewed: bool = False  # False = in interview, True = interview completed
     quick_replies: Optional[List[str]] = None  # Short answer options (1-3 words, 2-4 options)
     suggested_followups: List[str] = []  # Suggested next queries (short phrases, 3-5 options)
-    comparison_table: Optional[Dict[str, Any]] = None  # Comparison table when user asks to compare vehicles
+    comparison_table: Optional[Dict[str, Any]] = None  # Comparison table when user asks to compare products
+    compatibility_result: Optional[Dict[str, Any]] = None  # Compatibility check result for PC parts
 
 
 class SessionResponse(BaseModel):
@@ -32,7 +33,7 @@ class SessionResponse(BaseModel):
     session_id: str
     filters: Dict[str, Any]
     preferences: Dict[str, Any]
-    vehicles: List[Dict[str, Any]]
+    vehicles: List[Dict[str, Any]]  # Field name kept as 'vehicles' for API compatibility, contains products
     conversation_history: List[Dict[str, Any]]
 
 

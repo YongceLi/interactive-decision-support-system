@@ -6,7 +6,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional
 
-from idss_agent.state.schema import VehicleSearchState as ProductSearchState
+from idss_agent.state.schema import ProductSearchState
 from idss_agent.tools.electronics_api import search_products
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
@@ -331,6 +331,7 @@ def update_recommendation_list(
     except Exception as exc:  # pragma: no cover - tool invocation wrapper
         logger.error("RapidAPI search invocation failed: %s", exc)
         state["recommended_products"] = []
+        state["recommended_vehicles"] = []  # Legacy field for backward compatibility
         state["search_error"] = str(exc)
         return state
 
@@ -351,6 +352,7 @@ def update_recommendation_list(
 
     top_products = deduped_products[:max_items]
     state["recommended_products"] = top_products
+    state["recommended_vehicles"] = top_products  # Legacy field for backward compatibility
     state["fallback_message"] = None
     state["previous_filters"] = filters
     state.pop("suggestion_reasoning", None)
