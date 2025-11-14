@@ -453,7 +453,46 @@ def update_recommendation_list(
     vehicles: List[Dict[str, Any]] = []
     fallback_message: Optional[str] = None
 
-    if used_local_pipeline:
+    # Check which recommendation method to use
+    recommendation_method = config.recommendation.get('method', 'legacy')
+    logger.info(f"Using recommendation method: {recommendation_method}")
+
+    if used_local_pipeline and recommendation_method == 'method1':
+        # Use Method 1: SQL + Dense Vector + MMR
+        from idss_agent.processing.recommendation_method1 import recommend_method1
+
+        logger.info("Using Method 1 (SQL + Dense Vector + Clustered MMR)")
+        vehicles = recommend_method1(
+            explicit_filters=filters,
+            implicit_preferences=implicit,
+            user_latitude=user_lat,
+            user_longitude=user_lon,
+            db_path=local_store.db_path,
+            require_photos=require_photos
+        )
+
+        # Skip legacy photo enrichment and vector ranking - Method 1 handles everything
+        # Attach photo stubs for vehicles
+        vehicles = _attach_local_photo_stubs(vehicles)
+        state['recommended_vehicles'] = vehicles[:max_items]
+
+        # Store current filters as previous for next comparison
+        state['previous_filters'] = state['explicit_filters'].copy()
+
+        # Emit progress: Search complete
+        if progress_callback:
+            progress_callback({
+                "step_id": "updating_recommendations",
+                "description": f"Found {len(state['recommended_vehicles'])} vehicles",
+                "status": "completed"
+            })
+
+        logger.info(f"✓ Method 1 recommendation complete: {len(state['recommended_vehicles'])} vehicles in state")
+        return state
+
+    elif used_local_pipeline:
+        # Use legacy local pipeline
+        logger.info("Using legacy local recommendation pipeline")
         vehicles, fallback_message = _search_local_listings(
             local_store,
             filters,

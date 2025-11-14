@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-14
+
+### Added
+
+#### Negative Filter Support (Avoid Vehicles)
+- **`avoid_vehicles` filter**: Allows users to exclude specific vehicles from search results
+  - Format: `[{"make": "Toyota", "model": "RAV4"}]` for specific model, `[{"make": "Honda"}]` for entire make
+  - Added to `VehicleFiltersPydantic` schema in `idss_agent/state/schema.py`
+  - SQL exclusion logic in `idss_agent/tools/local_vehicle_store.py` using `NOT (UPPER(make) = ? AND UPPER(model) = ?)` clauses
+  - Semantic parser extracts negative signals: "disappointed with", "hate", "avoid", "never again", "alternatives to"
+  - Updated `config/prompts/semantic_parser.j2` with documentation and Example 13 showing negative filter extraction
+
+#### Recommendation Method 1 Major Refactor
+- **Switched to Dense Embeddings**: Replaced vector_ranker with dense_ranker using sentence transformers (all-mpnet-base-v2)
+- **Clustered MMR Algorithm**: Replaced simple MMR with clustered MMR for better diversity
+  - Groups similar vehicles into clusters, then selects diverse representatives
+  - Configurable `cluster_size` parameter (default: 3-5 vehicles per cluster)
+- **Simplified SQL Strategy**:
+  - Old: Hybrid exact matches (40%) + diverse alternatives (60%) with SQL window functions
+  - New: Single query with only strict "must_have" filters, no SQL-level diversity
+  - Let dense ranking and MMR handle all relevance and diversity
+- **Configuration-Driven Parameters**:
+  - `top_k`: Number of results to return (default: 20)
+  - `lambda_param`: MMR diversity parameter (default: 0.7-0.85)
+  - `cluster_size`: Vehicles per cluster (default: 3-5)
+  - `vector_limit`: Max candidates for dense ranking (default: 1000)
+- **Fallback Search**: When SQL returns no results, automatically falls back to full database dense search
+- **Always includes `avoid_vehicles`** in SQL query (even if not in `must_have_filters`)
+- Added comprehensive logging for diversity metrics at each step
+
+### Fixed
+
+#### Critical Bug: System Recommending Avoided Vehicles
+- **Issue**: User said "disappointed with my 2024 Toyota RAV4" but system returned 20/20 Toyota RAV4 results
+- **Root Cause**: `avoid_vehicles` field was documented in prompt but not defined in Pydantic schema, so LLM couldn't extract it
+- **Fix**: Added `avoid_vehicles` field to `VehicleFiltersPydantic` schema with detailed extraction guidelines
+- **Result**: 0/20 RAV4s in results after fix, system now recommends diverse alternatives (Toyota bZ4X, Audi SQ5, Cadillac XT5, Acura RDX, etc.)
+
+#### Files Modified
+- `idss_agent/state/schema.py`: Added `avoid_vehicles` field to VehicleFiltersPydantic (lines 101-110)
+- `config/prompts/semantic_parser.j2`: Added Example 13 demonstrating avoid_vehicles extraction
+- `idss_agent/tools/local_vehicle_store.py`: Added SQL exclusion logic for avoid_vehicles (lines 341-356)
+- `idss_agent/processing/recommendation_method1.py`: Major refactor - dense embeddings, clustered MMR, simplified SQL strategy, avoid_vehicles support
+- `idss_agent/processing/diversification.py`: Added clustered MMR algorithm (`diversify_with_clustered_mmr`)
+- `idss_agent/processing/dense_ranker.py`: New dense embedding ranking module with sentence transformers
+- `config/agent_config.yaml`: Added method1 configuration (top_k, lambda_param, cluster_size, vector_limit)
+- `idss_agent/utils/config.py`: Added recommendation config accessor
+
+---
+
 ## 2025-11-09
 
 ### Added

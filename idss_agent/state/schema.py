@@ -36,10 +36,15 @@ class VehicleFilters(TypedDict, total=False):
     price: Optional[str]  # e.g., "10000-30000" (range format)
     state: Optional[str]  # e.g., "CA", "NY"
     mileage: Optional[str]  # Vehicle's odometer reading, e.g., "0-50000" (range format)
+    is_used: Optional[bool]  # True for used vehicles, False for new vehicles
+    is_cpo: Optional[bool]  # True for Certified Pre-Owned vehicles
 
     # Location filters
     zip: Optional[str]  # 5-digit ZIP code (only as fallback if browser location denied; gets converted to lat/long)
     search_radius: Optional[int]  # Max distance in miles to travel to dealer location
+
+    # Filter strictness
+    must_have_filters: Optional[List[str]]  # List of field names that are strict requirements (used in SQL WHERE clause)
 
 
 class ImplicitPreferences(TypedDict, total=False):
@@ -80,10 +85,29 @@ class VehicleFiltersPydantic(BaseModel):
     price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
     state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
     mileage: Optional[str] = Field(None, description="Vehicle's odometer reading in miles (e.g., '0-50000' for cars with under 50k miles on odometer)")
+    is_used: Optional[bool] = Field(None, description="True for used/pre-owned vehicles, False for new vehicles. Extract from phrases like 'used car', 'new car', 'pre-owned'")
+    is_cpo: Optional[bool] = Field(None, description="True for Certified Pre-Owned (CPO) vehicles. Extract from phrases like 'certified pre-owned', 'CPO', 'certified used'")
 
     # Location filters
     zip: Optional[str] = Field(None, description="5-digit US ZIP code (only used as fallback if browser geolocation is denied; automatically converted to coordinates for distance search)")
     search_radius: Optional[int] = Field(None, description="Maximum distance in miles you're willing to travel to pick up the vehicle from dealer (e.g., 50 for within 50 miles of your location)")
+
+    # Filter strictness
+    must_have_filters: List[str] = Field(
+        default_factory=list,
+        description="List of filter field names that are hard requirements. Only these will be used in SQL WHERE clause. Other filters are preferences for vector ranking. Example: ['body_style', 'price'] means body_style and price are required, but make/model are flexible preferences."
+    )
+
+    # Negative filters (vehicles to EXCLUDE)
+    avoid_vehicles: Optional[List[Dict[str, str]]] = Field(
+        None,
+        description=(
+            "List of vehicles to EXCLUDE from search results. CRITICAL for user satisfaction. "
+            "Extract when user says: 'disappointed with', 'hate', 'avoid', 'never again', 'anything but', 'alternatives to'. "
+            "Format: [{'make': 'Toyota', 'model': 'RAV4'}] for specific model, [{'make': 'Honda'}] for entire make. "
+            "Example: 'disappointed with my RAV4' → [{'make': 'Toyota', 'model': 'RAV4'}]"
+        )
+    )
 
 
 class ImplicitPreferencesPydantic(BaseModel):
@@ -248,7 +272,7 @@ class VehicleSearchState(TypedDict):
 def create_initial_state() -> VehicleSearchState:
     """Create an empty initial state for the vehicle search agent."""
     return VehicleSearchState(
-        explicit_filters=VehicleFilters(),
+        explicit_filters=VehicleFilters(must_have_filters=[]),
         conversation_history=[],
         implicit_preferences=ImplicitPreferences(),
         user_latitude=None,

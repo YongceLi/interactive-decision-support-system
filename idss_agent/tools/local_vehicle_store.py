@@ -17,6 +17,20 @@ from idss_agent.utils.logger import get_logger
 
 logger = get_logger("tools.local_vehicle_store")
 
+NORMALIZED_COLUMN_MAP = {
+    "body_style": "norm_body_type",
+    "fuel_type": "norm_fuel_type",
+    "is_used": "norm_is_used",
+}
+
+
+def _normalized_column_expr(column: str) -> str:
+    """Return normalized column name if available, otherwise return original column."""
+    norm_col = NORMALIZED_COLUMN_MAP.get(column)
+    if norm_col:
+        return norm_col
+    return column
+
 
 def _project_root() -> Path:
     """Return project root (parent of idss_agent package)."""
@@ -132,7 +146,7 @@ class LocalVehicleStore:
     def search_listings(
         self,
         filters: Dict[str, Any],
-        limit: int = 60,
+        limit: int = 200,
         offset: int = 0,
         order_by: str = "price",
         order_dir: str = "ASC",
@@ -194,7 +208,12 @@ class LocalVehicleStore:
         if not vin:
             return None
 
-        sql = "SELECT raw_json FROM unified_vehicle_listings WHERE vin = ? LIMIT 1"
+        sql = """SELECT raw_json, price, mileage, primary_image_url, photo_count,
+            year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
+            doors, seats, exterior_color, interior_color,
+            dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
+            is_used, is_cpo, vdp_url, carfax_url, vin
+            FROM unified_vehicle_listings WHERE vin = ? LIMIT 1"""
 
         try:
             with self._connect() as conn:
@@ -250,8 +269,9 @@ class LocalVehicleStore:
             values = _split_multi_value(value) if isinstance(value, str) else []
             if values:
                 placeholders = ",".join(["?"] * len(values))
+                column_expr = _normalized_column_expr(column)
                 add_condition(
-                    f"UPPER({column}) IN ({placeholders})",
+                    f"UPPER({column_expr}) IN ({placeholders})",
                     [v.upper() for v in values],
                 )
 
@@ -307,6 +327,34 @@ class LocalVehicleStore:
             if upper is not None:
                 add_condition("mileage <= ?", (int(upper),))
 
+        # New vs Used filter
+        if filters.get("is_used") is not None:
+            is_used_value = 1 if filters["is_used"] else 0
+            is_used_col = _normalized_column_expr("is_used")
+            add_condition(f"{is_used_col} = ?", (is_used_value,))
+
+        # Certified Pre-Owned filter
+        if filters.get("is_cpo") is not None:
+            is_cpo_value = 1 if filters["is_cpo"] else 0
+            add_condition("is_cpo = ?", (is_cpo_value,))
+
+        # Avoid vehicles filter (EXCLUDE specific make/model combinations)
+        avoid_vehicles = filters.get("avoid_vehicles", [])
+        if avoid_vehicles:
+            for avoid in avoid_vehicles:
+                avoid_make = avoid.get("make")
+                avoid_model = avoid.get("model")
+
+                if avoid_make and avoid_model:
+                    # Exclude specific make+model combination
+                    add_condition(
+                        "NOT (UPPER(make) = ? AND UPPER(model) = ?)",
+                        (avoid_make.upper(), avoid_model.upper())
+                    )
+                elif avoid_make:
+                    # Exclude entire make (all models)
+                    add_condition("UPPER(make) != ?", (avoid_make.upper(),))
+
         # Require photos if configured
         if self.require_photos:
             conditions.append(
@@ -317,20 +365,35 @@ class LocalVehicleStore:
         if conditions:
             where_clause = " WHERE " + " AND ".join(conditions)
 
-        order_column = {
-            "price": "price",
-            "mileage": "mileage",
-            "year": "year",
-        }.get(order_by.lower(), "price")
+        # Handle ORDER BY clause
+        order_clause = ""
+        if order_by is not None:
+            order_column = {
+                "price": "price",
+                "mileage": "mileage",
+                "year": "year",
+            }.get(order_by.lower(), "price")
+            direction = "DESC" if order_dir.upper() == "DESC" else "ASC"
+            order_clause = f" ORDER BY {order_column} {direction}, vin ASC"
 
-        # Fall back to ascending unless explicitly descending
-        direction = "DESC" if order_dir.upper() == "DESC" else "ASC"
+        # Handle LIMIT clause
+        limit_clause = ""
+        if limit is not None:
+            limit_clause = f" LIMIT ? OFFSET ?"
+            limit_params = [limit, offset]
+        else:
+            limit_params = []
 
         # Build final SQL with optional window function for diversity
         if max_per_make_model is not None:
             # Use window function to limit vehicles per make/model combination
-            # This enforces diversity at the SQL level
-            # Note: Add ROW_NUMBER as an additional column in the CTE
+            order_column = {
+                "price": "price",
+                "mileage": "mileage",
+                "year": "year",
+            }.get(order_by.lower() if order_by else "price", "price")
+            direction = "DESC" if order_dir.upper() == "DESC" else "ASC"
+
             sql = f"""
             WITH ranked_vehicles AS (
                 SELECT raw_json, price, mileage, primary_image_url, photo_count,
@@ -350,19 +413,13 @@ class LocalVehicleStore:
                 dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
                 is_used, is_cpo, vdp_url, carfax_url, vin
             FROM ranked_vehicles
-            WHERE row_num <= ?
-            ORDER BY {order_column} {direction}, vin ASC
-            LIMIT ? OFFSET ?
+            WHERE row_num <= ?{order_clause}{limit_clause}
             """
-            params.extend([max_per_make_model, limit, offset])
+            params.extend([max_per_make_model] + limit_params)
         else:
             # Standard query without window function
-            sql = (
-                f"{select_clause}{where_clause} "
-                f"ORDER BY {order_column} {direction}, vin ASC "
-                f"LIMIT ? OFFSET ?"
-            )
-            params.extend([limit, offset])
+            sql = f"{select_clause}{where_clause}{order_clause}{limit_clause}"
+            params.extend(limit_params)
 
         return sql, tuple(params)
 
@@ -452,4 +509,3 @@ class LocalVehicleStore:
                 retail_listing["photoCount"] = row["photo_count"]
 
             return payload
-

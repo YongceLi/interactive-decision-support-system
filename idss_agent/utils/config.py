@@ -45,7 +45,7 @@ class AgentConfig:
             self._config = yaml.safe_load(f)
 
         # Validate required sections
-        required_sections = ['terminology', 'models', 'limits', 'interactive']
+        required_sections = ['terminology', 'models', 'limits', 'interactive', 'recommendation']
         for section in required_sections:
             if section not in self._config:
                 raise ValueError(f"Missing required configuration section: {section}")
@@ -106,6 +106,11 @@ class AgentConfig:
     def api(self) -> Dict[str, Any]:
         """Get API configuration."""
         return self._config.get('api', {})
+
+    @property
+    def recommendation(self) -> Dict[str, Any]:
+        """Get recommendation method configuration."""
+        return self._config.get('recommendation', {})
 
     @property
     def logging(self) -> Dict[str, str]:

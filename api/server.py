@@ -64,6 +64,27 @@ logger = logging.getLogger(__name__)
 
 sessions: Dict[str, VehicleSearchState] = {}
 
+
+# Startup Event: Preload models if using Method 1
+@app.on_event("startup")
+async def startup_event():
+    """Preload models at application startup to avoid slow first request."""
+    from idss_agent.utils.config import get_config
+    from idss_agent.processing.dense_ranker import preload_dense_embedding_store
+
+    config = get_config()
+    use_local_store = config.features.get('use_local_vehicle_store', False)
+    recommendation_method = config.recommendation.get('method', 'legacy')
+
+    if use_local_store and recommendation_method == 'method1':
+        logger.info("Preloading Method 1 models (FAISS + Sentence Transformer)...")
+        # Run in thread pool to avoid blocking startup
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(None, preload_dense_embedding_store)
+        logger.info("✓ Models preloaded - first request will be fast!")
+    else:
+        logger.info(f"Skipping model preload (method={recommendation_method}, local_store={use_local_store})")
+
 # Helper Functions
 def reverse_geocode(latitude: float, longitude: float) -> Optional[str]:
     """

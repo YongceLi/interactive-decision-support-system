@@ -17,7 +17,7 @@ models:
     max_tokens: 
 
   semantic_parser:
-    name: "gpt-4o-mini"
+    name: "gpt-4"
     temperature: 0
     max_tokens: 
 
@@ -85,6 +85,26 @@ features:
   enable_quick_replies: true         # Enable quick reply buttons (potential answers)
   enable_suggested_followups: false  # Enable suggested followup questions
   use_local_vehicle_store: true      # Toggle to use local SQLite dataset instead of Auto.dev
+
+# Recommendation method configuration
+recommendation:
+  method: "method1"                  # Recommendation method to use: "method1", "method2", "legacy"
+
+  # Method 1: SQL + Dense Vector + Clustered MMR
+  method1:
+    top_k: 20                        # Total vehicles to return
+    vector_limit: 1000               # Max candidates to rank with dense embeddings
+    lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
+    cluster_size: 5                  # Number of similar vehicles per cluster
+
+  # Method 2: Hybrid Search (if implemented)
+  method2:
+    top_k: 20
+    # Add method2-specific params here
+
+  # Legacy method (current ReAct agent)
+  legacy:
+    max_items: 20
 
 # API Configuration (Auto.dev specific - modify for other data sources)
 api:

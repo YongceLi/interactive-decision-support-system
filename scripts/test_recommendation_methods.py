@@ -131,7 +131,7 @@ def test_method1_pipeline(user_query: str) -> dict:
                 user_longitude=user_lon,
                 top_k=20,
                 sql_limit=100,
-                lambda_param=0.7
+                lambda_param=0.85
             )
             result["vehicles_found"] = len(vehicles)
             result["recommended_vehicles"] = vehicles

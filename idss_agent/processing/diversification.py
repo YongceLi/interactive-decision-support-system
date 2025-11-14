@@ -108,7 +108,98 @@ def diversify_with_mmr(
     return [vehicle for _, vehicle in selected]
 
 
+def diversify_with_clustered_mmr(
+    scored_vehicles: List[Tuple[float, Dict[str, Any]]],
+    top_k: int = 20,
+    cluster_size: int = 3,
+    lambda_param: float = 0.7,
+) -> List[Dict[str, Any]]:
+    """
+    Apply MMR in clusters to balance diversity and similarity.
+
+    Instead of maximizing diversity across all top_k vehicles, this creates
+    clusters of similar vehicles, allowing users to compare similar options.
+
+    Example with top_k=20, cluster_size=3:
+    - Cluster 1 (vehicles 1-3): Similar vehicles (e.g., all Ford Rangers)
+    - Cluster 2 (vehicles 4-6): Different cluster (e.g., all Chevy Silverados)
+    - Cluster 3 (vehicles 7-9): Another cluster (e.g., all Toyota Tacomas)
+    - etc.
+
+    Args:
+        scored_vehicles: List of (relevance_score, vehicle_dict) tuples,
+                        sorted by relevance descending
+        top_k: Total number of vehicles to select
+        cluster_size: Number of vehicles per cluster (default: 3)
+        lambda_param: Trade-off between relevance and diversity within each cluster
+                     - 1.0 = pure relevance (no diversity within cluster)
+                     - 0.5 = equal weight
+                     - 0.0 = pure diversity (ignores relevance)
+                     - Recommended: 0.6-0.8
+
+    Returns:
+        List of top_k vehicles organized in clusters
+    """
+    if len(scored_vehicles) <= top_k:
+        return [vehicle for _, vehicle in scored_vehicles]
+
+    selected: List[Tuple[float, Dict[str, Any]]] = []
+    remaining = list(scored_vehicles)
+
+    num_clusters = (top_k + cluster_size - 1) // cluster_size  # Ceiling division
+
+    for cluster_idx in range(num_clusters):
+        if not remaining:
+            break
+
+        # Determine how many vehicles to select in this cluster
+        vehicles_needed = min(cluster_size, top_k - len(selected))
+        if vehicles_needed <= 0:
+            break
+
+        # Run MMR for this cluster only
+        cluster = []
+
+        # Start with highest-scoring remaining vehicle
+        cluster.append(remaining.pop(0))
+
+        # Select rest of cluster using MMR (within cluster)
+        for _ in range(vehicles_needed - 1):
+            if not remaining:
+                break
+
+            best_mmr_score = -float('inf')
+            best_idx = 0
+
+            for idx, (relevance, candidate) in enumerate(remaining):
+                # Compute max similarity to vehicles in CURRENT cluster only
+                max_similarity = max(
+                    compute_vehicle_similarity(candidate, cluster_vehicle)
+                    for _, cluster_vehicle in cluster
+                )
+
+                # MMR formula
+                mmr_score = lambda_param * relevance - (1 - lambda_param) * max_similarity
+
+                if mmr_score > best_mmr_score:
+                    best_mmr_score = mmr_score
+                    best_idx = idx
+
+            # Add to current cluster
+            cluster.append(remaining.pop(best_idx))
+
+        # Add entire cluster to selected list
+        selected.extend(cluster)
+
+        logger.info(f"Cluster {cluster_idx + 1}: selected {len(cluster)} vehicles")
+
+    logger.info(f"Clustered MMR: selected {len(selected)} vehicles in {num_clusters} clusters (cluster_size={cluster_size}, lambda={lambda_param})")
+
+    return [vehicle for _, vehicle in selected]
+
+
 __all__ = [
     "compute_vehicle_similarity",
     "diversify_with_mmr",
+    "diversify_with_clustered_mmr",
 ]
