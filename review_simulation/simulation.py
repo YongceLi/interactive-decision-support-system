@@ -79,6 +79,15 @@ class VehicleAssessmentList(BaseModel):
     assessments: List[VehicleAssessment]
 
 
+class SummaryResponse(BaseModel):
+    satisfied_summary: str = Field(
+        ..., description="One-sentence reason the persona would be satisfied with the list"
+    )
+    unsatisfied_summary: str = Field(
+        ..., description="One-sentence reason the persona would be unsatisfied with the list"
+    )
+
+
 PERSONA_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -157,6 +166,33 @@ For each vehicle below decide if the persona would be satisfied. Respond with
 JSON: {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>}}, ...]}}.
 Vehicles:
 {vehicles}
+""",
+        ),
+    ]
+)
+
+
+SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You condense vehicle satisfaction rationales into concise summaries.",
+            "Return JSON with two short sentences (at most 20 words each) describing",
+            "why the persona is satisfied or unsatisfied. If there are no reasons",
+            "provided for a side, respond with 'No satisfied vehicles.' or 'No",
+            "unsatisfied vehicles.' respectively.",
+        ),
+        (
+            "human",
+            """
+Satisfied rationales:
+{satisfied_reasons}
+
+Unsatisfied rationales:
+{unsatisfied_reasons}
+
+Respond with JSON {{"satisfied_summary": <string>, "unsatisfied_summary": <string>}}.
+Each value must be a single short sentence (no more than 20 words).
 """,
         ),
     ]
@@ -372,17 +408,35 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     )
 
 
-def _summarize_judgements(judgements: List[VehicleJudgement]) -> str:
+def _summarize_judgements(
+    judgements: List[VehicleJudgement], model: ChatOpenAI
+) -> str:
     satisfied_reasons = [j.rationale for j in judgements if j.satisfied and j.rationale]
     unsatisfied_reasons = [j.rationale for j in judgements if not j.satisfied and j.rationale]
 
-    parts: List[str] = []
-    if satisfied_reasons:
-        parts.append("Satisfied because: " + "; ".join(satisfied_reasons))
-    if unsatisfied_reasons:
-        parts.append("Not satisfied because: " + "; ".join(unsatisfied_reasons))
-    if not parts:
+    if not satisfied_reasons and not unsatisfied_reasons:
         return "No rationales provided."
+
+    structured_model = model.with_structured_output(SummaryResponse)
+    satisfied_text = (
+        "\n".join(f"- {reason}" for reason in satisfied_reasons) or "None"
+    )
+    unsatisfied_text = (
+        "\n".join(f"- {reason}" for reason in unsatisfied_reasons) or "None"
+    )
+    prompt = SUMMARY_PROMPT.format_prompt(
+        satisfied_reasons=satisfied_text,
+        unsatisfied_reasons=unsatisfied_text,
+    )
+    response = structured_model.invoke(prompt.to_messages())
+
+    parts: List[str] = []
+    if response.satisfied_summary:
+        parts.append(f"Satisfied: {response.satisfied_summary.strip()}")
+    if response.unsatisfied_summary:
+        parts.append(f"Unsatisfied: {response.unsatisfied_summary.strip()}")
+    if not parts:
+        return "Summary unavailable."
     return " | ".join(parts)
 
 
@@ -427,7 +481,7 @@ def evaluate_persona(
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
     metrics = _compute_metrics(judgements, persona, metric_k or recommendation_limit)
-    summary = _summarize_judgements(judgements)
+    summary = _summarize_judgements(judgements, llm)
 
     return SimulationResult(
         persona=persona,
