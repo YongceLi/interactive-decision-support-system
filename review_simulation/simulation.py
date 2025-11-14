@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -45,8 +46,9 @@ class VehicleJudgement:
 @dataclass
 class SimulationMetrics:
     precision_at_k: Optional[float]
-    recall_at_k: Optional[float]
     satisfied_count: int
+    infra_list_diversity: Optional[float]
+    ndcg_at_k: Optional[float]
 
 
 @dataclass
@@ -56,6 +58,7 @@ class SimulationResult:
     vehicles: List[VehicleJudgement]
     metrics: SimulationMetrics
     recommendation_response: Dict[str, Any]
+    summary: str
 
 
 class PersonaDraft(BaseModel):
@@ -312,24 +315,75 @@ def _assess_vehicles(
 
 
 def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona, k: int) -> SimulationMetrics:
+    _ = persona
     if k <= 0:
-        return SimulationMetrics(precision_at_k=None, recall_at_k=None, satisfied_count=0)
+        return SimulationMetrics(
+            precision_at_k=None,
+            satisfied_count=0,
+            infra_list_diversity=None,
+            ndcg_at_k=None,
+        )
 
     top_k = [j for j in judgements if j.index <= k]
+    if not top_k:
+        return SimulationMetrics(
+            precision_at_k=None,
+            satisfied_count=0,
+            infra_list_diversity=None,
+            ndcg_at_k=None,
+        )
+
     satisfied = [j for j in top_k if j.satisfied]
     precision = len(satisfied) / k if k else None
 
-    positive_targets = [item for item in persona.liked if item.make or item.model or item.year]
-    if positive_targets:
-        recall = len(satisfied) / len(positive_targets)
+    make_models = [
+        (str(j.make).strip().lower() if j.make else "", str(j.model).strip().lower() if j.model else "")
+        for j in top_k
+    ]
+    unique_make_models = {item for item in make_models if any(item)}
+    infra_list_diversity = None
+    if k:
+        infra_list_diversity = len(unique_make_models) / k
+
+    def _dcg(items: List[VehicleJudgement]) -> float:
+        value = 0.0
+        for idx, judgement in enumerate(items, start=1):
+            rel = 1.0 if judgement.satisfied else 0.0
+            if rel == 0.0:
+                continue
+            value += (2 ** rel - 1) / math.log2(idx + 1)
+        return value
+
+    dcg = _dcg(top_k)
+    ideal_count = min(len(satisfied), len(top_k))
+    ideal_items = top_k[:]
+    ideal_items.sort(key=lambda item: item.satisfied, reverse=True)
+    idcg = _dcg(ideal_items[:ideal_count])
+    if idcg:
+        ndcg = dcg / idcg
     else:
-        recall = None
+        ndcg = 0.0 if not satisfied else None
 
     return SimulationMetrics(
         precision_at_k=precision,
-        recall_at_k=recall,
         satisfied_count=len(satisfied),
+        infra_list_diversity=infra_list_diversity,
+        ndcg_at_k=ndcg,
     )
+
+
+def _summarize_judgements(judgements: List[VehicleJudgement]) -> str:
+    satisfied_reasons = [j.rationale for j in judgements if j.satisfied and j.rationale]
+    unsatisfied_reasons = [j.rationale for j in judgements if not j.satisfied and j.rationale]
+
+    parts: List[str] = []
+    if satisfied_reasons:
+        parts.append("Satisfied because: " + "; ".join(satisfied_reasons))
+    if unsatisfied_reasons:
+        parts.append("Not satisfied because: " + "; ".join(unsatisfied_reasons))
+    if not parts:
+        return "No rationales provided."
+    return " | ".join(parts)
 
 
 def run_simulation(
@@ -373,6 +427,7 @@ def evaluate_persona(
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
     metrics = _compute_metrics(judgements, persona, metric_k or recommendation_limit)
+    summary = _summarize_judgements(judgements)
 
     return SimulationResult(
         persona=persona,
@@ -380,4 +435,5 @@ def evaluate_persona(
         vehicles=judgements,
         metrics=metrics,
         recommendation_response=response,
+        summary=summary,
     )
