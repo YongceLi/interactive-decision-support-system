@@ -50,6 +50,9 @@ uni_marketcheck_vehicles.db: Marketcheck vehicles only. 51,518 vehicles, seems t
 | `interior_color` | TEXT | Interior color string. | Auto.dev `vehicle.interiorColor`, Marketcheck `interior_color`
 | `base_ext_color` | TEXT | Normalized exterior color family. | Marketcheck `base_ext_color`
 | `base_int_color` | TEXT | Normalized interior color family. | Marketcheck `base_int_color`
+| `norm_body_type` | TEXT | Canonical body style derived from `build_body_type`/`body_style`. | Derived
+| `norm_fuel_type` | TEXT | Canonical fuel type derived from `build_fuel_type`/`fuel_type`. | Derived
+| `norm_is_used` | INTEGER | Normalized used flag (defaults to 1 for 2025/2026 inventory when upstream flag missing). | Derived
 | `build_year` | INTEGER | Year from Marketcheck build section (defaults to Auto.dev year when missing). | Marketcheck `build.year`
 | `build_make` | TEXT | Make from build data. | Marketcheck `build.make`
 | `build_model` | TEXT | Model from build data. | Marketcheck `build.model`

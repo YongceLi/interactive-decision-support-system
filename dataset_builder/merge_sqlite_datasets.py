@@ -32,6 +32,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Tuple
 
+from dataset_builder.normalization import (
+    normalize_body_type,
+    normalize_fuel_type,
+    normalize_is_used,
+)
+
 LOGGER = logging.getLogger("merge_datasets")
 
 
@@ -76,6 +82,9 @@ UNIFIED_COLUMNS = [
     "interior_color",
     "base_ext_color",
     "base_int_color",
+    "norm_body_type",
+    "norm_fuel_type",
+    "norm_is_used",
     "build_year",
     "build_make",
     "build_model",
@@ -260,6 +269,14 @@ def normalize_autodev_row(row_dict: Dict[str, object]) -> Dict[str, Optional[obj
     if seats_value is not None:
         record.setdefault("build_std_seating", str(seats_value))
 
+    record["norm_body_type"] = normalize_body_type(
+        record.get("body_style"), record.get("build_body_type")
+    )
+    record["norm_fuel_type"] = normalize_fuel_type(
+        record.get("fuel_type"), record.get("build_fuel_type")
+    )
+    record["norm_is_used"] = normalize_is_used(record.get("is_used"), record.get("year"))
+
     return record
 
 
@@ -405,6 +422,14 @@ def normalize_marketcheck_row(row_dict: Dict[str, object]) -> Dict[str, Optional
         record["engine"] = record["build_engine"]
     if record["build_doors"] is not None:
         record["doors"] = record["build_doors"]
+
+    record["norm_body_type"] = normalize_body_type(
+        record.get("body_style"), record.get("build_body_type")
+    )
+    record["norm_fuel_type"] = normalize_fuel_type(
+        record.get("fuel_type"), record.get("build_fuel_type")
+    )
+    record["norm_is_used"] = normalize_is_used(record.get("is_used"), record.get("year"))
 
     return record
 

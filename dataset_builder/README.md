@@ -147,6 +147,106 @@ and records the origin of each row in the `source` column (`autodev` or
 For a detailed description of every field, refer to
 [`unified_schema_reference.md`](./unified_schema_reference.md).
 
+### Normalize legacy unified databases
+
+Older unified databases may lack the canonical body type, fuel type, and usage flags.
+Run the normalization helper to backfill the new columns in-place:
+
+```bash
+python dataset_builder/normalize_unified_database.py data/unified_vehicles.db
+```
+
+The script adds any missing columns and normalizes their values using the priority
+rules described in the updated schema reference:
+
+- **`norm_body_type`** – Prefer `build_body_type`, fall back to `body_style`, then map
+  the value into one of the canonical body styles below. Any other value remains
+  empty (`NULL`).
+
+  | Source value (`body_style`/`build_body_type`) | Normalized `norm_body_type` |
+  | --- | --- |
+  | `2dr Hatchback` | `Hatchback` |
+  | `2dr SUV` | `SUV` |
+  | `4dr Hatchback` | `Hatchback` |
+  | `4dr SUV` | `SUV` |
+  | `Cargo Minivan` | `Minivan` |
+  | `Cargo Van` | `Cargo Van` |
+  | `Car Van` | `Car Van` |
+  | `Chassis Cab` | `Chassis Cab` |
+  | `Combi` | `Combi` |
+  | `Convertible` | `Convertible` |
+  | `Convertible SUV` | `SUV` |
+  | `Coupe` | `Coupe` |
+  | `Crew Cab Pickup` | `Pickup` |
+  | `Cutaway` | `Cutaway` |
+  | `Extended Cab Pickup` | `Pickup` |
+  | `Hatchback` | `Hatchback` |
+  | `Micro Car` | `Micro Car` |
+  | `Microcar` | `Micro Car` |
+  | `Mini Mpv` | `Mini Mpv` |
+  | `Minivan` | `Minivan` |
+  | `Passenger Minivan` | `Minivan` |
+  | `Passenger Van` | `Passenger Van` |
+  | `Pickup` | `Pickup` |
+  | `Regular Cab Pickup` | `Pickup` |
+  | `SUV` | `SUV` |
+  | `Sedan` | `Sedan` |
+  | `Targa` | `Targa` |
+  | `Van` | `Van` |
+  | `Wagon` | `Wagon` |
+
+- **`norm_fuel_type`** – Prefer `build_fuel_type`, fall back to `fuel_type`, then map
+  the value into one of the canonical fuel types below. Any other value remains
+  empty (`NULL`).
+
+  | Source value (`fuel_type`/`build_fuel_type`) | Normalized `norm_fuel_type` |
+  | --- | --- |
+  | `Biodiesel` | `Diesel` |
+  | `Compressed Natural Gas` | `Gasoline` |
+  | `Diesel` | `Diesel` |
+  | `Diesel Fuel` | `Diesel` |
+  | `diesel` | `Diesel` |
+  | `E85` | `Gasoline` |
+  | `E85 / Premium Unleaded` | `Gasoline` |
+  | `E85 / Unleaded` | `Gasoline` |
+  | `Electric` | `Electric` |
+  | `electric` | `Electric` |
+  | `Electric / Hydrogen` | `Hybrid (Electric + Hydrogen)` |
+  | `Electric / Premium Unleaded` | `Hybrid (Electric + Gasoline)` |
+  | `Electric / Unleaded` | `Hybrid (Electric + Gasoline)` |
+  | `Electric Fuel System` | `Electric` |
+  | `Flex Fuel` | `Gasoline` |
+  | `Flex Fuel Capability` | `Gasoline` |
+  | `Flexible-Fuel` | `Gasoline` |
+  | `Gas/Electric Hybrid` | `Hybrid (Electric + Gasoline)` |
+  | `Gasoline` | `Gasoline` |
+  | `Gasoline Fuel` | `Gasoline` |
+  | `gasoline` | `Gasoline` |
+  | `Gasoline/Mild Electric Hybrid` | `Hybrid (Electric + Gasoline)` |
+  | `Hybrid` | `Hybrid (Electric + Gasoline)` |
+  | `Hydrogen` | `Hydrogen` |
+  | `midgrade unleaded (recommended)` | `Gasoline` |
+  | `natural gas` | `Gasoline` |
+  | `Plug-In Electric/Gas` | `Hybrid (Electric + Gasoline)` |
+  | `Plug-In Hybrid` | `Hybrid (Electric + Gasoline)` |
+  | `Plug-in Hybrid` | `Hybrid (Electric + Gasoline)` |
+  | `premium unleaded (recommended)` | `Gasoline` |
+  | `premium unleaded (required)` | `Gasoline` |
+  | `Premium Unleaded` | `Gasoline` |
+  | `Premium Unleaded / Unleaded` | `Gasoline` |
+  | `regular unleaded` | `Gasoline` |
+  | `Unleaded` | `Gasoline` |
+  | `unleaded` | `Gasoline` |
+  | `Unleaded / E85` | `Gasoline` |
+  | `Unleaded / Electric` | `Hybrid (Electric + Gasoline)` |
+  | `Unleaded / Premium Unleaded` | `Gasoline` |
+  | `flex-fuel (premium unleaded recommended/E85)` | `Gasoline` |
+  | `flex-fuel (unleaded/E85)` | `Gasoline` |
+  | `flex-fuel (unleaded/natural gas)` | `Gasoline` |
+
+- **`norm_is_used`** – Copy `is_used` when present. If it is missing, treat listings
+  from model years 2025 or 2026 as used (`1`) and older listings as new (`0`).
+
 ### Fetch directly into the unified schema
 
 Skip the intermediate source-specific databases by fetching Auto.dev or

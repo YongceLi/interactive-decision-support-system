@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS unified_vehicle_listings (
     interior_color TEXT,
     base_ext_color TEXT,
     base_int_color TEXT,
+    norm_body_type TEXT,
+    norm_fuel_type TEXT,
+    norm_is_used INTEGER,
 
     -- Marketcheck build data
     build_year INTEGER,

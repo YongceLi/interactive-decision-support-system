@@ -23,6 +23,11 @@ from dataset_builder.merge_sqlite_datasets import (
     to_float,
     to_int,
 )
+from dataset_builder.normalization import (
+    normalize_body_type,
+    normalize_fuel_type,
+    normalize_is_used,
+)
 
 load_dotenv()
 
@@ -176,6 +181,14 @@ def normalize_autodev_listing(listing: Dict[str, Any], fetched_at: str) -> Optio
     if seats is not None:
         record.setdefault("build_std_seating", str(seats))
 
+    record["norm_body_type"] = normalize_body_type(
+        record.get("body_style"), record.get("build_body_type")
+    )
+    record["norm_fuel_type"] = normalize_fuel_type(
+        record.get("fuel_type"), record.get("build_fuel_type")
+    )
+    record["norm_is_used"] = normalize_is_used(record.get("is_used"), record.get("year"))
+
     return record
 
 
@@ -302,6 +315,14 @@ def normalize_marketcheck_listing(listing: Dict[str, Any], fetched_at: str) -> O
     record.setdefault("fuel_type", record.get("build_fuel_type"))
     record.setdefault("transmission", record.get("build_transmission"))
     record.setdefault("doors", record.get("build_doors"))
+
+    record["norm_body_type"] = normalize_body_type(
+        record.get("body_style"), record.get("build_body_type")
+    )
+    record["norm_fuel_type"] = normalize_fuel_type(
+        record.get("fuel_type"), record.get("build_fuel_type")
+    )
+    record["norm_is_used"] = normalize_is_used(record.get("is_used"), record.get("year"))
 
     return record
 
