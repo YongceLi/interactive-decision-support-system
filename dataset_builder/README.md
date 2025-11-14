@@ -157,7 +157,18 @@ python dataset_builder/normalize_unified_database.py data/unified_vehicles.db
 ```
 
 The script adds any missing columns and normalizes their values using the priority
-rules described in the updated schema reference.
+rules described in the updated schema reference:
+
+- **`norm_body_type`** – Prefer `build_body_type`, fall back to `body_style`, then map
+  the value into one of:
+  `Car Van`, `Cargo Van`, `Chassis Cab`, `Combi`, `Convertible`, `Coupe`, `Cutaway`,
+  `Hatchback`, `Micro Car`, `Mini Mpv`, `Minivan`, `Passenger Van`, `Pickup`, `SUV`,
+  `Sedan`, `Targa`, `Van`, or `Wagon`.
+- **`norm_fuel_type`** – Prefer `build_fuel_type`, fall back to `fuel_type`, then map
+  the value into one of: `Gasoline`, `Electric`, `Diesel`, `Hydrogen`,
+  `Hybrid (Electric + Hydrogen)`, or `Hybrid (Electric + Gasoline)`.
+- **`norm_is_used`** – Copy `is_used` when present. If it is missing, treat listings
+  from model years 2025 or 2026 as used (`1`) and older listings as new (`0`).
 
 ### Fetch directly into the unified schema
 
