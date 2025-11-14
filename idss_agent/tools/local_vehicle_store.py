@@ -124,6 +124,7 @@ class LocalVehicleStore:
 
     db_path: Optional[Path] = None
     require_photos: bool = True
+    last_sql_query: Optional[str] = None  # Stores the last executed SQL query (formatted with params)
 
     def __post_init__(self) -> None:
         path = Path(self.db_path) if self.db_path else DEFAULT_DB_PATH
@@ -182,9 +183,14 @@ class LocalVehicleStore:
             max_per_make_model,
         )
         sql_single_line = " ".join(sql.split())
+        formatted_sql = _format_sql_with_params(sql_single_line, params)
+
+        # Store the formatted SQL query for later retrieval
+        self.last_sql_query = formatted_sql
+
         logger.info(
             "Recommendation SQL query: %s",
-            _format_sql_with_params(sql_single_line, params),
+            formatted_sql,
         )
         logger.debug("Executing local vehicle query: %s | params=%s", sql, params)
 
@@ -354,6 +360,10 @@ class LocalVehicleStore:
                 elif avoid_make:
                     # Exclude entire make (all models)
                     add_condition("UPPER(make) != ?", (avoid_make.upper(),))
+
+        # Require price and mileage to be present (filter out NULL values)
+        conditions.append("price IS NOT NULL")
+        conditions.append("mileage IS NOT NULL")
 
         # Require photos if configured
         if self.require_photos:

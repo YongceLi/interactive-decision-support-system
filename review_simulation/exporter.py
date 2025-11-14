@@ -43,6 +43,7 @@ RESULT_EXPORT_COLUMNS = PERSONA_EXPORT_COLUMNS + [
     "recall_at_k",
     "satisfied_in_top_k",
     "vehicle_judgements",
+    "sql_query",
 ]
 
 
@@ -129,6 +130,7 @@ def result_to_row(result: SimulationResult) -> Dict[str, object]:
             "recall_at_k": metrics.recall_at_k,
             "satisfied_in_top_k": metrics.satisfied_count,
             "vehicle_judgements": serialize_vehicle_judgements(result.vehicles),
+            "sql_query": result.recommendation_response.get("sql_query", None),
         }
     )
     return row

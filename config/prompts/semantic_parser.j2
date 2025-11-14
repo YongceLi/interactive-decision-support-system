@@ -70,9 +70,17 @@ Extract vehicles the user wants to EXCLUDE from results. This is CRITICAL for us
 - If avoiding specific model: `{"make": "Toyota", "model": "RAV4"}`
 - If avoiding entire make: `{"make": "Honda"}` (omit model)
 
+**CRITICAL: Extract ONLY the base model name:**
+- CORRECT: "CR-V" (base model only)
+- WRONG: "CR-V Hybrid Sport" (includes fuel type + trim)
+- WRONG: "CR-V Sport" (includes trim)
+- WRONG: "CR-V Hybrid" (includes fuel type)
+
+Do NOT include trim levels (Sport, EX, Limited, Premium, etc.), fuel type (Hybrid, Electric), or other descriptors in the model field.
+
 **Examples:**
-- "I'm disappointed with my 2024 Toyota RAV4" → `avoid_vehicles: [{"make": "Toyota", "model": "RAV4"}]`
-- "Looking for alternatives to my Honda Civic" → `avoid_vehicles: [{"make": "Honda", "model": "Civic"}]`
+- "I'm disappointed with my 2024 Toyota RAV4 XLE Premium" → `avoid_vehicles: [{"make": "Toyota", "model": "RAV4"}]` 
+- "Looking for alternatives to my Honda Civic Si" → `avoid_vehicles: [{"make": "Honda", "model": "Civic"}]` 
 - "Never buying a Ford again" → `avoid_vehicles: [{"make": "Ford"}]`
 - "Anything but a Camry" → `avoid_vehicles: [{"make": "Toyota", "model": "Camry"}]`
 

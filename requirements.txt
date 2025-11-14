@@ -29,3 +29,9 @@ python-dotenv>=1.0.0
 # Configuration and templating
 PyYAML>=6.0.0  # For YAML configuration files
 Jinja2>=3.1.0  # For prompt templating
+
+# Search and ranking
+rank-bm25>=0.2.2  # For BM25 sparse keyword ranking
+sentence-transformers>=2.2.0  # For dense embedding generation (all-mpnet-base-v2)
+faiss-cpu>=1.7.4  # For FAISS vector similarity search (use faiss-gpu for GPU support)
+numpy>=1.24.0  # For numerical operations

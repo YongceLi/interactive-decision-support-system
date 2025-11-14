@@ -462,7 +462,7 @@ def update_recommendation_list(
         from idss_agent.processing.recommendation_method1 import recommend_method1
 
         logger.info("Using Method 1 (SQL + Dense Vector + Clustered MMR)")
-        vehicles = recommend_method1(
+        vehicles, sql_query = recommend_method1(
             explicit_filters=filters,
             implicit_preferences=implicit,
             user_latitude=user_lat,
@@ -470,6 +470,10 @@ def update_recommendation_list(
             db_path=local_store.db_path,
             require_photos=require_photos
         )
+
+        # Store SQL query in state for debugging/logging
+        if sql_query:
+            state["_sql_query"] = sql_query
 
         # Skip legacy photo enrichment and vector ranking - Method 1 handles everything
         # Attach photo stubs for vehicles

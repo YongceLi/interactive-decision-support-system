@@ -6,7 +6,7 @@ Simple approach:
 2. Dense embedding ranking by semantic similarity to user preferences
 3. MMR diversification for final top-k selection
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
 from idss_agent.tools.local_vehicle_store import LocalVehicleStore
@@ -30,7 +30,7 @@ def recommend_method1(
     vector_limit: Optional[int] = None,
     db_path: Optional[Path] = None,
     require_photos: bool = True,
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """
     Method 1: SQL + Dense Vector Ranking + Clustered MMR Diversification.
 
@@ -52,7 +52,7 @@ def recommend_method1(
         require_photos: Whether to require photos
 
     Returns:
-        List of top_k vehicles organized in clusters
+        Tuple of (list of top_k vehicles organized in clusters, SQL query string)
     """
     # Load config values if not provided
     config = get_config()
@@ -74,12 +74,15 @@ def recommend_method1(
     logger.info(f"Preferences: {implicit_preferences}")
     logger.info(f"Target: {top_k} vehicles, cluster_size: {cluster_size}, lambda: {lambda_param}, vector_limit: {vector_limit}")
 
+    # Initialize SQL query variable
+    sql_query = None
+
     # Step 1: Initialize local store
     try:
         store = LocalVehicleStore(db_path=db_path, require_photos=require_photos)
     except FileNotFoundError as e:
         logger.error(f"Local store unavailable: {e}")
-        return []
+        return [], None
 
     # Step 2: Build strict filters (only must-have fields)
     logger.info("Step 1: Building SQL query with strict filters only...")
@@ -120,6 +123,9 @@ def recommend_method1(
         user_longitude=user_longitude
         # No max_per_make_model - let MMR handle all diversity
     )
+
+    # Capture the SQL query for logging/debugging
+    sql_query = store.last_sql_query
 
     if not candidates:
         logger.warning("No vehicles found from SQL query - falling back to full database search")
@@ -178,11 +184,11 @@ def recommend_method1(
             logger.info(f"METHOD 1 COMPLETE (FALLBACK): {len(diverse)} vehicles returned")
             logger.info("=" * 60)
 
-            return diverse
+            return diverse, "FALLBACK: Dense search on entire database (no SQL filtering)"
 
         except Exception as e:
             logger.error(f"Fallback dense search failed: {e}")
-            return []
+            return [], None
 
     logger.info(f"Step 1: Retrieved {len(candidates)} candidate vehicles")
 
@@ -190,6 +196,70 @@ def recommend_method1(
     unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
     unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
     logger.info(f"  SQL diversity: {unique_makes} makes, {unique_models} models")
+
+    # Step 1.5: Backfill with dense search if too few candidates
+    MIN_CANDIDATES = method1_config.get('min_candidates', 10000)
+
+    if len(candidates) < MIN_CANDIDATES:
+        logger.info(f"Step 1.5: Only {len(candidates)} from SQL - backfilling with dense search to {MIN_CANDIDATES}")
+
+        from idss_agent.processing.dense_ranker import get_dense_embedding_store, build_query_text
+
+        try:
+            # Dense search entire database
+            store_dense = get_dense_embedding_store()
+            query_text = build_query_text(explicit_filters, implicit_preferences)
+            logger.info(f"  Dense backfill query: {query_text[:150]}{'...' if len(query_text) > 150 else ''}")
+
+            vins, scores = store_dense.search(query_text, k=MIN_CANDIDATES)
+
+            # Get VINs already in SQL results
+            existing_vins = {v.get("vehicle", {}).get("vin") or v.get("vin") for v in candidates}
+
+            # Pre-build sets for O(1) avoid vehicle lookup
+            avoid_vehicles = explicit_filters.get("avoid_vehicles", [])
+            avoid_makes = set()  # Entire makes to avoid
+            avoid_make_models = set()  # Specific make+model combinations to avoid
+
+            for avoid in avoid_vehicles:
+                avoid_make = avoid.get("make", "").upper()
+                avoid_model = avoid.get("model", "").upper()
+
+                if avoid_make and avoid_model:
+                    avoid_make_models.add((avoid_make, avoid_model))
+                elif avoid_make:
+                    avoid_makes.add(avoid_make)
+
+            # Backfill with dense results (excluding duplicates and avoided vehicles)
+            backfill_count = 0
+            for vin, score in zip(vins, scores):
+                if vin not in existing_vins:
+                    vehicle = store.get_by_vin(vin)
+                    if vehicle:
+                        # Fast O(1) check if vehicle should be avoided
+                        v_make = (vehicle.get("vehicle", {}).get("make") or vehicle.get("make") or "").upper()
+                        v_model = (vehicle.get("vehicle", {}).get("model") or vehicle.get("model") or "").upper()
+
+                        # Skip if make is in avoid list OR make+model combination is in avoid list
+                        if v_make not in avoid_makes and (v_make, v_model) not in avoid_make_models:
+                            vehicle["_dense_score"] = score
+                            vehicle["_vector_score"] = score
+                            candidates.append(vehicle)
+                            backfill_count += 1
+
+                if len(candidates) >= MIN_CANDIDATES:
+                    break
+
+            logger.info(f"Step 1.5: Backfilled {backfill_count} vehicles via dense search (total: {len(candidates)})")
+
+            # Log updated diversity stats
+            unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
+            unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
+            logger.info(f"  Combined diversity: {unique_makes} makes, {unique_models} models")
+
+        except Exception as e:
+            logger.warning(f"Dense backfill failed: {e}")
+            logger.warning(f"Continuing with {len(candidates)} candidates from SQL only")
 
     # Step 2: Dense embedding ranking
     logger.info("Step 2: Ranking by dense embedding similarity...")
@@ -206,14 +276,49 @@ def recommend_method1(
 
     if not ranked:
         logger.warning("Dense embedding ranking returned no results")
-        return []
+        return [], sql_query
 
     logger.info(f"Step 2: Ranked {len(ranked)} vehicles")
     logger.info(f"  Top vehicle score: {ranked[0].get('_dense_score', 0.0):.3f}")
 
+    # Step 2.5: BM25 sparse ranking (optional)
+    use_bm25 = method1_config.get('use_bm25', False)
+    bm25_beta = method1_config.get('bm25_beta', 0.3)
+
+    if use_bm25:
+        logger.info(f"Step 2.5: Computing BM25 scores (beta={bm25_beta})...")
+        try:
+            from idss_agent.processing.bm25_ranker import build_bm25_query, compute_bm25_scores, combine_scores
+
+            # Build BM25 query from filters
+            bm25_query = build_bm25_query(explicit_filters, implicit_preferences)
+            logger.info(f"  BM25 query: {bm25_query[:100]}{'...' if len(bm25_query) > 100 else ''}")
+
+            # Compute BM25 scores
+            bm25_scores = compute_bm25_scores(ranked, bm25_query)
+
+            # Combine dense + BM25 scores
+            ranked = combine_scores(ranked, bm25_scores, beta=bm25_beta)
+
+            # Re-sort by combined score
+            ranked = sorted(ranked, key=lambda v: v.get("_combined_score", 0.0), reverse=True)
+
+            logger.info(f"Step 2.5: Combined scores computed (top: {ranked[0].get('_combined_score', 0.0):.3f})")
+
+            # Use combined scores for MMR
+            score_key = "_combined_score"
+
+        except Exception as e:
+            logger.warning(f"BM25 scoring failed: {e}")
+            logger.warning("Falling back to dense scores only")
+            score_key = "_dense_score"
+    else:
+        logger.info("Step 2.5: BM25 disabled (use_bm25=False)")
+        score_key = "_dense_score"
+
     # Step 3: Clustered MMR diversification
     logger.info("Step 3: Applying clustered MMR diversification...")
-    scored = [(v.get("_dense_score", 0.0), v) for v in ranked]
+    scored = [(v.get(score_key, 0.0), v) for v in ranked]
 
     diverse = diversify_with_clustered_mmr(
         scored,
@@ -233,11 +338,39 @@ def recommend_method1(
     ))
     logger.info(f"  Final diversity: {final_unique_makes} makes, {final_unique_models} models, {final_unique_make_models} make/model combinations")
 
+    # Step 4: Final ranking - sort by year (newest first), then by cost-effectiveness (price + mileage)
+    logger.info("Step 4: Final ranking by year and cost-effectiveness...")
+
+    def get_sort_key(vehicle):
+        """Extract sorting key: (year_desc, price_asc, mileage_asc)"""
+        v = vehicle.get("vehicle", {})
+        year = v.get("year") or vehicle.get("year")
+        price = v.get("price") or vehicle.get("price")
+        mileage = v.get("mileage") or vehicle.get("mileage")
+
+        # Convert None to appropriate values for sorting
+        # Year: None -> 0 (oldest, will sort last with negative)
+        # Price/Mileage: None -> inf (most expensive/highest, will sort last)
+        year_val = int(year) if year else 0
+        price_val = float(price) if price is not None else float('inf')
+        mileage_val = float(mileage) if mileage is not None else float('inf')
+
+        # Return tuple: (-year, price, mileage) for sorting
+        # Negative year for descending sort (newer first)
+        return (-year_val, price_val, mileage_val)
+
+    diverse_sorted = sorted(diverse, key=get_sort_key)
+
+    logger.info(f"Step 4: Sorted {len(diverse_sorted)} vehicles by year (newest first) and cost-effectiveness")
+    if diverse_sorted:
+        top_v = diverse_sorted[0].get("vehicle", {})
+        logger.info(f"  Top vehicle: {top_v.get('year')} {top_v.get('make')} {top_v.get('model')} - ${top_v.get('price')}, {top_v.get('mileage')} mi")
+
     logger.info("=" * 60)
-    logger.info(f"METHOD 1 COMPLETE: {len(diverse)} vehicles returned")
+    logger.info(f"METHOD 1 COMPLETE: {len(diverse_sorted)} vehicles returned")
     logger.info("=" * 60)
 
-    return diverse
+    return diverse_sorted, sql_query
 
 
 __all__ = ["recommend_method1"]

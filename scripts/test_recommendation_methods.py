@@ -83,6 +83,7 @@ def test_method1_pipeline(user_query: str) -> dict:
         "location_data": None,
         "vehicles_found": 0,
         "recommended_vehicles": [],
+        "sql_query": None,
         "diversity_stats": {},
         "processing_logs": [],
         "errors": []
@@ -124,7 +125,7 @@ def test_method1_pipeline(user_query: str) -> dict:
 
         # Step 4: Run Method 1
         try:
-            vehicles = recommend_method1(
+            vehicles, sql_query = recommend_method1(
                 explicit_filters=state["explicit_filters"],
                 implicit_preferences=state["implicit_preferences"],
                 user_latitude=user_lat,
@@ -135,6 +136,7 @@ def test_method1_pipeline(user_query: str) -> dict:
             )
             result["vehicles_found"] = len(vehicles)
             result["recommended_vehicles"] = vehicles
+            result["sql_query"] = sql_query
 
             # Calculate diversity stats
             if vehicles:
