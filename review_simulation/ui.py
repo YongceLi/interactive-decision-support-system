@@ -1,6 +1,7 @@
 """Console rendering helpers for the review simulation mode."""
 from __future__ import annotations
 
+import json
 from typing import Iterable, Optional
 
 from rich.console import Console
@@ -39,6 +40,13 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         )
         console.print()
         console.print(f"[bold]User turn:[/bold] {turn.message}")
+        extracted_filters = result.recommendation_response.get("extracted_filters")
+        implicit_preferences = result.recommendation_response.get("implicit_preferences")
+        if extracted_filters:
+            console.print("[bold]Extracted filters:[/bold] " + json.dumps(extracted_filters))
+        if implicit_preferences:
+            console.print("[bold]Implicit preferences:[/bold] " + json.dumps(implicit_preferences))
+        console.print(f"[bold]Summary:[/bold] {result.summary}")
         console.print()
 
         table = Table(show_lines=False)
@@ -66,7 +74,8 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         console.print(table)
         console.print(
             f"Precision@{metric_k}: {_format_metric(result.metrics.precision_at_k)} | "
-            f"Recall@{metric_k}: {_format_metric(result.metrics.recall_at_k)} | "
+            f"Infra-list diversity: {_format_metric(result.metrics.infra_list_diversity)} | "
+            f"NDCG@{metric_k}: {_format_metric(result.metrics.ndcg_at_k)} | "
             f"Satisfied in top {metric_k}: {result.metrics.satisfied_count}"
         )
         console.print()

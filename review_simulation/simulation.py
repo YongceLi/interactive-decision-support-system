@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -45,8 +46,9 @@ class VehicleJudgement:
 @dataclass
 class SimulationMetrics:
     precision_at_k: Optional[float]
-    recall_at_k: Optional[float]
     satisfied_count: int
+    infra_list_diversity: Optional[float]
+    ndcg_at_k: Optional[float]
 
 
 @dataclass
@@ -56,6 +58,7 @@ class SimulationResult:
     vehicles: List[VehicleJudgement]
     metrics: SimulationMetrics
     recommendation_response: Dict[str, Any]
+    summary: str
 
 
 class PersonaDraft(BaseModel):
@@ -74,6 +77,15 @@ class VehicleAssessment(BaseModel):
 
 class VehicleAssessmentList(BaseModel):
     assessments: List[VehicleAssessment]
+
+
+class SummaryResponse(BaseModel):
+    satisfied_summary: str = Field(
+        ..., description="One-sentence reason the persona would be satisfied with the list"
+    )
+    unsatisfied_summary: str = Field(
+        ..., description="One-sentence reason the persona would be unsatisfied with the list"
+    )
 
 
 PERSONA_PROMPT = ChatPromptTemplate.from_messages(
@@ -154,6 +166,31 @@ For each vehicle below decide if the persona would be satisfied. Respond with
 JSON: {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>}}, ...]}}.
 Vehicles:
 {vehicles}
+""",
+        ),
+    ]
+)
+
+
+SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You condense vehicle satisfaction rationales into concise summaries."
+            "Return JSON with two short sentences describing why the persona is satisfied or unsatisfied."
+        ),
+        (
+            "human",
+            """
+Satisfied rationales:
+{satisfied_reasons}
+
+Unsatisfied rationales:
+{unsatisfied_reasons}
+
+Respond with JSON {{"satisfied_summary": <string>, "unsatisfied_summary": <string>}}.
+Each value must be a single short sentence (no more than 20 words).
+If there are no reasons, respond None.
 """,
         ),
     ]
@@ -312,24 +349,93 @@ def _assess_vehicles(
 
 
 def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona, k: int) -> SimulationMetrics:
+    _ = persona
     if k <= 0:
-        return SimulationMetrics(precision_at_k=None, recall_at_k=None, satisfied_count=0)
+        return SimulationMetrics(
+            precision_at_k=None,
+            satisfied_count=0,
+            infra_list_diversity=None,
+            ndcg_at_k=None,
+        )
 
     top_k = [j for j in judgements if j.index <= k]
+    if not top_k:
+        return SimulationMetrics(
+            precision_at_k=None,
+            satisfied_count=0,
+            infra_list_diversity=None,
+            ndcg_at_k=None,
+        )
+
     satisfied = [j for j in top_k if j.satisfied]
     precision = len(satisfied) / k if k else None
 
-    positive_targets = [item for item in persona.liked if item.make or item.model or item.year]
-    if positive_targets:
-        recall = len(satisfied) / len(positive_targets)
+    make_models = [
+        (str(j.make).strip().lower() if j.make else "", str(j.model).strip().lower() if j.model else "")
+        for j in top_k
+    ]
+    unique_make_models = {item for item in make_models if any(item)}
+    infra_list_diversity = None
+    if k:
+        infra_list_diversity = len(unique_make_models) / k
+
+    def _dcg(items: List[VehicleJudgement]) -> float:
+        value = 0.0
+        for idx, judgement in enumerate(items, start=1):
+            rel = 1.0 if judgement.satisfied else 0.0
+            if rel == 0.0:
+                continue
+            value += (2 ** rel - 1) / math.log2(idx + 1)
+        return value
+
+    dcg = _dcg(top_k)
+    ideal_count = min(len(satisfied), len(top_k))
+    ideal_items = top_k[:]
+    ideal_items.sort(key=lambda item: item.satisfied, reverse=True)
+    idcg = _dcg(ideal_items[:ideal_count])
+    if idcg:
+        ndcg = dcg / idcg
     else:
-        recall = None
+        ndcg = 0.0 if not satisfied else None
 
     return SimulationMetrics(
         precision_at_k=precision,
-        recall_at_k=recall,
         satisfied_count=len(satisfied),
+        infra_list_diversity=infra_list_diversity,
+        ndcg_at_k=ndcg,
     )
+
+
+def _summarize_judgements(
+    judgements: List[VehicleJudgement], model: ChatOpenAI
+) -> str:
+    satisfied_reasons = [j.rationale for j in judgements if j.satisfied and j.rationale]
+    unsatisfied_reasons = [j.rationale for j in judgements if not j.satisfied and j.rationale]
+
+    if not satisfied_reasons and not unsatisfied_reasons:
+        return "No rationales provided."
+
+    structured_model = model.with_structured_output(SummaryResponse)
+    satisfied_text = (
+        "\n".join(f"- {reason}" for reason in satisfied_reasons) or "None"
+    )
+    unsatisfied_text = (
+        "\n".join(f"- {reason}" for reason in unsatisfied_reasons) or "None"
+    )
+    prompt = SUMMARY_PROMPT.format_prompt(
+        satisfied_reasons=satisfied_text,
+        unsatisfied_reasons=unsatisfied_text,
+    )
+    response = structured_model.invoke(prompt.to_messages())
+
+    parts: List[str] = []
+    if response.satisfied_summary:
+        parts.append(f"Satisfied: {response.satisfied_summary.strip()}")
+    if response.unsatisfied_summary:
+        parts.append(f"Unsatisfied: {response.unsatisfied_summary.strip()}")
+    if not parts:
+        return "Summary unavailable."
+    return " | ".join(parts)
 
 
 def run_simulation(
@@ -373,6 +479,7 @@ def evaluate_persona(
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
     metrics = _compute_metrics(judgements, persona, metric_k or recommendation_limit)
+    summary = _summarize_judgements(judgements, llm)
 
     return SimulationResult(
         persona=persona,
@@ -380,4 +487,5 @@ def evaluate_persona(
         vehicles=judgements,
         metrics=metrics,
         recommendation_response=response,
+        summary=summary,
     )
