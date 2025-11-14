@@ -191,9 +191,14 @@ class Neo4jCompatibilityTool:
                 name2 = record["name2"]
 
                 # Determine compatibility types to check
+                # Check both directions since compatibility is symmetric
                 if not compatibility_types:
                     key = (type1, type2)
                     compatibility_types = PART_COMPATIBILITY_MAP.get(key, [])
+                    # Try reverse direction if not found
+                    if not compatibility_types:
+                        key = (type2, type1)
+                        compatibility_types = PART_COMPATIBILITY_MAP.get(key, [])
 
                 if not compatibility_types:
                     return {
@@ -201,11 +206,12 @@ class Neo4jCompatibilityTool:
                         "error": f"Compatibility checking not supported for {type1} and {type2}"
                     }
 
-                # Check each compatibility type
+                # Check each compatibility type (bidirectional - compatibility is symmetric)
                 found_types = []
                 for rel_type in compatibility_types:
+                    # Check both directions since compatibility is symmetric
                     query = f"""
-                        MATCH (p1:PCProduct {{slug: $slug1}})-[r:{rel_type}]->(p2:PCProduct {{slug: $slug2}})
+                        MATCH (p1:PCProduct {{slug: $slug1}})-[r:{rel_type}]-(p2:PCProduct {{slug: $slug2}})
                         RETURN r
                         LIMIT 1
                     """
@@ -277,16 +283,23 @@ class Neo4jCompatibilityTool:
                 source_type = record["source_type"]
 
                 # Determine compatibility type if not provided
+                # Check both (source_type, target_type) and (target_type, source_type) since compatibility is symmetric
                 if not compatibility_type:
                     key = (source_type, target_type)
                     types = PART_COMPATIBILITY_MAP.get(key, [])
                     if not types:
+                        # Try reverse direction
+                        key = (target_type, source_type)
+                        types = PART_COMPATIBILITY_MAP.get(key, [])
+                    if not types:
                         return []
                     compatibility_type = types[0]  # Use first matching type
 
-                # Query compatible parts
+                # Query compatible parts (bidirectional - check both directions)
+                # First try: source -> target (normal direction)
+                # Second try: target -> source (reverse direction, since compatibility is symmetric)
                 query = f"""
-                    MATCH (source:PCProduct {{slug: $slug}})-[r:{compatibility_type}]->(target:PCProduct)
+                    MATCH (source:PCProduct {{slug: $slug}})-[r:{compatibility_type}]-(target:PCProduct)
                     WHERE target.product_type = $target_type
                     RETURN target, r
                     ORDER BY target.price_avg ASC

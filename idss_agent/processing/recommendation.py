@@ -331,7 +331,6 @@ def update_recommendation_list(
     except Exception as exc:  # pragma: no cover - tool invocation wrapper
         logger.error("RapidAPI search invocation failed: %s", exc)
         state["recommended_products"] = []
-        state["recommended_vehicles"] = []  # Legacy field for backward compatibility
         state["search_error"] = str(exc)
         return state
 
@@ -352,7 +351,6 @@ def update_recommendation_list(
 
     top_products = deduped_products[:max_items]
     state["recommended_products"] = top_products
-    state["recommended_vehicles"] = top_products  # Legacy field for backward compatibility
     state["fallback_message"] = None
     state["previous_filters"] = filters
     state.pop("suggestion_reasoning", None)

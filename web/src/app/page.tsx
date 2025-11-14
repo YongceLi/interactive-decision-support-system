@@ -159,7 +159,7 @@ export default function Home() {
       try {
         console.log('Sending favorite action to backend:', {
           sessionId,
-          vehicleVin: product.vin,
+          productId: product.id,
           isFavorited: newFavoritedState
         });
 
@@ -495,7 +495,7 @@ export default function Home() {
     
     // Log the product view event
     if (sessionId) {
-      await LoggingService.logVehicleView(sessionId, product.id, product.vin);
+      await LoggingService.logVehicleView(sessionId, product.id);
     }
   };
 
@@ -513,9 +513,9 @@ export default function Home() {
     // Log the duration spent viewing details
     if (sessionId && selectedItem && detailViewStartTime) {
       const duration = Date.now() - detailViewStartTime;
-      await LoggingService.logCustomEvent(sessionId, 'vehicle_detail_duration', {
-        vehicle_id: selectedItem.id,
-        vin: selectedItem.vin || 'unknown',
+      await LoggingService.logCustomEvent(sessionId, 'product_detail_duration', {
+        product_id: selectedItem.id,
+        id: selectedItem.id,
         duration_ms: duration,
         duration_seconds: Math.round(duration / 1000)
       });

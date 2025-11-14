@@ -56,14 +56,14 @@ class EventRequest(BaseModel):
 
     @field_validator('data')
     @classmethod
-    def validate_vehicle_event(cls, v: Dict[str, Any], info) -> Dict[str, Any]:
-        """Ensure vehicle-related events include VIN."""
+    def validate_product_event(cls, v: Dict[str, Any], info) -> Dict[str, Any]:
+        """Ensure product-related events include product ID."""
         event_type = info.data.get('event_type', '')
-        vehicle_event_types = ['vehicle_view', 'vehicle_click', 'photo_view']
+        product_event_types = ['product_view', 'product_click', 'photo_view']
 
-        if event_type in vehicle_event_types:
-            if 'vin' not in v or not v['vin']:
-                raise ValueError(f"{event_type} events must include 'vin' in data")
+        if event_type in product_event_types:
+            if 'id' not in v or not v.get('id'):
+                raise ValueError(f"{event_type} events must include 'id' in data")
 
         return v
 
@@ -83,6 +83,6 @@ class EventsResponse(BaseModel):
 
 
 class FavoriteRequest(BaseModel):
-    """Request model when user favorites/unfavorites a vehicle."""
-    vehicle: Dict[str, Any] = Field(description="Full vehicle object that was favorited")
+    """Request model when user favorites/unfavorites a product."""
+    vehicle: Dict[str, Any] = Field(description="Full product object that was favorited (field name kept as 'vehicle' for API compatibility)")
     is_favorited: bool = Field(description="True if favorited, False if unfavorited")

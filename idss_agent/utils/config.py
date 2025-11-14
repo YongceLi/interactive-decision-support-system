@@ -57,7 +57,7 @@ class AgentConfig:
         Examples:
             config.get('models.interview.name') -> 'gpt-4o-mini'
             config.get('limits.max_recommended_items') -> 20
-            config.get('terminology.product_name') -> 'vehicle'
+            config.get('terminology.product_name') -> 'product'
 
         Args:
             key: Configuration key in dot notation

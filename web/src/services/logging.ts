@@ -46,43 +46,43 @@ export class LoggingService {
   }
 
   /**
-   * Log when user views vehicle details
+   * Log when user views product details
    */
-  static async logVehicleView(sessionId: string, vehicleId: string, vin?: string): Promise<void> {
+  static async logVehicleView(sessionId: string, productId: string, vin?: string): Promise<void> {
     try {
-      await this.logEvent(sessionId, 'vehicle_view', {
-        vehicle_id: vehicleId,
-        vin: vin || 'unknown',
+      await this.logEvent(sessionId, 'product_view', {
+        product_id: productId,
+        id: productId,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Failed to log vehicle view:', error);
+      console.error('Failed to log product view:', error);
     }
   }
 
   /**
-   * Log when user clicks on a vehicle
+   * Log when user clicks on a product
    */
-  static async logVehicleClick(sessionId: string, vehicleId: string, vin?: string): Promise<void> {
+  static async logVehicleClick(sessionId: string, productId: string, vin?: string): Promise<void> {
     try {
-      await this.logEvent(sessionId, 'vehicle_click', {
-        vehicle_id: vehicleId,
-        vin: vin || 'unknown',
+      await this.logEvent(sessionId, 'product_click', {
+        product_id: productId,
+        id: productId,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      console.error('Failed to log vehicle click:', error);
+      console.error('Failed to log product click:', error);
     }
   }
 
   /**
-   * Log when user views vehicle photos
+   * Log when user views product photos
    */
-  static async logPhotoView(sessionId: string, vehicleId: string, vin?: string): Promise<void> {
+  static async logPhotoView(sessionId: string, productId: string, vin?: string): Promise<void> {
     try {
       await this.logEvent(sessionId, 'photo_view', {
-        vehicle_id: vehicleId,
-        vin: vin || 'unknown',
+        product_id: productId,
+        id: productId,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -91,13 +91,13 @@ export class LoggingService {
   }
 
   /**
-   * Log when user favorites/unfavorites a vehicle
+   * Log when user favorites/unfavorites a product
    */
-  static async logFavoriteToggle(sessionId: string, vehicleId: string, vin: string, isFavorite: boolean): Promise<void> {
+  static async logFavoriteToggle(sessionId: string, productId: string, vin: string, isFavorite: boolean): Promise<void> {
     try {
-      await this.logEvent(sessionId, isFavorite ? 'vehicle_favorited' : 'vehicle_unfavorited', {
-        vehicle_id: vehicleId,
-        vin: vin || 'unknown',
+      await this.logEvent(sessionId, isFavorite ? 'product_favorited' : 'product_unfavorited', {
+        product_id: productId,
+        id: productId,
         action: isFavorite ? 'favorited' : 'unfavorited',
         timestamp: new Date().toISOString()
       });

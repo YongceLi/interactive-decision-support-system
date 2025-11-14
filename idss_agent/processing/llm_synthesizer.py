@@ -59,7 +59,7 @@ def llm_synthesize_multi_mode(
                 f"analytical={has_analytical}, search={has_search}")
 
     # Build system prompt
-    system_prompt = """You are a professional answer synthesizer in a vehicle searching agent.
+    system_prompt = """You are a professional answer synthesizer in a product searching agent.
 You are given the results from multiple sub-agents and you need to synthesize a concise, smooth, natural response from them.
 
 **CRITICAL CONCISENESS RULES:**
@@ -70,7 +70,7 @@ You are given the results from multiple sub-agents and you need to synthesize a 
 
 **Guidelines:**
 1. If user asked a specific question, ANSWER IT FIRST
-2. Then BRIEFLY recommend a listed vehicle, highlight its features.
+2. Then BRIEFLY recommend a listed product, highlight its features.
 3. Finally ask interview question (if present) - keep it short
 4. Flow naturally
 """
@@ -87,29 +87,29 @@ You are given the results from multiple sub-agents and you need to synthesize a 
             'note': 'USER ASKED THIS QUESTION - ANSWER IT FIRST'
         })
 
-    # 2. Vehicle listings (if showing vehicles)
+    # 2. Product listings (if showing products)
     if has_search:
         search = sub_agent_results['search']
-        vehicles = search.get('vehicles', [])[:3]
+        products = search.get('vehicles', [])[:3]  # Field name 'vehicles' kept for compatibility
 
-        vehicle_list = []
-        for i, vehicle in enumerate(vehicles, 1):
-            v = vehicle.get('vehicle', {})
-            r = vehicle.get('retailListing', {})
-            vehicle_list.append(
-                f"{i}. {v.get('year')} {v.get('make')} {v.get('model')} - "
-                f"${r.get('price', 0):,} ({r.get('miles', 0):,} miles)"
+        product_list = []
+        for i, product in enumerate(products, 1):
+            title = product.get('title') or product.get('name', 'Unknown Product')
+            price = product.get('price') or product.get('price_value', 0)
+            brand = product.get('brand') or product.get('make', '')
+            product_list.append(
+                f"{i}. {title} - ${price:,.2f}" + (f" ({brand})" if brand else "")
             )
 
         total_count = len(sub_agent_results['search'].get('vehicles', []))
-        vehicles_text = '\n'.join(vehicle_list)
+        products_text = '\n'.join(product_list)
         if total_count > 3:
-            vehicles_text += f"\n...and {total_count - 3} more vehicles available"
+            products_text += f"\n...and {total_count - 3} more products available"
 
         content_sections.append({
-            'type': 'vehicle_listings',
-            'content': vehicles_text,
-            'note': 'Show these vehicles naturally'
+            'type': 'product_listings',
+            'content': products_text,
+            'note': 'Show these products naturally'
         })
 
         # Add suggestion reasoning if available
@@ -117,7 +117,7 @@ You are given the results from multiple sub-agents and you need to synthesize a 
             content_sections.append({
                 'type': 'reasoning',
                 'content': search['suggestion_reasoning'],
-                'note': 'Explain why these vehicles match'
+                'note': 'Explain why these products match'
             })
 
     # 3. Interview question (if continuing interview)
@@ -180,7 +180,7 @@ Please synthesize these into ONE smooth, conversational response that:
             fallback_parts.append(sub_agent_results['analytical']['answer'])
 
         if has_search:
-            fallback_parts.append(f"\nHere are some vehicles:\n\n{vehicles_text}")
+            fallback_parts.append(f"\nHere are some products:\n\n{products_text}")
 
         if has_interview:
             fallback_parts.append(f"\n{sub_agent_results['interview']['response']}")
@@ -193,7 +193,7 @@ Please synthesize these into ONE smooth, conversational response that:
             suggested_followups=[
                 "Show me more options",
                 "Tell me more details",
-                "Compare these vehicles"
+                "Compare these products"
             ]
         )
 

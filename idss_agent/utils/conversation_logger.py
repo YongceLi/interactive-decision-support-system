@@ -56,8 +56,8 @@ def save_conversation_log(
         conversation: Iterable[BaseMessage] = state.get("conversation_history", [])
         serialized_history = [_serialize_message(msg) for msg in conversation]
 
-        # Get products/vehicles - check both fields for compatibility
-        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+        # Get products
+        recommended_products = state.get('recommended_products', [])
         
         payload = {
             "session_id": session_id,

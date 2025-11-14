@@ -59,7 +59,7 @@ def discovery_agent(
 
     filters = state['explicit_filters']
     implicit = state['implicit_preferences']
-    products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+    products = state.get('recommended_products', [])
     already_asked = state.get('questions_asked', [])
 
     model_config = config.get_model_config('discovery')

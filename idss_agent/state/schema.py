@@ -221,7 +221,6 @@ class ProductSearchState(TypedDict):
 
     # Results (up to MAX_RECOMMENDED_PRODUCTS products, updated each turn)
     recommended_products: List[Dict[str, Any]]
-    recommended_vehicles: List[Dict[str, Any]]  # Legacy field for backward compatibility
 
     # Metadata
     questions_asked: List[str]  # Track questions to avoid repetition
@@ -258,7 +257,6 @@ def create_initial_state() -> ProductSearchState:
         user_latitude=None,
         user_longitude=None,
         recommended_products=[],
-        recommended_vehicles=[],  # Legacy field for backward compatibility
         questions_asked=[],
         previous_filters=ProductFilters(),
         interaction_events=[],

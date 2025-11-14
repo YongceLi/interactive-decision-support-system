@@ -38,7 +38,7 @@ class SubAgentResult:
     """Structured result from a sub-agent."""
     mode: AgentMode
     response: Optional[str] = None
-    vehicles: Optional[List[Dict]] = None
+    vehicles: Optional[List[Dict]] = None  # Contains products (field name kept for compatibility with SubAgentResult structure)
     comparison_table: Optional[Dict] = None
     filters: Optional[Dict] = None
     quick_replies: Optional[List[str]] = None
@@ -89,7 +89,7 @@ class SubAgentRunner:
             state: Current state
 
         Returns:
-            SubAgentResult with vehicle search results
+            SubAgentResult with product search results
         """
         self.logger.info("Running search agent")
 
@@ -98,7 +98,7 @@ class SubAgentRunner:
 
         return SubAgentResult(
             mode=AgentMode.SEARCH,
-            vehicles=state_copy.get('recommended_products') or state_copy.get('recommended_vehicles', []),
+            vehicles=state_copy.get('recommended_products', []),
             filters=state_copy.get('explicit_filters', {}),
             metadata={'suggestion_reasoning': state_copy.get('suggestion_reasoning')}
         )
@@ -290,10 +290,9 @@ class ResponseSynthesizer:
             Updated state with discovery agent response
         """
         state_copy = state.copy()
-        # Update recommended_products (preferred) and recommended_vehicles (legacy)
+        # Update recommended_products
         if result.vehicles:
             state_copy['recommended_products'] = result.vehicles
-            state_copy['recommended_vehicles'] = result.vehicles  # Legacy compatibility
 
         if result.metadata.get('suggestion_reasoning'):
             state_copy['suggestion_reasoning'] = result.metadata['suggestion_reasoning']
@@ -605,7 +604,6 @@ class SupervisorOrchestrator:
             # Update products from search agent
             if result.mode == AgentMode.SEARCH and result.vehicles is not None:
                 state['recommended_products'] = result.vehicles
-                state['recommended_vehicles'] = result.vehicles  # Legacy compatibility
                 state['previous_filters'] = state['explicit_filters'].copy()
 
                 if result.metadata.get('suggestion_reasoning'):
@@ -651,7 +649,7 @@ class SupervisorOrchestrator:
             True if search should run
         """
         filters_changed = state['explicit_filters'] != state.get('previous_filters', {})
-        has_products = len(state.get('recommended_products', []) or state.get('recommended_vehicles', [])) > 0
+        has_products = len(state.get('recommended_products', [])) > 0
 
         # Should search if:
         # - User explicitly needs search OR

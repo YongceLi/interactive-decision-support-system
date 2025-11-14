@@ -172,8 +172,8 @@ async def chat(request: ChatRequest):
         # Persist conversation log for debugging
         save_conversation_log(session_id, updated_state)
 
-        # Get products/vehicles - check both fields for compatibility
-        recommended_products = updated_state.get('recommended_products') or updated_state.get('recommended_vehicles', [])
+        # Get products
+        recommended_products = updated_state.get('recommended_products', [])
         
         # Prepare response
         return ChatResponse(
@@ -321,8 +321,8 @@ async def get_session(session_id: str):
 
     state = sessions[session_id]
 
-    # Get products/vehicles - check both fields for compatibility
-    recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+    # Get products
+    recommended_products = state.get('recommended_products', [])
     
     return SessionResponse(
         session_id=session_id,
@@ -468,30 +468,30 @@ async def handle_favorite(
     event_id = str(uuid.uuid4())
     event = {
         "event_id": event_id,
-        "event_type": "vehicle_favorited" if request.is_favorited else "vehicle_unfavorited",
+        "event_type": "product_favorited" if request.is_favorited else "product_unfavorited",
         "timestamp": datetime.now().isoformat(),
         "data": {
-            "vin": request.vehicle.get("vin"),
-            "vehicle": request.vehicle
+            "product_id": request.vehicle.get("id"),
+            "product": request.vehicle
         }
     }
     state["interaction_events"].append(event)
-    logger.info(f"Session {session_id}: Logged {event['event_type']} for VIN {request.vehicle.get('vin')}")
+    logger.info(f"Session {session_id}: Logged {event['event_type']} for product {request.vehicle.get('id')}")
 
     # Update favorites list in state
-    vin = request.vehicle.get("vin")
+    product_id = request.vehicle.get("id")
 
     if request.is_favorited:
         # Add to favorites (avoid duplicates)
-        if not any(fav.get("vin") == vin for fav in state["favorites"]):
+        if not any(fav.get("id") == product_id for fav in state["favorites"]):
             state["favorites"].append(request.vehicle)
-            logger.info(f"Session {session_id}: Added vehicle {vin} to favorites. Total: {len(state['favorites'])}")
+            logger.info(f"Session {session_id}: Added product {product_id} to favorites. Total: {len(state['favorites'])}")
 
         # Generate proactive response using LLM
         from idss_agent.processing.proactive_responses import generate_favorite_response
 
-        # Get products/vehicles - check both fields for compatibility
-        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+        # Get products
+        recommended_products = state.get('recommended_products', [])
         
         try:
             proactive_response = generate_favorite_response(request.vehicle, state)
@@ -523,11 +523,11 @@ async def handle_favorite(
             )
     else:
         # Remove from favorites (unfavorited)
-        state["favorites"] = [fav for fav in state["favorites"] if fav.get("vin") != vin]
-        logger.info(f"Session {session_id}: Removed vehicle {vin} from favorites. Total: {len(state['favorites'])}")
+        state["favorites"] = [fav for fav in state["favorites"] if fav.get("id") != product_id]
+        logger.info(f"Session {session_id}: Removed product {product_id} from favorites. Total: {len(state['favorites'])}")
 
-        # Get products/vehicles - check both fields for compatibility
-        recommended_products = state.get('recommended_products') or state.get('recommended_vehicles', [])
+        # Get products
+        recommended_products = state.get('recommended_products', [])
 
         # No proactive response for unfavorite
         return ChatResponse(

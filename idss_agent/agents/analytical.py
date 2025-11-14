@@ -365,8 +365,7 @@ def analytical_agent(
     )
 
     # Get available tools
-    legacy_products = state.get("recommended_vehicles", [])
-    cached_products = state.get("recommended_products") or legacy_products
+    cached_products = state.get("recommended_products", [])
 
     @tool("cached_recommendation_lookup")
     def cached_recommendation_lookup(selector: str) -> str:
@@ -598,7 +597,7 @@ def analytical_agent(
     ]
 
     # Build product context from state
-    products = state.get("recommended_products") or legacy_products
+    products = state.get("recommended_products", [])
     filters = state.get("explicit_filters", {})
     preferences = state.get("implicit_preferences", {})
 
@@ -722,7 +721,15 @@ def analytical_agent(
                     tool_result = json.loads(message.content) if isinstance(message.content, str) else message.content
                     # Check if this is a compatibility check result
                     if isinstance(tool_result, dict):
-                        if "compatible" in tool_result and "explanation" in tool_result:
+                        # Check for error responses first
+                        if "error" in tool_result and "message" in tool_result:
+                            # Compatibility tool returned an error
+                            compatibility_result = {
+                                "compatible": False,
+                                "explanation": tool_result.get("message", "Compatibility checking unavailable"),
+                                "error": tool_result.get("message", "Compatibility checking unavailable")
+                            }
+                        elif "compatible" in tool_result and "explanation" in tool_result:
                             # Binary compatibility check result
                             compatibility_result = {
                                 "compatible": tool_result.get("compatible", False),
@@ -770,6 +777,12 @@ def analytical_agent(
                 state["comparison_table"] = comparison_result['comparison_table'].model_dump()
                 logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} products compared")
 
+                # Set compatibility result if found (even with comparison)
+                if compatibility_result:
+                    state["compatibility_result"] = compatibility_result
+                else:
+                    state["compatibility_result"] = None
+
                 # Generate interactive elements from summary
                 try:
                     interactive = generate_interactive_elements(comparison_result['summary'], user_input)
@@ -801,6 +814,13 @@ def analytical_agent(
                         "Comparison table rebuilt from cached data (%d attributes)",
                         len(comparison_data["rows"]),
                     )
+                    
+                    # Set compatibility result if found (even with fallback comparison)
+                    if compatibility_result:
+                        state["compatibility_result"] = compatibility_result
+                    else:
+                        state["compatibility_result"] = None
+                    
                     try:
                         interactive = generate_interactive_elements(state["ai_response"], user_input)
                         state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None
@@ -845,6 +865,13 @@ def analytical_agent(
                         "Generated comparison table from cached data (%d attributes)",
                         len(comparison_data["rows"]),
                     )
+                    
+                    # Set compatibility result if found (even with fallback comparison)
+                    if compatibility_result:
+                        state["compatibility_result"] = compatibility_result
+                    else:
+                        state["compatibility_result"] = None
+                    
                     try:
                         interactive = generate_interactive_elements(state["ai_response"], user_input)
                         state["quick_replies"] = interactive.quick_replies if config.features.get('enable_quick_replies', True) else None

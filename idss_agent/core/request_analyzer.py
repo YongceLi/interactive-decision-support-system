@@ -89,7 +89,7 @@ def analyze_request(
     interviewed = state.get('interviewed', False)
     has_filters = bool(state.get('explicit_filters', {}))
     has_preferences = bool(state.get('implicit_preferences', {}))
-    has_products = len(state.get('recommended_products', []) or state.get('recommended_vehicles', [])) > 0
+    has_products = len(state.get('recommended_products', [])) > 0
 
     # Build context for LLM
     context = f"""
@@ -97,7 +97,7 @@ def analyze_request(
 - User has been interviewed: {interviewed}
 - User has provided filters: {has_filters}
 - User has implicit preferences: {has_preferences}
-- Current products shown: {len(state.get('recommended_products', []) or state.get('recommended_vehicles', []))}
+- Current products shown: {len(state.get('recommended_products', []))}
 - Current filters: {state.get('explicit_filters', {})}
 - Implicit preferences: {state.get('implicit_preferences', {})}
 """
@@ -188,7 +188,7 @@ def _build_cache_key(user_input: str, state: ProductSearchState) -> str:
             "filters": state.get("explicit_filters", {}),
             "preferences": state.get("implicit_preferences", {}),
             "interviewed": state.get("interviewed", False),
-            "products_count": len(state.get("recommended_products", []) or state.get("recommended_vehicles", [])),
+            "products_count": len(state.get("recommended_products", [])),
         }
         serialized = json.dumps(summary, sort_keys=True)
     except (TypeError, ValueError):

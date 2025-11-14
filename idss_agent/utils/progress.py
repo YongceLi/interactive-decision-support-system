@@ -16,7 +16,7 @@ BUYING_MODE_NOT_INTERVIEWED_STEPS = [
     {"step_id": "semantic_parsing", "description": "Extracting initial preferences"},
     {"step_id": "interview_questions", "description": "Asking questions to understand your needs"},
     {"step_id": "extracting_preferences", "description": "Analyzing your responses"},
-    {"step_id": "searching_vehicles", "description": "Finding available vehicles"},
+    {"step_id": "searching_products", "description": "Finding available products"},
     {"step_id": "generating_recommendations", "description": "Preparing personalized recommendations"},
     {"step_id": "complete", "description": "Complete"}
 ]
@@ -24,7 +24,7 @@ BUYING_MODE_NOT_INTERVIEWED_STEPS = [
 BUYING_MODE_INTERVIEWED_STEPS = [
     {"step_id": "intent_classification", "description": "Understanding your request"},
     {"step_id": "semantic_parsing", "description": "Parsing your search criteria"},
-    {"step_id": "updating_recommendations", "description": "Searching for vehicles"},
+    {"step_id": "updating_recommendations", "description": "Searching for products"},
     {"step_id": "generating_response", "description": "Preparing recommendations"},
     {"step_id": "complete", "description": "Complete"}
 ]
@@ -32,15 +32,15 @@ BUYING_MODE_INTERVIEWED_STEPS = [
 DISCOVERY_MODE_STEPS = [
     {"step_id": "intent_classification", "description": "Understanding your request"},
     {"step_id": "semantic_parsing", "description": "Checking for new search criteria"},
-    {"step_id": "updating_recommendations", "description": "Searching for vehicles"},
-    {"step_id": "generating_response", "description": "Presenting vehicles"},
+    {"step_id": "updating_recommendations", "description": "Searching for products"},
+    {"step_id": "generating_response", "description": "Presenting products"},
     {"step_id": "complete", "description": "Complete"}
 ]
 
 ANALYTICAL_MODE_STEPS = [
     {"step_id": "intent_classification", "description": "Understanding your question"},
     {"step_id": "semantic_parsing", "description": "Extracting relevant information"},
-    {"step_id": "updating_recommendations", "description": "Searching for vehicles (if needed)"},
+    {"step_id": "updating_recommendations", "description": "Searching for products (if needed)"},
     {"step_id": "executing_tools", "description": "Analyzing data"},
     {"step_id": "generating_response", "description": "Synthesizing answer"},
     {"step_id": "complete", "description": "Complete"}

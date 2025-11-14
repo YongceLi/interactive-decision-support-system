@@ -117,8 +117,8 @@ def interview_node(state: ProductSearchState) -> ProductSearchState:
 
     if not user_input:
         # First turn - greeting
-        state["ai_response"] = "Hi there! Welcome. What brings you in today? Are you looking to replace a current vehicle or is this your first car?"
-        state["quick_replies"] = ["Replacing current", "First car", "Adding to household", "Just exploring"]
+        state["ai_response"] = "Hi there! Welcome. What brings you in today? Are you looking to upgrade your current setup or building something new?"
+        state["quick_replies"] = ["Upgrading current", "Building new", "Adding components", "Just exploring"]
         state["suggested_followups"] = []  # Interview mode doesn't use suggested followups
         state["_interview_should_end"] = False
 
@@ -191,8 +191,8 @@ def make_initial_recommendation(state: ProductSearchState) -> ProductSearchState
     """
     Called once at the end of interview to:
     1. Parse entire interview conversation for filters/preferences using structured output
-    2. Search for actual available vehicles using Auto.dev API
-    3. Use discovery agent to present vehicles conversationally
+    2. Search for actual available products using electronics API
+    3. Use discovery agent to present products conversationally
     4. Mark interview as complete
 
     Args:
@@ -201,7 +201,7 @@ def make_initial_recommendation(state: ProductSearchState) -> ProductSearchState
     Returns:
         Updated state with interviewed=True and initial recommendations
     """
-    logger.info("Interview complete! Extracting preferences and searching for available vehicles...")
+    logger.info("Interview complete! Extracting preferences and searching for available products...")
 
     # Get progress callback from state if available
     progress_callback = state.get("_progress_callback")
@@ -263,10 +263,10 @@ CONVERSATION:
             "status": "completed"
         })
 
-    # Step 2: Search for actual available vehicles using Auto.dev API
+    # Step 2: Search for actual available products using electronics API
     state = update_recommendation_list(state, progress_callback)
 
-    # Step 3: Use discovery agent to present vehicles conversationally
+    # Step 3: Use discovery agent to present products conversationally
     state = discovery_agent(state, progress_callback)
 
     # Step 4: Mark interview complete
