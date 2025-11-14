@@ -29,8 +29,6 @@ def _build_search_query(filters: Dict[str, Any], implicit: Dict[str, Any]) -> st
         "keywords",
         "product",
         "product_name",
-        "model",
-        "make",
         "category",
         "subcategory",
     ]:
@@ -255,20 +253,13 @@ def _normalize_product(product: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     if product_id:
         normalized["product"]["identifier"] = product_id
 
-    # Legacy compatibility with existing frontend schema expectations
+    # Set standard electronics product fields
     product_brand = brand or source or "Unknown"
     product_name = title
-    model_number = product.get("model") or title
 
     normalized.setdefault("brand", product_brand)
     normalized.setdefault("product_brand", product_brand)
     normalized.setdefault("product_name", product_name)
-    normalized.setdefault("model_number", model_number)
-
-    # Legacy aliases for downstream consumers that still expect vehicle-shaped data
-    normalized.setdefault("make", product_brand)
-    normalized.setdefault("model", product_name)
-    normalized.setdefault("year", product.get("year") or 0)
 
     if price_value is not None and "price" not in normalized:
         normalized["price"] = price_value
@@ -340,7 +331,6 @@ def update_recommendation_list(
     except Exception as exc:  # pragma: no cover - tool invocation wrapper
         logger.error("RapidAPI search invocation failed: %s", exc)
         state["recommended_products"] = []
-        state["recommended_vehicles"] = []
         state["search_error"] = str(exc)
         return state
 
@@ -361,7 +351,6 @@ def update_recommendation_list(
 
     top_products = deduped_products[:max_items]
     state["recommended_products"] = top_products
-    state["recommended_vehicles"] = top_products  # Legacy alias for existing UI callers
     state["fallback_message"] = None
     state["previous_filters"] = filters
     state.pop("suggestion_reasoning", None)

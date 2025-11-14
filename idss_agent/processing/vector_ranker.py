@@ -184,7 +184,6 @@ def _embed_product(product: Dict[str, Any]) -> Dict[str, float]:
     _add_tokens(counter, product.get("brand") or product_info.get("brand"), weight=2.5)
     _add_tokens(counter, product_info.get("category"), weight=2.0)
     _add_tokens(counter, product_info.get("type"), weight=2.0)
-    _add_tokens(counter, product_info.get("model_number"), weight=2.0)
     _add_tokens(counter, product_info.get("series"), weight=1.8)
     _add_tokens(counter, product.get("source"), weight=1.0)
 
@@ -255,8 +254,6 @@ def _build_user_vector(
     add_filter_tokens("subcategory", weight=2.0)
     add_filter_tokens("type", weight=2.0)
     add_filter_tokens("brand", weight=2.5)
-    add_filter_tokens("model", weight=2.0)
-    add_filter_tokens("model_number", weight=2.0)
     add_filter_tokens("series", weight=1.8)
     add_filter_tokens("seller", weight=1.5)
     add_filter_tokens("retailer", weight=1.5)
