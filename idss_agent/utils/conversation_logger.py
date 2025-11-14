@@ -49,7 +49,7 @@ def save_conversation_log(
         _ensure_directory(log_dir)
 
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        filename = f"{timestamp}_{session_id or 'unknown'}.json"
+        filename = f"{session_id or 'unknown'}.json"
         log_path = log_dir / filename
 
         conversation: Iterable[BaseMessage] = state.get("conversation_history", [])
@@ -65,6 +65,8 @@ def save_conversation_log(
             "conversation_history": serialized_history,
             "diagnostics": state.get("diagnostics"),
             "latency": state.get("_latency"),
+            "latency_stats": state.get("_latency_stats"),
+            "last_updated": timestamp,
         }
 
         log_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2))

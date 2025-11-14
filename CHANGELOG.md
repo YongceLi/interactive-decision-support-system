@@ -53,6 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-11
+
+### Changed
+
+#### Conversation Logging
+- Conversation logs are now stored per session (single file per conversation) instead of per turn.
+- Each log persists both the latest turn latency and the running average latency for the session.
+
+---
+
 ## 2025-11-05
 
 ### Added

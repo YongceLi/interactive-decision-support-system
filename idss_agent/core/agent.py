@@ -94,10 +94,36 @@ def run_agent(
             for name, stats in aggregated.items()
         }
 
-        result["_latency"] = {
+        # Update running latency statistics
+        existing_stats = (
+            result.get("_latency_stats")
+            or state.get("_latency_stats")  # type: ignore[arg-type]
+            or {}
+        )
+        stats_turn_count = int(existing_stats.get("turn_count", 0))
+        stats_total_ms = float(existing_stats.get("total_turn_ms", 0.0))
+
+        if isinstance(turn_duration, (int, float)):
+            stats_turn_count += 1
+            stats_total_ms += float(turn_duration)
+            average_turn_ms = round(stats_total_ms / stats_turn_count, 2)
+        else:
+            average_turn_ms = existing_stats.get("average_turn_ms")
+
+        latency_snapshot = {
             "turn_duration_ms": round(turn_duration, 2) if turn_duration is not None else None,
             "spans": spans_summary,
             "aggregates": aggregates_serialized,
+        }
+
+        latency_snapshot["running_average_ms"] = average_turn_ms
+        latency_snapshot["turn_count"] = stats_turn_count
+
+        result["_latency"] = latency_snapshot
+        result["_latency_stats"] = {
+            "turn_count": stats_turn_count,
+            "total_turn_ms": round(stats_total_ms, 2),
+            "average_turn_ms": average_turn_ms,
         }
 
     # Set mode to 'supervisor' (for backward compatibility tracking)

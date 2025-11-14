@@ -243,6 +243,8 @@ class VehicleSearchState(TypedDict):
     quick_replies: Optional[List[str]]  # Short answer options (1-3 words, 2-4 options) for direct questions
     suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
     comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare vehicles
+    _latency: Optional[Dict[str, Any]]  # Latency snapshot for the latest turn
+    _latency_stats: Optional[Dict[str, Any]]  # Aggregated latency statistics for the session
 
 
 def create_initial_state() -> VehicleSearchState:
@@ -265,7 +267,13 @@ def create_initial_state() -> VehicleSearchState:
         ai_response="",
         quick_replies=None,
         suggested_followups=[],
-        comparison_table=None
+        comparison_table=None,
+        _latency=None,
+        _latency_stats={
+            "turn_count": 0,
+            "total_turn_ms": 0.0,
+            "average_turn_ms": None,
+        },
     )
 
 
