@@ -176,11 +176,8 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You condense vehicle satisfaction rationales into concise summaries.",
-            "Return JSON with two short sentences (at most 20 words each) describing",
-            "why the persona is satisfied or unsatisfied. If there are no reasons",
-            "provided for a side, respond with 'No satisfied vehicles.' or 'No",
-            "unsatisfied vehicles.' respectively.",
+            "You condense vehicle satisfaction rationales into concise summaries."
+            "Return JSON with two short sentences describing why the persona is satisfied or unsatisfied."
         ),
         (
             "human",
@@ -193,6 +190,7 @@ Unsatisfied rationales:
 
 Respond with JSON {{"satisfied_summary": <string>, "unsatisfied_summary": <string>}}.
 Each value must be a single short sentence (no more than 20 words).
+If there are no reasons, respond None.
 """,
         ),
     ]
