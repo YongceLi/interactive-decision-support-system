@@ -363,6 +363,15 @@ def run_interview_workflow(
     if progress_callback:
         state["_progress_callback"] = progress_callback
 
+    # Add user input to conversation history if provided
+    # (this allows interview_node to access the user's actual message)
+    if user_input and user_input.strip():
+        from langchain_core.messages import HumanMessage
+
+        conversation_history = state.get("conversation_history", [])
+        conversation_history.append(HumanMessage(content=user_input))
+        state["conversation_history"] = conversation_history
+
     graph = get_interview_graph()
     result = graph.invoke(state)
 

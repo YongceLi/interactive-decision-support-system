@@ -148,16 +148,24 @@ def recommend_method1(
 
             logger.info(f"Dense search found {len(vins)} candidates from entire database")
 
-            # Load full vehicle payloads from database
+            # Load full vehicle payloads from database (filter out NULL price/mileage)
             candidates = []
             for vin, score in zip(vins, scores):
                 vehicle = store.get_by_vin(vin)
                 if vehicle:
+                    # Extract price and mileage
+                    v_price = vehicle.get("vehicle", {}).get("price") or vehicle.get("price")
+                    v_mileage = vehicle.get("vehicle", {}).get("mileage") or vehicle.get("mileage")
+
+                    # Skip if price or mileage is NULL
+                    if v_price is None or v_mileage is None:
+                        continue
+
                     vehicle["_dense_score"] = score
                     vehicle["_vector_score"] = score
                     candidates.append(vehicle)
 
-            logger.info(f"Loaded {len(candidates)} vehicle payloads")
+            logger.info(f"Loaded {len(candidates)} vehicle payloads (filtered NULL price/mileage)")
 
             # Skip SQL query stats, go directly to MMR diversification
             scored = [(v.get("_dense_score", 0.0), v) for v in candidates]
@@ -230,12 +238,20 @@ def recommend_method1(
                 elif avoid_make:
                     avoid_makes.add(avoid_make)
 
-            # Backfill with dense results (excluding duplicates and avoided vehicles)
+            # Backfill with dense results (excluding duplicates, avoided vehicles, and NULL price/mileage)
             backfill_count = 0
             for vin, score in zip(vins, scores):
                 if vin not in existing_vins:
                     vehicle = store.get_by_vin(vin)
                     if vehicle:
+                        # Extract price and mileage
+                        v_price = vehicle.get("vehicle", {}).get("price") or vehicle.get("price")
+                        v_mileage = vehicle.get("vehicle", {}).get("mileage") or vehicle.get("mileage")
+
+                        # Skip if price or mileage is NULL
+                        if v_price is None or v_mileage is None:
+                            continue
+
                         # Fast O(1) check if vehicle should be avoided
                         v_make = (vehicle.get("vehicle", {}).get("make") or vehicle.get("make") or "").upper()
                         v_model = (vehicle.get("vehicle", {}).get("model") or vehicle.get("model") or "").upper()
@@ -338,33 +354,56 @@ def recommend_method1(
     ))
     logger.info(f"  Final diversity: {final_unique_makes} makes, {final_unique_models} models, {final_unique_make_models} make/model combinations")
 
-    # Step 4: Final ranking - sort by year (newest first), then by cost-effectiveness (price + mileage)
-    logger.info("Step 4: Final ranking by year and cost-effectiveness...")
+    # Step 4: Final ranking - re-rank final vehicles by BM25 scores
+    logger.info("Step 4: Final ranking by BM25 scores...")
 
-    def get_sort_key(vehicle):
-        """Extract sorting key: (year_desc, price_asc, mileage_asc)"""
-        v = vehicle.get("vehicle", {})
-        year = v.get("year") or vehicle.get("year")
-        price = v.get("price") or vehicle.get("price")
-        mileage = v.get("mileage") or vehicle.get("mileage")
+    try:
+        from idss_agent.processing.bm25_ranker import build_bm25_query, compute_bm25_scores
 
-        # Convert None to appropriate values for sorting
-        # Year: None -> 0 (oldest, will sort last with negative)
-        # Price/Mileage: None -> inf (most expensive/highest, will sort last)
-        year_val = int(year) if year else 0
-        price_val = float(price) if price is not None else float('inf')
-        mileage_val = float(mileage) if mileage is not None else float('inf')
+        # Build BM25 query from filters and preferences
+        bm25_query = build_bm25_query(explicit_filters, implicit_preferences)
+        logger.info(f"  BM25 query: {bm25_query[:100]}{'...' if len(bm25_query) > 100 else ''}")
 
-        # Return tuple: (-year, price, mileage) for sorting
-        # Negative year for descending sort (newer first)
-        return (-year_val, price_val, mileage_val)
+        # Compute BM25 scores for the final 20 vehicles
+        bm25_scores = compute_bm25_scores(diverse, bm25_query)
 
-    diverse_sorted = sorted(diverse, key=get_sort_key)
+        # Add BM25 scores to vehicles
+        for vehicle, score in zip(diverse, bm25_scores):
+            vehicle["_final_bm25_score"] = score
 
-    logger.info(f"Step 4: Sorted {len(diverse_sorted)} vehicles by year (newest first) and cost-effectiveness")
-    if diverse_sorted:
-        top_v = diverse_sorted[0].get("vehicle", {})
-        logger.info(f"  Top vehicle: {top_v.get('year')} {top_v.get('make')} {top_v.get('model')} - ${top_v.get('price')}, {top_v.get('mileage')} mi")
+        # Sort by BM25 score (highest first)
+        diverse_sorted = sorted(diverse, key=lambda v: v.get("_final_bm25_score", 0.0), reverse=True)
+
+        logger.info(f"Step 4: Ranked {len(diverse_sorted)} vehicles by BM25 scores")
+        if diverse_sorted:
+            top = diverse_sorted[0]
+            top_v = top.get("vehicle", {})
+            top_r = top.get("retailListing", {})
+            top_score = top.get("_final_bm25_score", 0.0)
+            price = top_r.get("price", top_v.get("price"))
+            mileage = top_r.get("miles", top_v.get("mileage"))
+            logger.info(f"  Top vehicle (BM25={top_score:.3f}): {top_v.get('year')} {top_v.get('make')} {top_v.get('model')} - ${price}, {mileage} mi")
+
+    except Exception as e:
+        logger.warning(f"BM25 final ranking failed: {e}")
+        logger.info("Falling back to year/price/mileage sorting")
+
+        # Fallback: sort by year, price, mileage
+        def get_sort_key(vehicle):
+            """Extract sorting key: (year_desc, price_asc, mileage_asc)"""
+            v = vehicle.get("vehicle", {})
+            year = v.get("year") or vehicle.get("year")
+            price = v.get("price") or vehicle.get("price")
+            mileage = v.get("mileage") or vehicle.get("mileage")
+
+            year_val = int(year) if year else 0
+            price_val = float(price) if price is not None else float('inf')
+            mileage_val = float(mileage) if mileage is not None else float('inf')
+
+            return (-year_val, price_val, mileage_val)
+
+        diverse_sorted = sorted(diverse, key=get_sort_key)
+        logger.info(f"  Fallback: Sorted {len(diverse_sorted)} vehicles by year/price/mileage")
 
     logger.info("=" * 60)
     logger.info(f"METHOD 1 COMPLETE: {len(diverse_sorted)} vehicles returned")

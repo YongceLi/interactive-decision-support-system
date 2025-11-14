@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Quick Reply Testing Script
+- **`scripts/test_quick_replies.py`**: Standalone script for testing quick replies and suggested followups
+  - Supports single-turn testing with any query
+  - Multi-turn conversation testing with state persistence (--save/--state options)
+  - Displays agent response, quick replies, suggested followups, and extracted filters
+  - Shows which mode was triggered (interview, discovery, analytical, general)
+  - Useful for debugging interactive elements without running full API server
+  - Usage: `python scripts/test_quick_replies.py "I want a reliable SUV under $30k"`
+
+#### BM25 Final Ranking for Method 1
+- **Step 4 re-ranking**: Changed from simple year/price/mileage sorting to BM25 keyword relevance
+  - Computes BM25 scores for final 20 vehicles based on user query terms
+  - Ranks by keyword relevance to user's actual query (e.g., "reliable", "safety", "family")
+  - Falls back to year/price/mileage sorting if BM25 fails
+  - Logs top vehicle with BM25 score for debugging
+  - File: `idss_agent/processing/recommendation_method1.py` (lines 341-386)
+
+#### NULL Price/Mileage Filtering
+- **Dense backfill filtering**: Added NULL checks when backfilling candidates via dense search
+  - Ensures vehicles from dense search have valid price and mileage
+  - Applies to both main backfill (Step 1.5) and fallback dense search (Step 1b)
+  - Prevents incomplete vehicle data from entering final results
+  - Files: `idss_agent/processing/recommendation_method1.py` (lines 151-168, 233-259)
+
 #### Negative Filter Support (Avoid Vehicles)
 - **`avoid_vehicles` filter**: Allows users to exclude specific vehicles from search results
   - Format: `[{"make": "Toyota", "model": "RAV4"}]` for specific model, `[{"make": "Honda"}]` for entire make
