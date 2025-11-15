@@ -365,6 +365,15 @@ export default function Home() {
       // Handle streaming response
       const data = await handleStreamingResponse(response);
       
+      // Log API response to console (visible in Chrome DevTools Network/Console tab)
+      console.log('%c[API Response]', 'color: #2196F3; font-weight: bold; font-size: 14px', {
+        session_id: data.session_id,
+        has_compatibility_result: !!data.compatibility_result,
+        has_comparison_table: !!data.comparison_table,
+        products_count: data.vehicles?.length || 0,
+        response_length: data.response?.length || 0
+      });
+      
       // Update session ID
       if (data.session_id) {
         setSessionId(data.session_id);
@@ -383,6 +392,34 @@ export default function Home() {
         );
       }
       
+      // Log KG compatibility queries/results to console (visible in Chrome DevTools)
+      if (data.compatibility_result) {
+        console.group('%c[KG Compatibility Query]', 'color: #4CAF50; font-weight: bold; font-size: 14px');
+        console.log('Query Type:', data.compatibility_result.compatible !== undefined ? 'Binary Compatibility Check' : 'Compatibility Recommendations');
+        console.log('Result:', data.compatibility_result);
+        if (data.compatibility_result.part1_name && data.compatibility_result.part2_name) {
+          console.log('Parts:', {
+            part1: data.compatibility_result.part1_name,
+            part2: data.compatibility_result.part2_name,
+            compatible: data.compatibility_result.compatible,
+            compatibility_types: data.compatibility_result.compatibility_types || []
+          });
+        }
+        if (data.compatibility_result.error) {
+          console.warn('Error:', data.compatibility_result.error);
+        }
+        console.groupEnd();
+      }
+
+      // Log comparison tables (may contain KG compatibility recommendations)
+      if (data.comparison_table) {
+        console.group('%c[KG Comparison Table]', 'color: #FF9800; font-weight: bold; font-size: 14px');
+        console.log('Headers:', data.comparison_table.headers);
+        console.log('Rows:', data.comparison_table.rows);
+        console.log('Product Count:', data.comparison_table.headers?.length - 1 || 0);
+        console.groupEnd();
+      }
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant' as const,

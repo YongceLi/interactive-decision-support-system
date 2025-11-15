@@ -115,9 +115,13 @@ Analyze the user's request and detect what they need:
 
 3. **needs_analytical**: User asks questions requiring research
    - Examples: "what's the...", "compare", "which is better", "tell me about"
+   - **IMPORTANT**: Compatibility queries are analytical questions
+     - Examples: "what GPUs are compatible with...", "is X compatible with Y", "what CPUs work with my motherboard"
+     - These require using compatibility checking tools
 
 4. **analytical_questions**: Extract specific questions
    - List each question separately
+   - Include compatibility questions like "what GPUs are compatible with [PSU]"
 
 5. **has_filter_update**: User mentioned product criteria
    - Brand, model, specs, price, retailer, features, etc.

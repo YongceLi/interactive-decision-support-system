@@ -211,6 +211,8 @@ You are an expert electronics research analyst with deep knowledge of PC compone
 
 Your role is to answer specific, data-driven questions about products by leveraging the tools at your disposal.
 
+**CRITICAL RULE: For compatibility queries, you MUST use the compatibility tools. Do NOT answer compatibility questions from general knowledge or training data.**
+
 ## Available Tools
 
 **Cached Recommendation Lookup (`cached_recommendation_lookup`)**
@@ -264,19 +266,40 @@ Your role is to answer specific, data-driven questions about products by leverag
 - Prefer product IDs alongside titles/brands when invoking tools.
 - Ask for clarification if identifiers are ambiguous.
 
-**Compatibility queries (SPECIAL HANDLING)**
-When the user asks about compatibility for PC parts:
+**Compatibility queries (SPECIAL HANDLING - MANDATORY TOOL USE)**
+When the user asks about compatibility for PC parts, you MUST use the compatibility tools. Do NOT answer compatibility questions from general knowledge.
+
 1. **Binary compatibility check** ("Is X compatible with Y?"):
-   - Use `check_parts_compatibility` tool with both product slugs/names.
-   - Return a clear yes/no answer with explanation.
+   - ALWAYS use `check_parts_compatibility` tool with both product slugs/names.
+   - Return a clear yes/no answer with explanation from the tool.
    - Suggest follow-ups like "Show me compatible [part type]".
 
-2. **Compatibility recommendations** ("What GPUs work with my motherboard?"):
-   - Use `find_compatible_parts` tool with source product and target type.
+2. **Compatibility recommendations** ("What GPUs are compatible with my PSU?", "what gpus are compatible with name: [product]"):
+   - ALWAYS use `find_compatible_parts` tool with source product name/slug and target part type.
+   - Extract the product name from the query (e.g., "MSI 850W Homebrew PC Power Supply Unit MAG A850GL PCIe5")
+   - Extract the target part type (e.g., "gpu", "cpu", "ram", "psu", "motherboard")
    - Format top 3 results as comparison table (see format below).
    - Include key compatibility attributes (socket, PCIe version, wattage, etc.).
+   - NEVER generate compatibility recommendations without calling the tool first.
+   
+   **Example:**
+   - User: "what gpus are compatible with name: Msi 850w Homebrew Pc Power Supply Unit Mag A850gl Pcie5 (PSU)"
+   - You MUST call: `find_compatible_parts(source_product_name="Msi 850w Homebrew Pc Power Supply Unit Mag A850gl Pcie5", target_part_type="gpu")`
+   - Then format the results from the tool response, do NOT make up GPU names.
 
 3. **Non-PC parts**: If user asks about compatibility for non-PC electronics, inform them: "I'm not sure about compatibility for [product type]. The compatibility checking feature is currently only available for PC components like CPUs, GPUs, motherboards, power supplies, RAM, storage drives, cases, and CPU coolers."
+
+4. **Unsupported compatibility relationships**: Some parts don't have direct compatibility (e.g., GPU and CPU). In these cases:
+   - Explain that compatibility works through intermediate components (e.g., motherboard)
+   - Suggest checking compatibility through the intermediate component instead
+   - NEVER include raw error messages or debug information in your response
+   - Provide helpful, user-friendly explanations instead of technical error messages
+
+**IMPORTANT: Response Quality**
+- NEVER include error messages, debug logs, or technical error details in your responses
+- If a tool returns an error, provide a helpful, natural explanation to the user
+- Convert technical errors into user-friendly guidance
+- Example: Instead of "No compatible parts found", say "I couldn't find direct compatibility data for these parts. They may be compatible through a motherboard - would you like me to check motherboard compatibility instead?"
 
 **Comparison queries (SPECIAL FORMAT)**
 When the user asks to compare 2-4 products (e.g., "compare Ryzen 7 7800X3D vs i7-14700K", "compare top 3"):
@@ -549,6 +572,33 @@ def analytical_agent(
                 "message": "Compatibility checking is only available for PC components (CPU, GPU, motherboard, PSU, RAM, storage, case, cooler)."
             })
 
+        # Check if this compatibility relationship is supported
+        source_type = source_product.get("product_type", "").lower()
+        target_type_normalized = target_part_type.lower()
+        
+        # Check if compatibility relationship exists
+        from idss_agent.tools.kg_compatibility import PART_COMPATIBILITY_MAP
+        key1 = (source_type, target_type_normalized)
+        key2 = (target_type_normalized, source_type)
+        
+        if key1 not in PART_COMPATIBILITY_MAP and key2 not in PART_COMPATIBILITY_MAP:
+            # No direct compatibility relationship - provide helpful explanation
+            if source_type == "gpu" and target_type_normalized == "cpu":
+                return json.dumps({
+                    "error": "Unsupported compatibility type",
+                    "message": "GPUs and CPUs don't have direct compatibility relationships. They're compatible through the motherboard. To find compatible CPUs, you would need to check motherboard compatibility first. Would you like to find compatible motherboards for this GPU instead?"
+                })
+            elif source_type == "cpu" and target_type_normalized == "gpu":
+                return json.dumps({
+                    "error": "Unsupported compatibility type",
+                    "message": "CPUs and GPUs don't have direct compatibility relationships. They're compatible through the motherboard. To find compatible GPUs, you would need to check motherboard compatibility first. Would you like to find compatible motherboards for this CPU instead?"
+                })
+            else:
+                return json.dumps({
+                    "error": "Unsupported compatibility type",
+                    "message": f"Direct compatibility checking between {source_type} and {target_part_type} is not supported. Compatible parts are determined through intermediate components (e.g., motherboard)."
+                })
+        
         # Find compatible parts
         compatible_parts = find_compatible_parts_recommendations(
             source_product.get("slug"),
@@ -559,7 +609,7 @@ def analytical_agent(
         if not compatible_parts:
             return json.dumps({
                 "error": "No compatible parts found",
-                "message": f"No compatible {target_part_type} found for {source_product.get('name')}."
+                "message": f"No compatible {target_part_type} found in the database for {source_product.get('name')}. The product may not have compatibility data yet, or you may need to check compatibility through intermediate components."
             })
 
         # Format results
@@ -715,10 +765,30 @@ def analytical_agent(
 
         # Check for compatibility tool results
         compatibility_result = None
+        tool_calls_found = []
         for message in messages:
             if isinstance(message, ToolMessage):
+                # Try to identify tool name from message attributes or content
+                tool_name = None
+                if hasattr(message, 'name'):
+                    tool_name = message.name
+                elif hasattr(message, 'tool_call_id'):
+                    # Try to match tool_call_id to tool name (if available in context)
+                    tool_name = "unknown"
+                
+                # Detect compatibility tool by content structure
                 try:
                     tool_result = json.loads(message.content) if isinstance(message.content, str) else message.content
+                    if isinstance(tool_result, dict):
+                        # Detect compatibility tool by result structure
+                        if "compatible" in tool_result or "compatible_parts" in tool_result:
+                            tool_name = tool_name or "compatibility_tool"
+                        elif "error" in tool_result and "compatibility" in str(tool_result.get("message", "")).lower():
+                            tool_name = tool_name or "compatibility_tool"
+                    
+                    if tool_name:
+                        tool_calls_found.append(tool_name)
+                    
                     # Check if this is a compatibility check result
                     if isinstance(tool_result, dict):
                         # Check for error responses first
@@ -743,16 +813,43 @@ def analytical_agent(
                         elif "compatible_parts" in tool_result and "source_product" in tool_result:
                             # Compatibility recommendations - format as comparison table
                             compatible_parts = tool_result.get("compatible_parts", [])
+                            source_product_name = tool_result.get("source_product", "Source Product")
+                            target_type = tool_result.get("target_type", "parts")
+                            
                             if compatible_parts:
                                 # Format as comparison table
                                 table = format_compatibility_recommendations_table(
                                     compatible_parts,
-                                    tool_result.get("source_product", "Source Product")
+                                    source_product_name
                                 )
                                 state["comparison_table"] = table.model_dump()
+                                
+                                # Also set compatibility_result to indicate compatibility data was used
+                                compatibility_result = {
+                                    "compatible": True,
+                                    "explanation": f"Found {len(compatible_parts)} compatible {target_type} for {source_product_name}",
+                                    "source_product": source_product_name,
+                                    "target_type": target_type,
+                                    "compatible_parts_count": len(compatible_parts)
+                                }
+                            else:
+                                # No compatible parts found - set error result
+                                compatibility_result = {
+                                    "compatible": False,
+                                    "explanation": f"No compatible {target_type} found for {source_product_name}",
+                                    "error": f"No compatible {target_type} found",
+                                    "source_product": source_product_name,
+                                    "target_type": target_type
+                                }
                 except (json.JSONDecodeError, KeyError, AttributeError) as e:
                     logger.debug(f"Could not parse compatibility result: {e}")
                     continue
+        
+        # Log tool calls for debugging
+        if tool_calls_found:
+            logger.info(f"[Analytical Agent] Tool calls made: {', '.join(tool_calls_found)}")
+            if 'find_compatible_parts' in tool_calls_found or 'check_parts_compatibility' in tool_calls_found:
+                logger.info(f"[Analytical Agent] Compatibility tool was called, compatibility_result set: {compatibility_result is not None}")
 
         # Get the last AI message
         final_message = messages[-1]
@@ -884,11 +981,16 @@ def analytical_agent(
                 else:
                     # Normal response - no comparison
                     state["ai_response"] = response_content
-                    state["comparison_table"] = None
+                    # Only clear comparison_table if it wasn't already set (e.g., by compatibility tool)
+                    # If comparison_table was already set, preserve it (don't overwrite)
+                    if state.get("comparison_table") is None:
+                        state["comparison_table"] = None
                     
-                    # Set compatibility result if found
+                    # Set compatibility result if found, otherwise clear it
                     if compatibility_result:
                         state["compatibility_result"] = compatibility_result
+                    else:
+                        state["compatibility_result"] = None
 
                     # Generate interactive elements (quick replies only)
                     try:

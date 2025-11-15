@@ -215,9 +215,16 @@ class Neo4jCompatibilityTool:
                         RETURN r
                         LIMIT 1
                     """
+                    logger.info(f"[KG Query] Checking compatibility: {name1} <-> {name2} via {rel_type}")
+                    logger.debug(f"[KG Query] Cypher: {query}")
+                    logger.debug(f"[KG Query] Parameters: slug1={part1_slug}, slug2={part2_slug}")
                     result = session.run(query, slug1=part1_slug, slug2=part2_slug)
-                    if result.single():
+                    record = result.single()
+                    if record:
                         found_types.append(rel_type)
+                        logger.info(f"[KG Result] ✓ Compatible via {rel_type}")
+                    else:
+                        logger.debug(f"[KG Result] ✗ No relationship found for {rel_type}")
 
                 compatible = len(found_types) > 0
 
@@ -232,13 +239,15 @@ class Neo4jCompatibilityTool:
                 else:
                     explanation = f"{name1} is not compatible with {name2} based on the checked compatibility types."
 
-                return {
+                result_data = {
                     "compatible": compatible,
                     "compatibility_types": found_types,
                     "explanation": explanation,
                     "part1_name": name1,
                     "part2_name": name2
                 }
+                logger.info(f"[KG Result] Compatibility check complete: {name1} <-> {name2} = {compatible} (types: {found_types})")
+                return result_data
         except Exception as e:
             logger.error(f"Error checking compatibility: {e}")
             return {
@@ -305,6 +314,9 @@ class Neo4jCompatibilityTool:
                     ORDER BY target.price_avg ASC
                     LIMIT $limit
                 """
+                logger.info(f"[KG Query] Finding compatible parts: source={source_slug} ({source_type}) -> target_type={target_type} via {compatibility_type}")
+                logger.debug(f"[KG Query] Cypher: {query}")
+                logger.debug(f"[KG Query] Parameters: slug={source_slug}, target_type={target_type}, limit={limit}")
                 result = session.run(query, slug=source_slug, target_type=target_type, limit=limit)
                 
                 products = []
@@ -314,6 +326,9 @@ class Neo4jCompatibilityTool:
                     product_data["_compatibility_relationship"] = rel_data
                     products.append(product_data)
 
+                logger.info(f"[KG Result] Found {len(products)} compatible {target_type} parts for {source_slug}")
+                if products:
+                    logger.debug(f"[KG Result] Products: {[p.get('name', 'Unknown') for p in products[:5]]}")
                 return products
         except Exception as e:
             logger.error(f"Error finding compatible parts: {e}")

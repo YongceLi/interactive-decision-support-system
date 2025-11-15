@@ -70,6 +70,8 @@ def save_conversation_log(
             "diagnostics": state.get("diagnostics"),
             "latency": state.get("_latency"),
             "latency_stats": state.get("_latency_stats"),
+            "comparison_table": state.get("comparison_table"),
+            "compatibility_result": state.get("compatibility_result"),
             "last_updated": timestamp,
         }
 

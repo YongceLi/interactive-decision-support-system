@@ -39,6 +39,66 @@ port_in_use() {
     lsof -i :$1 >/dev/null 2>&1
 }
 
+# Function to check if Neo4j is running
+neo4j_running() {
+    # Check if Neo4j bolt port (7687) is listening
+    lsof -i :7687 >/dev/null 2>&1
+}
+
+# Function to start Neo4j
+start_neo4j() {
+    print_status "Checking Neo4j status..."
+    
+    if neo4j_running; then
+        print_success "Neo4j is already running"
+        return 0
+    fi
+    
+    print_status "Neo4j is not running. Attempting to start..."
+    
+    # Try different methods to start Neo4j
+    if command_exists neo4j; then
+        # Neo4j installed via Homebrew or direct installation
+        print_status "Starting Neo4j using 'neo4j start'..."
+        neo4j start > /tmp/idss_neo4j.log 2>&1
+        
+        # Wait a bit for Neo4j to start
+        sleep 5
+        
+        # Check if it started successfully
+        if neo4j_running; then
+            print_success "Neo4j started successfully"
+            print_status "Neo4j logs: tail -f /tmp/idss_neo4j.log"
+            return 0
+        else
+            print_warning "Neo4j may still be starting. Check logs: cat /tmp/idss_neo4j.log"
+            print_warning "You may need to start Neo4j manually: neo4j start"
+            return 1
+        fi
+    elif command_exists brew; then
+        # Try Homebrew services
+        print_status "Attempting to start Neo4j via Homebrew services..."
+        if brew services list | grep -q neo4j; then
+            brew services start neo4j > /tmp/idss_neo4j.log 2>&1
+            sleep 5
+            
+            if neo4j_running; then
+                print_success "Neo4j started successfully via Homebrew"
+                return 0
+            fi
+        fi
+    fi
+    
+    print_warning "Could not automatically start Neo4j"
+    print_warning "Please start Neo4j manually:"
+    print_warning "  - If installed via Homebrew: brew services start neo4j"
+    print_warning "  - If installed directly: neo4j start"
+    print_warning "  - Or visit: https://neo4j.com/docs/operations-manual/current/installation/"
+    print_warning ""
+    print_warning "The system will continue, but compatibility checking will be unavailable."
+    return 1
+}
+
 # Function to kill processes on specific ports
 cleanup_ports() {
     print_status "Cleaning up existing processes on ports 8000 and 3000..."
@@ -60,24 +120,47 @@ cleanup_ports() {
 start_backend() {
     print_status "Starting backend API server..."
     
-    # Check if virtual environment exists
-    if [ ! -d "venv" ]; then
-        print_error "Virtual environment not found. Please run 'python -m venv venv' first."
-        exit 1
+    local PYTHON_CMD=""
+    
+    # Check for conda environment first
+    if [ ! -z "$CONDA_DEFAULT_ENV" ]; then
+        print_status "Using conda environment: $CONDA_DEFAULT_ENV"
+        # Conda environment is already active, use it
+        PYTHON_CMD="python"
+    elif command_exists conda && [ ! -z "$CONDA_ENV_NAME" ]; then
+        # Try to activate conda environment if specified
+        print_status "Activating conda environment: $CONDA_ENV_NAME"
+        source "$(conda info --base)/etc/profile.d/conda.sh" 2>/dev/null || true
+        conda activate "$CONDA_ENV_NAME" 2>/dev/null && PYTHON_CMD="python" || {
+            print_warning "Failed to activate conda environment '$CONDA_ENV_NAME', falling back to venv"
+            PYTHON_CMD=""
+        }
     fi
     
-    # Activate virtual environment
-    source venv/bin/activate
+    # Fall back to venv if conda not available or not activated
+    if [ -z "$PYTHON_CMD" ]; then
+        # Check if virtual environment exists
+        if [ ! -d "venv" ]; then
+            print_error "Virtual environment not found. Please run 'python -m venv venv' first."
+            print_error "Or activate your conda environment before running this script."
+            exit 1
+        fi
+        
+        # Activate virtual environment
+        print_status "Using venv virtual environment"
+        source venv/bin/activate
+        PYTHON_CMD="python"
+    fi
     
     # Check if requirements are installed
-    if ! python -c "import fastapi, uvicorn, jinja2, langgraph" 2>/dev/null; then
+    if ! $PYTHON_CMD -c "import fastapi, uvicorn, jinja2, langgraph" 2>/dev/null; then
         print_warning "Installing Python dependencies..."
         pip install -r requirements.txt
     fi
     
     # Start the backend server using uvicorn directly for better control
     print_status "Starting FastAPI server on http://localhost:8000"
-    uvicorn api.server:app --host 0.0.0.0 --port 8000 > /tmp/idss_backend.log 2>&1 &
+    $PYTHON_CMD -m uvicorn api.server:app --host 0.0.0.0 --port 8000 > /tmp/idss_backend.log 2>&1 &
     BACKEND_PID=$!
     
     # Wait a moment for server to start
@@ -163,6 +246,9 @@ cleanup() {
         print_success "Frontend server stopped"
     fi
     
+    # Note: We don't stop Neo4j automatically as it may be used by other processes
+    # Users can stop it manually with: neo4j stop or brew services stop neo4j
+    
     # Clean up any remaining processes
     cleanup_ports
     
@@ -181,6 +267,9 @@ main() {
     # Clean up any existing processes
     cleanup_ports
     
+    # Start Neo4j (for compatibility checking)
+    start_neo4j
+    
     # Start backend server
     start_backend
     
@@ -188,15 +277,23 @@ main() {
     start_frontend
     
     print_success "=============================================="
-    print_success "Both servers are now running!"
+    print_success "All services are now running!"
     print_success "Backend API: http://localhost:8000"
     print_success "Frontend UI: http://localhost:3000"
     print_success "API Docs: http://localhost:8000/docs"
+    if neo4j_running; then
+        print_success "Neo4j: Running on bolt://localhost:7687"
+    else
+        print_warning "Neo4j: Not running (compatibility checking unavailable)"
+    fi
     print_success "=============================================="
     print_status "Press Ctrl+C to stop both servers"
     print_status ""
     print_status "View backend logs: tail -f /tmp/idss_backend.log"
     print_status "View frontend logs: tail -f /tmp/idss_frontend.log"
+    if neo4j_running; then
+        print_status "View Neo4j logs: tail -f /tmp/idss_neo4j.log"
+    fi
     print_status ""
     
     # Wait for background jobs
