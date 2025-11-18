@@ -12,12 +12,12 @@ terminology:
 # LLM Models for each component
 models:
   intent_classifier:
-    name: "gpt-4o-mini"
+    name: "gpt-5-mini"
     temperature: 0
     max_tokens: 
 
   semantic_parser:
-    name: "gpt-4"
+    name: "gpt-5-mini"
     temperature: 0
     max_tokens: 
 
@@ -93,6 +93,7 @@ recommendation:
   # Method 1: SQL + Dense Vector + BM25 + Clustered MMR
   method1:
     top_k: 20                        # Total vehicles to return
+    strict_threshold: 1000           # Min vehicles before relaxing ALL filters to must_have only
     min_candidates: 10000            # Minimum candidates for effective ranking (backfill with dense if SQL < this)
     vector_limit: 1000               # Max candidates to rank with dense embeddings
     lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
@@ -100,10 +101,12 @@ recommendation:
     use_bm25: false                   # Enable BM25 sparse ranking
     bm25_beta: 0.3                   # BM25 weight (dense weight = 1 - beta). 0.3 = 30% BM25, 70% dense
 
-  # Method 2: Hybrid Search (if implemented)
+  # Method 2: Proxy Description → Multi-Filter Sets → Dense Ranking + MMR
   method2:
-    top_k: 20
-    # Add method2-specific params here
+    top_k: 20                        # Total vehicles to return
+    num_filter_sets: 10              # Number of distinct filter sets to generate
+    lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
+    cluster_size: 5                  # Number of similar vehicles per cluster
 
   # Legacy method (current ReAct agent)
   legacy:

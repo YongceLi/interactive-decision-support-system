@@ -84,62 +84,99 @@ def recommend_method1(
         logger.error(f"Local store unavailable: {e}")
         return [], None
 
-    # Step 2: Build strict filters (only must-have fields)
-    logger.info("Step 1: Building SQL query with strict filters only...")
+    # Step 1: Build filter sets for two-tier query strategy
+    logger.info("=" * 60)
+    logger.info("BUILDING QUERY FILTERS")
+    logger.info("=" * 60)
 
     must_have = explicit_filters.get("must_have_filters", [])
-    strict_filters = {}
 
-    # Extract only must-have filters for SQL query
+    # All filters (strict query) - includes ALL explicit filters
+    all_filters = {k: v for k, v in explicit_filters.items()
+                   if k != "must_have_filters"}
+
+    # Must-have filters (relaxed query) - only strict requirements
+    must_have_filters = {}
     for key in must_have:
         if key in explicit_filters and key != "must_have_filters":
-            strict_filters[key] = explicit_filters[key]
-            logger.info(f"  Strict filter: {key} = {explicit_filters[key]}")
+            must_have_filters[key] = explicit_filters[key]
 
-    # ALWAYS include avoid_vehicles in SQL query (even if not in must_have)
+    # ALWAYS include avoid_vehicles in both queries
     if explicit_filters.get("avoid_vehicles"):
-        strict_filters["avoid_vehicles"] = explicit_filters["avoid_vehicles"]
-        logger.info(f"  Excluding vehicles: {explicit_filters['avoid_vehicles']}")
+        if "avoid_vehicles" not in all_filters:
+            all_filters["avoid_vehicles"] = explicit_filters["avoid_vehicles"]
+        if "avoid_vehicles" not in must_have_filters:
+            must_have_filters["avoid_vehicles"] = explicit_filters["avoid_vehicles"]
 
-    # Log flexible filters (used only for vector ranking)
-    flexible_filters = {k: v for k, v in explicit_filters.items()
-                       if k not in must_have and k != "must_have_filters" and k != "avoid_vehicles"}
-    if flexible_filters:
-        logger.info(f"  Flexible filters (vector only): {list(flexible_filters.keys())}")
+    # If no filters at all, add default year range
+    if not all_filters:
+        logger.warning("No explicit filters - adding default year range")
+        all_filters['year'] = '2015-2025'
+        must_have_filters['year'] = '2015-2025'
 
-    # If no strict filters, add reasonable defaults to prevent querying entire DB
-    if not strict_filters:
-        logger.warning("No strict filters - adding default year range")
-        strict_filters['year'] = '2015-2025'
+    logger.info(f"All filters (Phase 1): {list(all_filters.keys())}")
+    logger.info(f"Must-have filters (Phase 2): {list(must_have_filters.keys())}")
 
-    # Step 3: Single SQL query with strict filters only (no ORDER BY, no LIMIT)
-    logger.info(f"Step 1: Querying database with {len(strict_filters)} strict filters...")
+    # Get thresholds from config
+    STRICT_THRESHOLD = method1_config.get('strict_threshold', 1000)
+    MIN_CANDIDATES = method1_config.get('min_candidates', 10000)
+
+    # PHASE 1: Try strict query with ALL explicit filters
+    logger.info("=" * 60)
+    logger.info("PHASE 1: SQL Query with ALL Explicit Filters")
+    logger.info("=" * 60)
+    logger.info(f"Filters: {all_filters}")
+
     candidates = store.search_listings(
-        strict_filters,
-        limit=None,  # No limit - get all matching vehicles
-        order_by=None,  # No ordering - let dense ranker handle it
+        all_filters,
+        limit=None,
+        order_by=None,
         order_dir="ASC",
         user_latitude=user_latitude,
         user_longitude=user_longitude
-        # No max_per_make_model - let MMR handle all diversity
     )
 
-    # Capture the SQL query for logging/debugging
     sql_query = store.last_sql_query
+    logger.info(f"Phase 1 returned {len(candidates)} candidates")
 
-    logger.info(f"Step 1: Retrieved {len(candidates)} candidate vehicles from SQL")
-
-    # Log diversity stats if we have results
     if candidates:
         unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
         unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
-        logger.info(f"  SQL diversity: {unique_makes} makes, {unique_models} models")
+        logger.info(f"  Diversity: {unique_makes} makes, {unique_models} models")
 
-    # Step 1.5: Backfill with dense search if needed (works for 0 results or < 10k results)
-    MIN_CANDIDATES = method1_config.get('min_candidates', 10000)
+    # PHASE 2: Relax to must-have filters if needed
+    if len(candidates) < STRICT_THRESHOLD and set(all_filters.keys()) != set(must_have_filters.keys()):
+        logger.info("=" * 60)
+        logger.info(f"PHASE 2: Relaxing to Must-Have Filters (strict query < {STRICT_THRESHOLD})")
+        logger.info("=" * 60)
+        logger.info(f"Filters: {must_have_filters}")
 
+        candidates = store.search_listings(
+            must_have_filters,
+            limit=None,
+            order_by=None,
+            order_dir="ASC",
+            user_latitude=user_latitude,
+            user_longitude=user_longitude
+        )
+
+        sql_query = store.last_sql_query
+        logger.info(f"Phase 2 returned {len(candidates)} candidates")
+
+        if candidates:
+            unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
+            unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
+            logger.info(f"  Diversity: {unique_makes} makes, {unique_models} models")
+    elif len(candidates) >= STRICT_THRESHOLD:
+        logger.info(f"✓ Phase 1 successful ({len(candidates)} >= {STRICT_THRESHOLD}), skipping Phase 2")
+    else:
+        logger.info("✓ All filters are must-have, skipping Phase 2")
+
+    # PHASE 3: Dense backfill if needed
     if len(candidates) < MIN_CANDIDATES:
-        logger.info(f"Step 1.5: Only {len(candidates)} from SQL - backfilling with dense search to {MIN_CANDIDATES}")
+        logger.info("=" * 60)
+        logger.info(f"PHASE 3: Dense Backfill ({len(candidates)} < {MIN_CANDIDATES})")
+        logger.info("=" * 60)
 
         from idss_agent.processing.dense_ranker import get_dense_embedding_store, build_query_text
 

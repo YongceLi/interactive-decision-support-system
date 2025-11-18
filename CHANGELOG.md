@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-18
+
+### Changed
+
+#### Method 2: Proxy Description → Multi-Filter Sets → Dense Ranking + MMR
+- **New Architecture**: `User query → Proxy description → LLM generates 10 distinct filter sets → Parallel SQL → Deduplicate → Dense ranking → MMR → Top 20`
+- **Old Architecture**: `User query → Web search (Tavily) → Extract makes → Parallel SQL per make → Vector ranking → Combine`
+
+**Key Improvements:**
+1. **No web search dependency** - Pure LLM + SQL approach (faster, no external API)
+2. **10 distinct filter sets** - LLM explores different market segments (brand combinations, price ranges, year ranges)
+3. **Proxy description generator** - Converts structured filters to natural language for LLM context
+4. **Two-tier fallback** - Never returns empty results (explicit_filters → entire database)
+5. **Multi-dimensional exploration** - Varies make, price, year, mileage for better coverage
+6. **Reuses Method 1 ranking** - Dense embeddings + clustered MMR (proven approach)
+
+**LLM Prompt Constraints:**
+- Preserves `must_have_filters` in ALL sets (respects strict requirements)
+- Preserves `avoid_vehicles` in ALL sets (critical for user satisfaction)
+- Infers ranges from implicit signals (luxury, budget, recent, low-mileage)
+- Generates unique filter sets with NO duplicates or heavy overlaps
+- Explores multiple dimensions (make, price, year, mileage) not just make/price
+
+**Configuration:**
+```yaml
+method2:
+  top_k: 20                        # Total vehicles to return
+  num_filter_sets: 10              # Number of distinct filter sets to generate
+  lambda_param: 0.85               # MMR diversity parameter
+  cluster_size: 5                  # Vehicles per cluster
+```
+
+**Files Modified:**
+- `idss_agent/processing/recommendation_method2.py` - Complete rewrite (650 lines)
+  - `generate_proxy_description()` - Converts filters to natural language (includes is_used, is_cpo, all filters)
+  - `generate_multi_filter_sets()` - LLM generates 10 diverse filter sets with validation
+  - `recommend_method2()` - Main pipeline with two-tier fallback
+- `config/agent_config.yaml` - Added method2 configuration
+- `scripts/test_recommendation_methods.py` - Updated to use `num_filter_sets` parameter
+
+**Example Output:**
+```
+Proxy: A vehicle SUV, priced between $0 and $30000, prioritizing reliability, with budget-conscious budget focus.
+
+Generated 10 filter sets:
+  Set 1: {make: "Toyota,Honda", body_style: "SUV", price: "0-30000"}
+  Set 2: {make: "Mazda,Subaru", body_style: "SUV", price: "0-30000", year: "2020-2024"}
+  Set 3: {make: "Ford,Chevrolet", body_style: "SUV", price: "0-25000"}
+  ... (7 more distinct sets)
+
+Retrieved: 5,250 total vehicles → 3,747 unique → Ranked 1,000 → Selected 20 diverse vehicles
+Final diversity: 4 makes, 8 models
+```
+
+---
+
 ## 2025-11-17
 
 ### Added

@@ -268,7 +268,7 @@ def test_method2_pipeline(user_query: str) -> dict:
                 user_latitude=user_lat,
                 user_longitude=user_lon,
                 top_k=20,
-                num_makes=4
+                num_filter_sets=10
             )
             result["vehicles_found"] = len(vehicles)
             result["recommended_vehicles"] = vehicles
