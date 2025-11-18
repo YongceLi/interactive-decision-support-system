@@ -40,8 +40,12 @@ PERSONA_EXPORT_COLUMNS = [
 
 RESULT_EXPORT_COLUMNS = PERSONA_EXPORT_COLUMNS + [
     "precision_at_k",
-    "recall_at_k",
     "satisfied_in_top_k",
+    "infra_list_diversity",
+    "ndcg_at_k",
+    "extracted_filters",
+    "implicit_preferences",
+    "summary",
     "vehicle_judgements",
     "sql_query",
 ]
@@ -127,8 +131,12 @@ def result_to_row(result: SimulationResult) -> Dict[str, object]:
     row.update(
         {
             "precision_at_k": metrics.precision_at_k,
-            "recall_at_k": metrics.recall_at_k,
             "satisfied_in_top_k": metrics.satisfied_count,
+            "infra_list_diversity": metrics.infra_list_diversity,
+            "ndcg_at_k": metrics.ndcg_at_k,
+            "extracted_filters": json.dumps(result.recommendation_response.get("extracted_filters")),
+            "implicit_preferences": json.dumps(result.recommendation_response.get("implicit_preferences")),
+            "summary": result.summary,
             "vehicle_judgements": serialize_vehicle_judgements(result.vehicles),
             "sql_query": result.recommendation_response.get("sql_query", None),
         }
