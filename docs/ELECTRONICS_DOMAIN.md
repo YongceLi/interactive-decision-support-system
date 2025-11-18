@@ -5,8 +5,7 @@
 1. [Overview](#overview)
 2. [Major Changes from Cars Domain](#major-changes-from-cars-domain)
 3. [Local Database](#local-database)
-4. [RapidAPI Integration](#rapidapi-integration)
-5. [Knowledge Graph and Compatibility](#knowledge-graph-and-compatibility)
+4. [Knowledge Graph and Compatibility](#knowledge-graph-and-compatibility)
 
 ---
 
@@ -21,7 +20,7 @@ The Interactive Decision Support System (IDSS) has been extended from the origin
 ### Data Source Migration
 
 **From**: Local SQLite database (`california_vehicles.db`, `uni_vehicles.db`) with vehicle listings
-**To**: RapidAPI product search API for electronics, with local SQLite cache (`pc_parts.db`)
+**To**: Local SQLite database (`pc_parts.db`) with electronics product listings
 
 ### Product Type Changes
 
@@ -40,20 +39,20 @@ The Interactive Decision Support System (IDSS) has been extended from the origin
 ### API Integration Changes
 
 **From**: Auto.dev API for vehicle data and images
-**To**: RapidAPI Shopping API for electronics product search and details
+**To**: Local SQLite database (`pc_parts.db`) for electronics product search and details
 
 ### New Features
 
 1. **Compatibility Checking**: Neo4j knowledge graph for PC part compatibility
 2. **Technical Specifications**: Focus on hardware compatibility (sockets, PCIe, power requirements)
-3. **Multi-Source Data**: RapidAPI aggregates products from multiple sellers
+3. **Local Database**: Pre-populated SQLite database with electronics products from multiple sellers
 4. **Knowledge Graph**: Structured compatibility relationships between PC components
 
 ### Code Changes
 
 **Database Tools**:
 - `idss_agent/tools/local_vehicle_store.py` → Still used for legacy vehicle data
-- `idss_agent/tools/electronics_api.py` → New RapidAPI integration for electronics
+- `idss_agent/tools/local_electronics_store.py` → New local database integration for electronics
 - `idss_agent/tools/kg_compatibility.py` → New Neo4j compatibility tool
 
 **Processing Modules**:
@@ -121,11 +120,13 @@ python dataset_builder/fetch_pc_parts_dataset.py \
 ```
 
 **Functionality**:
-1. Connects to RapidAPI Shopping API
+1. Connects to RapidAPI Shopping API (for initial data population)
 2. Fetches products for predefined categories (CPU, GPU, motherboard, PSU, RAM, etc.)
 3. Normalizes product data
 4. Stores in SQLite database with deduplication
 5. Tracks fetch progress and statistics
+
+**Note**: The database builder script is used to populate the local database. Once populated, the recommendation system uses the local database directly without requiring RapidAPI access.
 
 **Categories Supported**:
 - PC Components: cpu, gpu, motherboard, psu, ram, storage, case, cooling
@@ -141,92 +142,33 @@ python dataset_builder/fetch_pc_parts_dataset.py \
 
 ### Database Access
 
-The database is accessed through SQLAlchemy in the agent system. Products are queried by:
+The database is accessed through `LocalElectronicsStore` class in the agent system. Products are queried by:
 - Part type (category)
 - Price range
 - Seller
-- Availability status
-- Text search on product name
+- Brand
+- Text search on product name, model number, series, and description
 
----
+**Location**: `idss_agent/tools/local_electronics_store.py`
 
-## RapidAPI Integration
+**Class**: `LocalElectronicsStore`
 
-### API Configuration
+**Methods**:
 
-The RapidAPI integration is configured through environment variables:
+1. **`search_products`**: Search for electronics products in local database
+   - Parameters: `query`, `part_type`, `brand`, `min_price`, `max_price`, `seller`, `limit`, `offset`
+   - Returns: List of product dictionaries matching RapidAPI format
+   - Performs SQL queries with LIKE matching for text search
+   - Supports filtering by multiple criteria simultaneously
 
-- `RAPIDAPI_KEY`: Your RapidAPI API key (required)
-- `RAPIDAPI_HOST`: API host (default: `product-search-api.p.rapidapi.com`)
-- `RAPIDAPI_BASE_URL`: Base URL (default: `https://product-search-api.p.rapidapi.com`)
-- `RAPIDAPI_SEARCH_ENDPOINT`: Search endpoint (default: `/shopping`)
-- `RAPIDAPI_PRODUCT_ENDPOINT`: Product detail endpoint (default: `/products/{product_id}`)
+**Benefits of Local Database**:
+- No API rate limits or costs
+- Faster query performance
+- Offline operation capability
+- Consistent data format
+- Full control over data quality
 
-### API Tool Implementation
-
-**Location**: `idss_agent/tools/electronics_api.py`
-
-**Functions**:
-
-1. **`search_products`**: Search for electronics products
-   - Parameters: `query`, `page`, `country`, `language`, `sort_by`, `min_price`, `max_price`, `seller`
-   - Returns: JSON string with product search results
-   - Uses POST request to `/shopping` endpoint
-
-2. **`get_product_details`**: Fetch detailed product information
-   - Parameters: `product_id`, `country`, `language`
-   - Returns: JSON string with full product details
-   - Supports both REST path (`/products/{product_id}`) and legacy POST endpoint
-
-### Request Format
-
-**Search Request**:
-```python
-POST https://product-search-api.p.rapidapi.com/shopping
-Headers:
-  X-RapidAPI-Key: your-api-key
-  X-RapidAPI-Host: product-search-api.p.rapidapi.com
-  Content-Type: application/x-www-form-urlencoded
-Body:
-  query=graphics card
-  page=1
-  country=us
-```
-
-**Response Format**:
-The API returns a JSON object with product listings. The exact structure varies by API provider, but typically includes:
-- Product ID
-- Title/name
-- Price
-- Seller information
-- Product URL
-- Image URL
-- Ratings and reviews
-- Specifications/attributes
-
-### Error Handling
-
-The API tool handles:
-- HTTP errors (429, 500, 502, 503, 504) with retry logic
-- Missing API key errors
-- Network timeouts
-- Invalid response formats
-
-Errors are returned as JSON strings with error messages for the agent to handle.
-
-### Rate Limiting
-
-The RapidAPI integration includes:
-- Request timeout configuration (default: 30 seconds)
-- Retry logic with exponential backoff
-- Rate limit awareness (429 status code handling)
-
-### Integration in Agent System
-
-The RapidAPI tools are registered as LangChain tools and used by:
-- **Discovery Agent**: For product search and presentation
-- **Analytical Agent**: For product detail lookups and specifications
-- **Recommendation System**: For finding compatible products
+**Note**: RapidAPI integration (`idss_agent/tools/electronics_api.py`) is still available for data population via the dataset builder script, but the recommendation system now uses the local database exclusively.
 
 ---
 

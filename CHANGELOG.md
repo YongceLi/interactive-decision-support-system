@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+#### Recommendation System: RapidAPI → Local Database
+- **Migration**: Switched from RapidAPI product search API to local SQLite database (`pc_parts.db`)
+- **New Module**: Created `idss_agent/tools/local_electronics_store.py` for querying local electronics database
+- **Updated Files**:
+  - `idss_agent/processing/recommendation.py`: Now uses `LocalElectronicsStore` instead of RapidAPI
+  - `idss_agent/processing/recommendation_method1.py`: Updated to query local database
+  - `idss_agent/processing/recommendation_method2.py`: Updated to query local database
+- **Benefits**: 
+  - No API rate limits or costs
+  - Faster query performance
+  - Offline operation capability
+  - Consistent data format
+- **Note**: RapidAPI integration (`idss_agent/tools/electronics_api.py`) remains available for database population via dataset builder script
+
+#### Similarity Score Filtering
+- **Fixed**: Recommendation system now filters out items with similarity score of 0
+- **Updated Files**:
+  - `idss_agent/processing/vector_ranker.py`: Added filtering for zero similarity scores
+  - `idss_agent/processing/recommendation_method1.py`: Added additional filtering after ranking
+  - `idss_agent/processing/recommendation_method2.py`: Added filtering when selecting products per brand
+- **Impact**: Prevents irrelevant products with zero similarity from appearing in recommendations
+
+### Documentation
+
+- **Updated**: `docs/ELECTRONICS_DOMAIN.md` to reflect local database usage instead of RapidAPI
+- **Updated**: `CHANGELOG.md` with new changes
+
+---
+
 ## 2025-11-11
 
 ### Added

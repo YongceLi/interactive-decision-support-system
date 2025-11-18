@@ -10,6 +10,10 @@
 6. [Data Sources and Scraping](#data-sources-and-scraping)
 7. [Scripts and Functions Reference](#scripts-and-functions-reference)
 8. [Querying the Graph](#querying-the-graph)
+   - [Querying from Frontend](#querying-from-frontend)
+   - [Bidirectional Graph Traversal](#bidirectional-graph-traversal)
+   - [Agent Processing of Compatibility Queries](#agent-processing-of-compatibility-queries)
+   - [Example Cypher Queries](#example-cypher-queries)
 9. [Viewing and Managing the Graph](#viewing-and-managing-the-graph)
 10. [Troubleshooting](#troubleshooting)
 
@@ -1177,6 +1181,289 @@ interface CompatibilityResultProps {
 ```
 
 **Display**: Renders compatibility status with visual indicators (green for compatible, red for incompatible) and explanation text.
+
+### Bidirectional Graph Traversal
+
+The knowledge graph implements bidirectional traversal to simulate bidirectionality for compatibility relationships. This allows queries to work regardless of the direction edges are stored in the graph (e.g., finding compatible PSUs for a GPU even if edges are stored as GPU→PSU or PSU→GPU).
+
+#### Implementation Details
+
+**Location**: `idss_agent/tools/kg_compatibility.py`
+
+The bidirectional traversal is implemented through three mechanisms:
+
+**1. Reverse Direction Type Mapping** (lines 195-201, 295-305)
+
+When determining which compatibility type to check, the code tries both directions:
+
+```python
+# Determine compatibility types to check
+# Check both directions since compatibility is symmetric
+if not compatibility_types:
+    key = (type1, type2)
+    compatibility_types = PART_COMPATIBILITY_MAP.get(key, [])
+    # Try reverse direction if not found
+    if not compatibility_types:
+        key = (type2, type1)
+        compatibility_types = PART_COMPATIBILITY_MAP.get(key, [])
+```
+
+Similarly, when finding compatible parts (lines 295-305):
+
+```python
+# Determine compatibility type if not provided
+# Check both (source_type, target_type) and (target_type, source_type) since compatibility is symmetric
+if not compatibility_type:
+    key = (source_type, target_type)
+    types = PART_COMPATIBILITY_MAP.get(key, [])
+    if not types:
+        # Try reverse direction
+        key = (target_type, source_type)
+        types = PART_COMPATIBILITY_MAP.get(key, [])
+```
+
+**2. Bidirectional Relationship Matching in Cypher** (lines 209-227, 310-316)
+
+The Cypher queries use undirected relationship syntax `-[r:REL_TYPE]-` (without arrow direction) to match edges in both directions:
+
+```python
+# Check each compatibility type (bidirectional - compatibility is symmetric)
+for rel_type in compatibility_types:
+    # Check both directions since compatibility is symmetric
+    query = f"""
+        MATCH (p1:PCProduct {{slug: $slug1}})-[r:{rel_type}]-(p2:PCProduct {{slug: $slug2}})
+        RETURN r
+        LIMIT 1
+    """
+```
+
+And for finding compatible parts (lines 310-316):
+
+```python
+# Query compatible parts (bidirectional - check both directions)
+# First try: source -> target (normal direction)
+# Second try: target -> source (reverse direction, since compatibility is symmetric)
+query = f"""
+    MATCH (source:PCProduct {{slug: $slug}})-[r:{compatibility_type}]-(target:PCProduct)
+    WHERE target.product_type = $target_type
+    RETURN target, r
+    ORDER BY target.price_avg ASC
+    LIMIT $limit
+"""
+```
+
+**3. Bidirectional Compatibility Mapping** (lines 32-49)
+
+The `PART_COMPATIBILITY_MAP` explicitly defines compatibility types for both directions:
+
+```python
+PART_COMPATIBILITY_MAP = {
+    ("cpu", "motherboard"): ["SOCKET_COMPATIBLE_WITH"],
+    ("motherboard", "cpu"): ["SOCKET_COMPATIBLE_WITH"],
+    ("gpu", "psu"): ["ELECTRICAL_COMPATIBLE_WITH"],
+    ("psu", "gpu"): ["ELECTRICAL_COMPATIBLE_WITH"],
+    # ... more bidirectional mappings
+}
+```
+
+#### Example: Finding Compatible PSUs for a GPU
+
+When querying for compatible PSUs for a GPU:
+
+1. **Type Mapping**: The system checks `(gpu, psu)` first, then `(psu, gpu)` if needed (lines 295-305)
+2. **Cypher Query**: Uses undirected relationship `-[r:ELECTRICAL_COMPATIBLE_WITH]-` to match edges in either direction (line 311)
+3. **Result**: Returns compatible PSUs regardless of whether edges are stored as GPU→PSU or PSU→GPU
+
+This design ensures that compatibility queries work symmetrically, allowing users to find compatible parts in either direction (e.g., "What PSUs work with my GPU?" or "What GPUs work with my PSU?").
+
+### Agent Processing of Compatibility Queries
+
+The agent system processes compatibility queries through a multi-stage pipeline that detects, classifies, and handles compatibility-related user requests.
+
+#### Architecture Overview
+
+**Key Components**:
+
+1. **Compatibility Detection** (`idss_agent/processing/compatibility.py`)
+2. **Knowledge Graph Tool** (`idss_agent/tools/kg_compatibility.py`)
+3. **Agent Integration** (`idss_agent/agents/analytical.py`)
+
+#### Query Detection and Classification
+
+**Location**: `idss_agent/processing/compatibility.py`
+
+**`CompatibilityHandler.is_compatibility_query()`** (lines 48-66)
+
+Detects if a user query is about compatibility by checking for keywords:
+
+```python
+def is_compatibility_query(self, user_query: str) -> bool:
+    query_lower = user_query.lower()
+    compatibility_keywords = [
+        "compatible", "compatibility", "works with", "fits", "supports",
+        "will work", "can i use", "does it work", "compatible with"
+    ]
+    return any(keyword in query_lower for keyword in compatibility_keywords)
+```
+
+**`CompatibilityHandler.classify_intent()`** (lines 68-96)
+
+Classifies the compatibility query intent as either "compare" (binary compatibility check) or "recommend" (finding compatible parts):
+
+```python
+def classify_intent(self, user_query: str) -> Tuple[str, Optional[Dict[str, Any]]]:
+    query_lower = user_query.lower()
+    
+    # Check for binary comparison pattern: "is X compatible with Y"
+    comparison_patterns = ["is", "are", "will", "does", "can"]
+    for pattern in comparison_patterns:
+        if pattern in query_lower and "compatible" in query_lower:
+            return "compare", None
+    
+    # Check for recommendation pattern: "what", "show me", "find"
+    recommendation_patterns = ["what", "show me", "find", "recommend", "suggest", "list"]
+    for pattern in recommendation_patterns:
+        if pattern in query_lower and ("compatible" in query_lower or "work" in query_lower):
+            return "recommend", None
+    
+    return "unknown", None
+```
+
+#### Knowledge Graph Querying
+
+**Location**: `idss_agent/tools/kg_compatibility.py`
+
+**`Neo4jCompatibilityTool.check_compatibility()`** (lines 149-256)
+
+Performs binary compatibility checks between two parts:
+
+```python
+def check_compatibility(
+    self, 
+    part1_slug: str, 
+    part2_slug: str, 
+    compatibility_types: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    # Get product types
+    # Determine compatibility types to check (with reverse direction fallback)
+    # Query Neo4j with bidirectional relationship matching
+    # Return compatibility result with explanation
+```
+
+**Key Implementation** (lines 195-227):
+- Checks both `(type1, type2)` and `(type2, type1)` for compatibility type mapping
+- Uses bidirectional Cypher pattern `-[r:REL_TYPE]-` to match edges in both directions
+- Returns structured result with compatibility status, types, and explanation
+
+**`Neo4jCompatibilityTool.find_compatible_parts()`** (lines 258-335)
+
+Finds compatible parts for a given source part:
+
+```python
+def find_compatible_parts(
+    self,
+    source_slug: str,
+    target_type: str,
+    compatibility_type: Optional[str] = None,
+    limit: int = 50
+) -> List[Dict[str, Any]]:
+    # Get source product type
+    # Determine compatibility type (with reverse direction fallback)
+    # Query Neo4j with bidirectional relationship matching
+    # Return list of compatible products
+```
+
+**Key Implementation** (lines 295-316):
+- Checks both `(source_type, target_type)` and `(target_type, source_type)` for type mapping
+- Uses bidirectional Cypher query to find compatible parts regardless of edge direction
+- Orders results by price and returns top matches
+
+#### Helper Functions
+
+**Location**: `idss_agent/processing/compatibility.py`
+
+**`check_compatibility_binary()`** (lines 283-307)
+
+Wrapper function for binary compatibility checks:
+
+```python
+def check_compatibility_binary(
+    part1_slug: str,
+    part2_slug: str,
+    compatibility_types: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    tool = get_compatibility_tool()
+    if not tool.is_available():
+        return {"compatible": False, "error": "Compatibility checking unavailable"}
+    result = tool.check_compatibility(part1_slug, part2_slug, compatibility_types)
+    return result
+```
+
+**`find_compatible_parts_recommendations()`** (lines 310-342)
+
+Wrapper function for finding compatible parts with reranking:
+
+```python
+def find_compatible_parts_recommendations(
+    source_slug: str,
+    target_type: str,
+    compatibility_type: Optional[str] = None,
+    limit: int = 3
+) -> List[Dict[str, Any]]:
+    tool = get_compatibility_tool()
+    candidates = tool.find_compatible_parts(source_slug, target_type, compatibility_type, limit=50)
+    # Simple reranking: by price (ascending), then by name
+    candidates.sort(key=lambda x: (
+        x.get("price_avg") or x.get("price_min") or float('inf'),
+        x.get("name", "")
+    ))
+    return candidates[:limit]
+```
+
+**`format_compatibility_recommendations_table()`** (lines 345-432)
+
+Formats compatible products as a comparison table for display:
+
+```python
+def format_compatibility_recommendations_table(
+    products: List[Dict[str, Any]],
+    source_product_name: str
+) -> ComparisonTable:
+    # Build headers and rows with product attributes
+    # Include type-specific attributes (PCIe version for GPUs, socket for CPUs, etc.)
+    return ComparisonTable(headers=headers, rows=rows)
+```
+
+#### Agent Integration
+
+**Location**: `idss_agent/agents/analytical.py`
+
+The analytical agent integrates compatibility checking into its workflow. When processing user queries:
+
+1. **Query Analysis**: The agent analyzes the user's intent and extracts product information
+2. **Compatibility Detection**: Uses `CompatibilityHandler` to detect if query is compatibility-related
+3. **Knowledge Graph Query**: Calls `Neo4jCompatibilityTool` methods to query the graph
+4. **Response Generation**: Formats compatibility results into natural language responses
+
+**Key Integration Points**:
+- Product extraction from user queries and cached recommendations
+- Compatibility query routing to appropriate handlers
+- Result formatting and presentation to users
+
+#### Query Flow Example
+
+For a query like "What PSUs are compatible with the RTX 4090?":
+
+1. **Detection** (`compatibility.py:48-66`): `is_compatibility_query()` returns `True`
+2. **Classification** (`compatibility.py:68-96`): `classify_intent()` returns `("recommend", None)`
+3. **Product Lookup** (`kg_compatibility.py:93-147`): `find_product_by_name()` finds RTX 4090 by slug
+4. **Compatibility Query** (`kg_compatibility.py:258-335`): `find_compatible_parts()` queries Neo4j:
+   - Maps `(gpu, psu)` → `ELECTRICAL_COMPATIBLE_WITH` (with reverse fallback)
+   - Executes bidirectional Cypher query: `MATCH (source)-[r:ELECTRICAL_COMPATIBLE_WITH]-(target)`
+   - Returns compatible PSUs ordered by price
+5. **Reranking** (`compatibility.py:310-342`): `find_compatible_parts_recommendations()` reranks by price
+6. **Formatting** (`compatibility.py:345-432`): `format_compatibility_recommendations_table()` creates comparison table
+7. **Response**: Agent includes compatibility results in response to user
 
 ### Example Cypher Queries
 

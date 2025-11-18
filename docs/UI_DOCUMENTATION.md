@@ -68,12 +68,12 @@ cp docs/.env.example .env
 Edit `.env` and set the following required variables:
 
 - `OPENAI_API_KEY`: Your OpenAI API key for LLM functionality
-- `RAPIDAPI_KEY`: Your RapidAPI key for electronics product search
 - `NEO4J_URI`: Neo4j connection URI (default: `bolt://localhost:7687`)
 - `NEO4J_USER`: Neo4j username (default: `neo4j`)
 - `NEO4J_PASSWORD`: Your Neo4j password
 
 Optional variables:
+- `RAPIDAPI_KEY`: Your RapidAPI key (only needed for populating the local database via dataset builder script)
 - `TAVILY_API_KEY`: For analytical agent web search
 - `IDSS_API_URL`: Backend API URL (default: `http://localhost:8000`)
 - `NEXT_PUBLIC_API_URL`: Public API URL for frontend (default: `http://localhost:8000`)
