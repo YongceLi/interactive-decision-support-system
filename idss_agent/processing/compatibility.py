@@ -356,11 +356,22 @@ def format_compatibility_recommendations_table(
     Returns:
         ComparisonTable object
     """
+    def strip_brand_and_type(name: str) -> str:
+        """Strip first word (brand) and last word (part type) from product name."""
+        if not name:
+            return name
+        words = name.split()
+        if len(words) <= 2:
+            # If 2 words or less, return as is
+            return name
+        # Remove first word (brand) and last word (part type, may be in parentheses like "(GPU)")
+        return " ".join(words[1:-1])
+    
     if not products:
         return ComparisonTable(headers=["Attribute"], rows=[])
 
-    # Build headers
-    headers = ["Attribute"] + [p.get("name", "Unknown") for p in products]
+    # Build headers - strip brand (first word) and part type (last word)
+    headers = ["Attribute"] + [strip_brand_and_type(p.get("name", "Unknown")) for p in products]
 
     # Build rows
     rows = []
