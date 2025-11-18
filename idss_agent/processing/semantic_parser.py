@@ -132,6 +132,10 @@ Based on the ENTIRE conversation above, extract the user's CURRENT search intent
 
         state["explicit_filters"] = new_filters  # REPLACE, not merge!
 
+        # Validate and correct categorical filters
+        from idss_agent.processing.filter_validator import validate_and_correct_filters
+        state["explicit_filters"] = validate_and_correct_filters(state["explicit_filters"])
+
         # REPLACE implicit preferences entirely
         new_implicit = parsed_data.implicit_preferences.model_dump(exclude_none=True)
         state["implicit_preferences"] = new_implicit  # REPLACE, not merge!

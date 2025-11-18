@@ -97,8 +97,8 @@ recommendation:
     vector_limit: 1000               # Max candidates to rank with dense embeddings
     lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
     cluster_size: 5                  # Number of similar vehicles per cluster
-    use_bm25: false                  # Enable BM25 sparse ranking
-    bm25_beta: 0.1                   # BM25 weight (dense weight = 1 - beta). 0.3 = 30% BM25, 70% dense
+    use_bm25: false                   # Enable BM25 sparse ranking
+    bm25_beta: 0.3                   # BM25 weight (dense weight = 1 - beta). 0.3 = 30% BM25, 70% dense
 
   # Method 2: Hybrid Search (if implemented)
   method2:

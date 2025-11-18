@@ -127,85 +127,15 @@ def recommend_method1(
     # Capture the SQL query for logging/debugging
     sql_query = store.last_sql_query
 
-    if not candidates:
-        logger.warning("No vehicles found from SQL query - falling back to full database search")
-        logger.info("Step 1b: Searching entire database with dense embeddings...")
+    logger.info(f"Step 1: Retrieved {len(candidates)} candidate vehicles from SQL")
 
-        # Fallback: Search entire database using dense embeddings
-        from idss_agent.processing.dense_ranker import get_dense_embedding_store, build_query_text
+    # Log diversity stats if we have results
+    if candidates:
+        unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
+        unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
+        logger.info(f"  SQL diversity: {unique_makes} makes, {unique_models} models")
 
-        try:
-            store_dense = get_dense_embedding_store()
-            query_text = build_query_text(explicit_filters, implicit_preferences)
-            logger.info(f"Query: {query_text[:150]}{'...' if len(query_text) > 150 else ''}")
-
-            # Search entire database (use configured vector_limit)
-            vins, scores = store_dense.search(query_text, k=vector_limit)  # Get top N candidates for MMR
-
-            if not vins:
-                logger.warning("Dense search returned no results")
-                return []
-
-            logger.info(f"Dense search found {len(vins)} candidates from entire database")
-
-            # Load full vehicle payloads from database (filter out NULL price/mileage)
-            candidates = []
-            for vin, score in zip(vins, scores):
-                vehicle = store.get_by_vin(vin)
-                if vehicle:
-                    # Extract price and mileage
-                    v_price = vehicle.get("vehicle", {}).get("price") or vehicle.get("price")
-                    v_mileage = vehicle.get("vehicle", {}).get("mileage") or vehicle.get("mileage")
-
-                    # Skip if price or mileage is NULL
-                    if v_price is None or v_mileage is None:
-                        continue
-
-                    vehicle["_dense_score"] = score
-                    vehicle["_vector_score"] = score
-                    candidates.append(vehicle)
-
-            logger.info(f"Loaded {len(candidates)} vehicle payloads (filtered NULL price/mileage)")
-
-            # Skip SQL query stats, go directly to MMR diversification
-            scored = [(v.get("_dense_score", 0.0), v) for v in candidates]
-
-            diverse = diversify_with_clustered_mmr(
-                scored,
-                top_k=top_k,
-                cluster_size=cluster_size,
-                lambda_param=lambda_param
-            )
-
-            logger.info(f"Step 1b: Selected {len(diverse)} vehicles via fallback")
-
-            # Log final diversity stats
-            final_unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in diverse))
-            final_unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in diverse))
-            final_unique_make_models = len(set(
-                f"{v.get('vehicle', {}).get('make', '')}_{v.get('vehicle', {}).get('model', '')}"
-                for v in diverse
-            ))
-            logger.info(f"  Fallback diversity: {final_unique_makes} makes, {final_unique_models} models, {final_unique_make_models} make/model combinations")
-
-            logger.info("=" * 60)
-            logger.info(f"METHOD 1 COMPLETE (FALLBACK): {len(diverse)} vehicles returned")
-            logger.info("=" * 60)
-
-            return diverse, "FALLBACK: Dense search on entire database (no SQL filtering)"
-
-        except Exception as e:
-            logger.error(f"Fallback dense search failed: {e}")
-            return [], None
-
-    logger.info(f"Step 1: Retrieved {len(candidates)} candidate vehicles")
-
-    # Log diversity stats
-    unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
-    unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
-    logger.info(f"  SQL diversity: {unique_makes} makes, {unique_models} models")
-
-    # Step 1.5: Backfill with dense search if too few candidates
+    # Step 1.5: Backfill with dense search if needed (works for 0 results or < 10k results)
     MIN_CANDIDATES = method1_config.get('min_candidates', 10000)
 
     if len(candidates) < MIN_CANDIDATES:

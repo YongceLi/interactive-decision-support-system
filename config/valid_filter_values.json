@@ -1,0 +1,43 @@
+{
+  "body_style": [
+    "car van",
+    "cargo van",
+    "chassis cab",
+    "combi",
+    "convertible",
+    "coupe",
+    "cutaway",
+    "hatchback",
+    "micro car",
+    "mini mpv",
+    "minivan",
+    "passenger van",
+    "pickup",
+    "sedan",
+    "suv",
+    "targa",
+    "van",
+    "wagon"
+  ],
+  "drivetrain": [
+    "4wd",
+    "awd",
+    "fwd",
+    "rwd"
+  ],
+  "fuel_type": [
+    "diesel",
+    "electric",
+    "gasoline",
+    "hybrid (electric + gasoline)",
+    "hybrid (electric + hydrogen)",
+    "hydrogen"
+  ],
+  "transmission": [
+    "automated manual",
+    "automatic",
+    "cvt",
+    "direct drive",
+    "manual"
+  ]
+}

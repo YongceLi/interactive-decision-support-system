@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## 2025-11-17
+
+### Added
+
+#### Filter Validation
+- Validates categorical filters (body_style, fuel_type, drivetrain, transmission) against database values
+- Uses gpt-4o-mini to auto-correct invalid values (e.g., "truck" → "pickup", "ev" → "electric")
+- Only calls LLM when value is invalid (valid values pass through)
+- Prevents 0-result errors from typos or synonyms
+- Files: `filter_validator.py`, `valid_filter_values.json`, `extract_valid_filter_values.py`
+
+---
+
 ## 2025-11-14
 
 ### Added
