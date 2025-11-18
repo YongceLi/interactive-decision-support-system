@@ -1,5 +1,5 @@
 """
-Method 2: Web search guidance → Parallel RapidAPI queries → Vector ranking.
+Method 2: Web search guidance → Parallel local database queries → Vector ranking.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from idss_agent.processing import recommendation as base_recommendation
 from idss_agent.processing.vector_ranker import rank_products_by_similarity
-from idss_agent.tools.electronics_api import search_products
+from idss_agent.tools.local_electronics_store import LocalElectronicsStore
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
@@ -44,7 +44,7 @@ def recommend_method2(
     db_path: Optional[Path] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     """
-    Method 2: Web search guided brand selection with parallel RapidAPI queries.
+    Method 2: Web search guided brand selection with parallel local database queries.
 
     Args:
         explicit_filters: Explicit filters describing the desired product.
@@ -65,7 +65,7 @@ def recommend_method2(
         )
 
     logger.info("=" * 60)
-    logger.info("METHOD 2: Web search guidance + parallel RapidAPI queries")
+    logger.info("METHOD 2: Web search guidance + parallel local database queries")
     logger.info("=" * 60)
     logger.info("Explicit filters: %s", explicit_filters)
     logger.info("Implicit preferences: %s", implicit_preferences)
@@ -84,7 +84,7 @@ def recommend_method2(
     per_brand_limit = max(40, top_k)
     brand_results: Dict[str, List[Dict[str, Any]]] = {}
 
-    logger.info("Step 2: Running RapidAPI queries in parallel...")
+    logger.info("Step 2: Running local database queries in parallel...")
     with ThreadPoolExecutor(max_workers=min(len(brands_to_query), 6)) as executor:
         future_to_brand = {
             executor.submit(
@@ -141,7 +141,9 @@ def recommend_method2(
 
     for brand in brands_to_query:
         ranked = ranked_results.get(brand, [])
-        chosen = ranked[:products_per_brand]
+        # Filter out zero-score items before selecting
+        filtered_ranked = [p for p in ranked if p.get("_vector_score", 0.0) > 0.0]
+        chosen = filtered_ranked[:products_per_brand]
         final_selection.extend(chosen)
         logger.info("Brand %s: selected %d products", brand, len(chosen))
 
@@ -154,7 +156,9 @@ def recommend_method2(
         remaining: List[Dict[str, Any]] = []
         for brand in brands_to_query:
             ranked = ranked_results.get(brand, [])
-            remaining.extend(ranked[products_per_brand:])
+            # Filter out zero-score items and extend
+            filtered = [p for p in ranked[products_per_brand:] if p.get("_vector_score", 0.0) > 0.0]
+            remaining.extend(filtered)
 
         remaining.sort(key=lambda product: product.get("_vector_score", 0.0), reverse=True)
         needed = top_k - len(final_selection)
@@ -289,49 +293,47 @@ def query_products_for_brand(
     limit: int,
 ) -> List[Dict[str, Any]]:
     """
-    Query RapidAPI for a specific brand with user filters.
+    Query local database for a specific brand with user filters.
     """
-    payload = base_recommendation._build_search_payload(explicit_filters, implicit_preferences)
-    brand_query_components = [brand]
-
-    product_terms = [
-        explicit_filters.get("product"),
-        explicit_filters.get("product_name"),
-        explicit_filters.get("keywords"),
-        explicit_filters.get("category"),
-    ]
-    brand_query_components.extend(term for term in product_terms if term)
-
-    payload["query"] = " ".join(str(component) for component in brand_query_components if component)
-    payload["page"] = 1
-
-    products: List[Dict[str, Any]] = []
-    current_page = 1
-
-    while len(products) < limit and current_page <= 3:
-        payload["page"] = current_page
-        try:
-            response_text = search_products.invoke(payload)
-        except Exception as exc:  # pragma: no cover
-            logger.error("RapidAPI query failed for brand %s (page %d): %s", brand, current_page, exc)
-            break
-
-        raw_products = base_recommendation._parse_product_list(response_text)
+    try:
+        store = LocalElectronicsStore()
+        
+        price_bounds = base_recommendation._extract_price_bounds(explicit_filters)
+        part_type = explicit_filters.get("category") or explicit_filters.get("part_type")
+        
+        # Build query from product terms
+        product_terms = [
+            explicit_filters.get("product"),
+            explicit_filters.get("product_name"),
+            explicit_filters.get("keywords"),
+        ]
+        query_parts = [term for term in product_terms if term]
+        query = " ".join(query_parts) if query_parts else None
+        
+        products = store.search_products(
+            query=query,
+            part_type=part_type,
+            brand=brand,
+            min_price=price_bounds["min_price"],
+            max_price=price_bounds["max_price"],
+            seller=explicit_filters.get("seller"),
+            limit=limit,
+        )
+        
+        # Normalize products
         normalized: List[Dict[str, Any]] = []
-        for raw_product in raw_products:
-            normalized_product = base_recommendation._normalize_product(raw_product)
+        for product in products:
+            normalized_product = base_recommendation._normalize_product(product)
             if normalized_product:
                 normalized.append(normalized_product)
-
-        if not normalized:
-            break
-
-        products.extend(normalized)
-        current_page += 1
-
-    products = base_recommendation._deduplicate_products(products)
-    logger.info("Brand %s: gathered %d products", brand, len(products))
-    return products[:limit]
+        
+        products = base_recommendation._deduplicate_products(normalized)
+        logger.info("Brand %s: gathered %d products", brand, len(products))
+        return products[:limit]
+        
+    except Exception as exc:
+        logger.error("Local database query failed for brand %s: %s", brand, exc)
+        return []
 
 
 __all__ = ["recommend_method2", "web_search_for_product_suggestions", "generate_search_query"]

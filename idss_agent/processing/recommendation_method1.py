@@ -1,5 +1,5 @@
 """
-Method 1: RapidAPI search + vector similarity + MMR diversification.
+Method 1: Local database search + vector similarity + MMR diversification.
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from idss_agent.processing import recommendation as base_recommendation
 from idss_agent.processing.diversification import diversify_with_mmr
 from idss_agent.processing.vector_ranker import rank_products_by_similarity
-from idss_agent.tools.electronics_api import search_products
+from idss_agent.tools.local_electronics_store import LocalElectronicsStore
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
@@ -25,7 +25,7 @@ def recommend_method1(
     exploratory: bool = True,
 ) -> List[Dict[str, Any]]:
     """
-    Method 1: Single RapidAPI search with optional exploratory variant, followed by vector
+    Method 1: Single local database search with optional exploratory variant, followed by vector
     re-ranking and MMR diversification.
 
     Args:
@@ -48,31 +48,25 @@ def recommend_method1(
         )
 
     logger.info("=" * 60)
-    logger.info("METHOD 1: RapidAPI search + vector ranking + MMR diversification")
+    logger.info("METHOD 1: Local database search + vector ranking + MMR diversification")
     logger.info("=" * 60)
     logger.info("Explicit filters: %s", explicit_filters)
     logger.info("Implicit preferences: %s", implicit_preferences)
     logger.info("Target products: %d (lambda=%.2f)", top_k, lambda_param)
 
-    primary_payload = base_recommendation._build_search_payload(
-        explicit_filters, implicit_preferences
-    )
-    primary_candidates = _fetch_products(primary_payload, label="Primary search")
+    primary_candidates = _fetch_products(explicit_filters, implicit_preferences, label="Primary search")
 
     exploratory_candidates: List[Dict[str, Any]] = []
     if exploratory:
         relaxed_filters = _build_relaxed_filters(explicit_filters)
         if relaxed_filters != explicit_filters:
-            relaxed_payload = base_recommendation._build_search_payload(
-                relaxed_filters, implicit_preferences
-            )
             exploratory_candidates = _fetch_products(
-                relaxed_payload, label="Exploratory search"
+                relaxed_filters, implicit_preferences, label="Exploratory search"
             )
 
     candidates = primary_candidates + exploratory_candidates
     if not candidates:
-        logger.warning("Method 1: No candidates returned from RapidAPI search")
+        logger.warning("Method 1: No candidates returned from local database search")
         return []
 
     deduped_candidates = base_recommendation._deduplicate_products(candidates)
@@ -86,8 +80,15 @@ def recommend_method1(
     )
 
     if not ranked_products:
-        logger.warning("Method 1: Vector ranking produced no results, returning candidates")
-        return deduped_candidates[:top_k]
+        logger.warning("Method 1: Vector ranking produced no results, returning empty list")
+        return []
+
+    # Filter out items with zero similarity score
+    ranked_products = [p for p in ranked_products if p.get("_vector_score", 0.0) > 0.0]
+    
+    if not ranked_products:
+        logger.warning("Method 1: All products filtered out (zero similarity scores)")
+        return []
 
     scored_products = [
         (product.get("_vector_score", 0.0), product) for product in ranked_products
@@ -108,23 +109,61 @@ def recommend_method1(
     return diversified_products
 
 
-def _fetch_products(payload: Dict[str, Any], label: str) -> List[Dict[str, Any]]:
+def _fetch_products(
+    filters: Dict[str, Any],
+    implicit_preferences: Dict[str, Any],
+    label: str
+) -> List[Dict[str, Any]]:
+    """Fetch products from local database instead of RapidAPI."""
     try:
-        response_text = search_products.invoke(payload)
-    except Exception as exc:  # pragma: no cover - network call wrapper
-        logger.error("RapidAPI search failed for %s: %s", label, exc)
+        store = LocalElectronicsStore()
+        
+        # Build search query
+        search_query = base_recommendation._build_search_query(filters, implicit_preferences)
+        if search_query == "electronics":
+            search_query = None  # Don't search for generic "electronics"
+        
+        # Extract parameters
+        part_type = filters.get("category") or filters.get("part_type") or filters.get("type")
+        brand = filters.get("brand")
+        
+        # Try to extract brand from query if not explicitly set
+        if not brand and search_query:
+            query_parts = search_query.split()
+            known_brands = ["ASUS", "Dell", "HP", "Lenovo", "Apple", "Samsung", "LG", "Sony",
+                          "Microsoft", "Intel", "AMD", "NVIDIA", "Corsair", "EVGA",
+                          "Gigabyte", "MSI", "ASRock"]
+            for brand_name in known_brands:
+                if search_query.upper().startswith(brand_name.upper()):
+                    brand = brand_name
+                    search_query = search_query[len(brand_name):].strip()
+                    break
+        
+        price_bounds = base_recommendation._extract_price_bounds(filters)
+        
+        products = store.search_products(
+            query=search_query,
+            part_type=part_type,
+            brand=brand,
+            min_price=price_bounds["min_price"],
+            max_price=price_bounds["max_price"],
+            seller=filters.get("seller") or filters.get("retailer"),
+            limit=100,
+        )
+        
+        # Normalize products
+        normalized: List[Dict[str, Any]] = []
+        for product in products:
+            normalized_product = base_recommendation._normalize_product(product)
+            if normalized_product:
+                normalized.append(normalized_product)
+        
+        logger.info("%s: retrieved %d products", label, len(normalized))
+        return normalized
+        
+    except Exception as exc:
+        logger.error("Local database search failed for %s: %s", label, exc)
         return []
-
-    raw_products = base_recommendation._parse_product_list(response_text)
-    normalized: List[Dict[str, Any]] = []
-
-    for raw_product in raw_products:
-        normalized_product = base_recommendation._normalize_product(raw_product)
-        if normalized_product:
-            normalized.append(normalized_product)
-
-    logger.info("%s: retrieved %d products", label, len(normalized))
-    return normalized
 
 
 def _build_relaxed_filters(explicit_filters: Dict[str, Any]) -> Dict[str, Any]:

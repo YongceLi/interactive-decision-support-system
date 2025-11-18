@@ -1,4 +1,4 @@
-"""RapidAPI-backed electronics recommendation pipeline."""
+"""Local database-backed electronics recommendation pipeline."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import re
 from typing import Any, Callable, Dict, List, Optional
 
 from idss_agent.state.schema import ProductSearchState
-from idss_agent.tools.electronics_api import search_products
+from idss_agent.tools.local_electronics_store import LocalElectronicsStore
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
@@ -246,7 +246,7 @@ def _normalize_product(product: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         "rating": product.get("rating"),
         "reviewCount": product.get("reviewCount") or product.get("reviews"),
         "photos": {"retail": [{"url": image_url}]} if image_url else None,
-        "_source": product.get("source") or "rapidapi",
+        "_source": product.get("_source") or product.get("source") or "local_db",
         "_raw": product,
     }
 
@@ -309,7 +309,7 @@ def update_recommendation_list(
     state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None,
 ) -> ProductSearchState:
-    """Populate recommendation slots in state with RapidAPI electronics products."""
+    """Populate recommendation slots in state with local database electronics products."""
 
     if progress_callback:
         progress_callback(
@@ -323,27 +323,52 @@ def update_recommendation_list(
     filters = state["explicit_filters"].copy()
     implicit = state["implicit_preferences"].copy()
 
-    search_params = _build_search_payload(filters, implicit)
-    logger.info("RapidAPI product search params: %s", search_params)
+    # Build search parameters for local database
+    search_query = _build_search_query(filters, implicit)
+    price_bounds = _extract_price_bounds(filters)
+    
+    # Extract part_type from category if available
+    part_type = filters.get("category") or filters.get("part_type") or filters.get("type")
+    
+    # Extract brand from filters
+    brand = filters.get("brand")
+    
+    # Don't search for generic "electronics" query
+    if search_query == "electronics":
+        search_query = None
+
+    logger.info("Local database search params: query=%s, part_type=%s, brand=%s, price_range=%s-%s",
+                search_query, part_type, brand, price_bounds["min_price"], price_bounds["max_price"])
 
     try:
-        response_text = search_products.invoke(search_params)
-    except Exception as exc:  # pragma: no cover - tool invocation wrapper
-        logger.error("RapidAPI search invocation failed: %s", exc)
+        store = LocalElectronicsStore()
+        products = store.search_products(
+            query=search_query,
+            part_type=part_type,
+            brand=brand,
+            min_price=price_bounds["min_price"],
+            max_price=price_bounds["max_price"],
+            seller=filters.get("seller") or filters.get("retailer"),
+            limit=100,  # Get more candidates for ranking
+        )
+    except Exception as exc:
+        logger.error("Local database search failed: %s", exc)
         state["recommended_products"] = []
         state["search_error"] = str(exc)
         return state
 
-    raw_products = _parse_product_list(response_text)
-    normalized_products = []
+    if not products:
+        logger.warning("Local database search returned no products for filters: %s", filters)
 
-    for product in raw_products:
+    # Normalize products (they're already in the right format from LocalElectronicsStore)
+    normalized_products = []
+    for product in products:
         normalized = _normalize_product(product)
         if normalized:
             normalized_products.append(normalized)
 
     if not normalized_products:
-        logger.warning("RapidAPI search returned no products for params: %s", search_params)
+        logger.warning("Local database search returned no normalized products")
 
     deduped_products = _deduplicate_products(normalized_products)
     config = get_config()

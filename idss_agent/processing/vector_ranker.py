@@ -151,6 +151,9 @@ def rank_products_by_similarity(
     scored.sort(key=lambda item: item[0], reverse=True)
     ranked = [item[1] for item in scored]
 
+    # Filter out items with similarity score of 0
+    ranked = [product for product in ranked if product.get("_vector_score", 0.0) > 0.0]
+
     if top_k is not None and top_k < len(ranked):
         ranked = ranked[:top_k]
 

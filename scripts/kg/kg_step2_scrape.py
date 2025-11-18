@@ -67,6 +67,19 @@ def scrape_all_products(
     for comp_type, comps in sorted(by_type.items()):
         LOGGER.info("  %s: %d products", comp_type, len(comps))
     
+    # Check how many are already cached
+    already_cached = 0
+    for comp in components_to_scrape:
+        cached = scraper.get_cached_attributes(comp.slug)
+        if cached and len(cached) > 0:
+            already_cached += 1
+    
+    LOGGER.info("")
+    LOGGER.info("Resume status:")
+    LOGGER.info("  Already cached: %d products", already_cached)
+    LOGGER.info("  Need scraping: %d products", len(components_to_scrape) - already_cached)
+    LOGGER.info("")
+    
     # Scrape each product
     total_scraped = 0
     total_skipped = 0
@@ -77,13 +90,13 @@ def scrape_all_products(
         # (normalization might have improved)
         cached = scraper.get_cached_attributes(component.slug)
         if cached and len(cached) > 0:
-            LOGGER.debug("Skipping %s (already has %d cached attributes)", 
-                        component.slug, len(cached))
+            LOGGER.info("[%d/%d] ⏭ Skipping %s (already has %d cached attributes)", 
+                        idx, len(components_to_scrape), component.slug, len(cached))
             total_skipped += 1
             continue
         elif cached and len(cached) == 0:
-            LOGGER.info("Re-scraping %s (previously found 0 attributes, normalization may have improved)", 
-                       component.slug)
+            LOGGER.info("[%d/%d] 🔄 Re-scraping %s (previously found 0 attributes, normalization may have improved)", 
+                       idx, len(components_to_scrape), component.slug)
         
         # Extract brand from component
         brand = component.manufacturer or component.metadata.get("brand")
@@ -92,13 +105,23 @@ def scrape_all_products(
         product_name = component.metadata.get("base_name") or component.name
         
         # Determine sellers based on component type and available sellers
-        sellers = list(component.sellers) if component.sellers else []
-        if not sellers:
+        # Supported sellers: newegg, microcenter, wikipedia, manufacturer/official/docs
+        supported_sellers = {"newegg", "microcenter", "wikipedia", "manufacturer", "official", "docs"}
+        
+        if component.sellers:
+            # Filter to only supported sellers
+            sellers = [s.lower() for s in component.sellers if s.lower() in supported_sellers]
+            if not sellers:
+                # If no supported sellers found, use defaults
+                LOGGER.debug("  No supported sellers in component.sellers (%s), using defaults", 
+                           list(component.sellers))
+                sellers = ["newegg", "microcenter", "wikipedia", "manufacturer"]
+        else:
             # Default sellers if none specified
             sellers = ["newegg", "microcenter", "wikipedia", "manufacturer"]
         
-        LOGGER.info("[%d/%d] Scraping %s (%s)", 
-                   idx, len(components_to_scrape), component.name, component.component_type)
+        LOGGER.info("[%d/%d] Scraping %s (%s) - sellers: %s", 
+                   idx, len(components_to_scrape), component.name, component.component_type, sellers)
         
         try:
             # Scrape product
