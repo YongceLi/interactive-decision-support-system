@@ -1094,8 +1094,8 @@ The frontend does not directly query Neo4j. Instead, compatibility queries flow 
 1. **User Input**: User asks compatibility question in chat interface
 2. **Frontend API**: Message sent to `/api/chat/stream` endpoint
 3. **Backend Processing**: Agent system processes message
-4. **Compatibility Detection**: `CompatibilityHandler` detects compatibility query
-5. **Neo4j Query**: `Neo4jCompatibilityTool` queries Neo4j knowledge graph
+4. **Compatibility Detection**: Keyword detection (`_should_attempt_compatibility()`) and LLM-based detection identify compatibility query
+5. **Neo4j Query**: LLM calls `Neo4jCompatibilityTool` methods (via tools) to query Neo4j knowledge graph
 6. **Response**: Compatibility result included in agent response
 7. **Frontend Display**: `CompatibilityResult` component renders result
 
@@ -1284,50 +1284,57 @@ The agent system processes compatibility queries through a multi-stage pipeline 
 
 **Key Components**:
 
-1. **Compatibility Detection** (`idss_agent/processing/compatibility.py`)
-2. **Knowledge Graph Tool** (`idss_agent/tools/kg_compatibility.py`)
-3. **Agent Integration** (`idss_agent/agents/analytical.py`)
+1. **Compatibility Detection** (`idss_agent/agents/analytical.py` - keyword detection + LLM-based detection)
+2. **Compatibility Helper Functions** (`idss_agent/processing/compatibility.py` - wrapper functions for tool calls)
+3. **Knowledge Graph Tool** (`idss_agent/tools/kg_compatibility.py` - Neo4j query interface)
+4. **Agent Integration** (`idss_agent/agents/analytical.py` - ReAct agent with compatibility tools)
 
 #### Query Detection and Classification
 
-**Location**: `idss_agent/processing/compatibility.py`
+Compatibility queries are detected using a combination of keyword detection and LLM-based detection, similar to comparison queries.
 
-**`CompatibilityHandler.is_compatibility_query()`** (lines 48-66)
+**Location**: `idss_agent/agents/analytical.py`
+
+**`_should_attempt_compatibility()`** (lines 1101-1119)
 
 Detects if a user query is about compatibility by checking for keywords:
 
 ```python
-def is_compatibility_query(self, user_query: str) -> bool:
-    query_lower = user_query.lower()
+def _should_attempt_compatibility(user_input: str) -> bool:
+    """
+    Check if user input suggests a compatibility query using keyword detection.
+    
+    Args:
+        user_input: User's query text
+        
+    Returns:
+        True if query contains compatibility-related keywords
+    """
+    if not user_input:
+        return False
+    lowered = user_input.lower()
     compatibility_keywords = [
         "compatible", "compatibility", "works with", "fits", "supports",
-        "will work", "can i use", "does it work", "compatible with"
+        "will work", "can i use", "does it work", "compatible with",
+        "work with", "compatible for"
     ]
-    return any(keyword in query_lower for keyword in compatibility_keywords)
+    return any(keyword in lowered for keyword in compatibility_keywords)
 ```
 
-**`CompatibilityHandler.classify_intent()`** (lines 68-96)
+**LLM-Based Detection** (`analytical.py:269-296`)
 
-Classifies the compatibility query intent as either "compare" (binary compatibility check) or "recommend" (finding compatible parts):
+The analytical agent prompt includes explicit instructions for detecting and handling compatibility queries:
 
-```python
-def classify_intent(self, user_query: str) -> Tuple[str, Optional[Dict[str, Any]]]:
-    query_lower = user_query.lower()
-    
-    # Check for binary comparison pattern: "is X compatible with Y"
-    comparison_patterns = ["is", "are", "will", "does", "can"]
-    for pattern in comparison_patterns:
-        if pattern in query_lower and "compatible" in query_lower:
-            return "compare", None
-    
-    # Check for recommendation pattern: "what", "show me", "find"
-    recommendation_patterns = ["what", "show me", "find", "recommend", "suggest", "list"]
-    for pattern in recommendation_patterns:
-        if pattern in query_lower and ("compatible" in query_lower or "work" in query_lower):
-            return "recommend", None
-    
-    return "unknown", None
-```
+- Detects compatibility intent from natural language
+- Extracts product names from the query
+- Calls appropriate compatibility tools (`check_parts_compatibility` or `find_compatible_parts`)
+- Formats results appropriately
+
+The LLM is instructed to:
+- **Binary compatibility check** ("Is X compatible with Y?"): Use `check_parts_compatibility` tool
+- **Compatibility recommendations** ("What GPUs are compatible with my PSU?"): Use `find_compatible_parts` tool
+- Extract product names and part types from the query
+- Handle errors gracefully with user-friendly messages
 
 #### Knowledge Graph Querying
 
@@ -1382,7 +1389,7 @@ def find_compatible_parts(
 
 **Location**: `idss_agent/processing/compatibility.py`
 
-**`check_compatibility_binary()`** (lines 283-307)
+**`check_compatibility_binary()`** (lines 14-28)
 
 Wrapper function for binary compatibility checks:
 
@@ -1399,7 +1406,7 @@ def check_compatibility_binary(
     return result
 ```
 
-**`find_compatible_parts_recommendations()`** (lines 310-342)
+**`find_compatible_parts_recommendations()`** (lines 30-53)
 
 Wrapper function for finding compatible parts with reranking:
 
@@ -1420,7 +1427,7 @@ def find_compatible_parts_recommendations(
     return candidates[:limit]
 ```
 
-**`format_compatibility_recommendations_table()`** (lines 345-432)
+**`format_compatibility_recommendations_table()`** (lines 56-143)
 
 Formats compatible products as a comparison table for display:
 
@@ -1441,29 +1448,36 @@ def format_compatibility_recommendations_table(
 The analytical agent integrates compatibility checking into its workflow. When processing user queries:
 
 1. **Query Analysis**: The agent analyzes the user's intent and extracts product information
-2. **Compatibility Detection**: Uses `CompatibilityHandler` to detect if query is compatibility-related
-3. **Knowledge Graph Query**: Calls `Neo4jCompatibilityTool` methods to query the graph
+2. **Compatibility Detection**: Uses keyword detection (`_should_attempt_compatibility()`) combined with LLM-based detection via prompt instructions
+3. **Knowledge Graph Query**: LLM calls `Neo4jCompatibilityTool` methods (via tools) to query the graph
 4. **Response Generation**: Formats compatibility results into natural language responses
 
 **Key Integration Points**:
-- Product extraction from user queries and cached recommendations
-- Compatibility query routing to appropriate handlers
-- Result formatting and presentation to users
+- Keyword detection for early compatibility query identification
+- LLM extracts product names and part types from natural language queries
+- LLM calls appropriate compatibility tools based on query intent
+- Tool results are parsed and formatted for display
+- Results can be formatted as comparison tables for compatible parts recommendations
 
 #### Query Flow Example
 
 For a query like "What PSUs are compatible with the RTX 4090?":
 
-1. **Detection** (`compatibility.py:48-66`): `is_compatibility_query()` returns `True`
-2. **Classification** (`compatibility.py:68-96`): `classify_intent()` returns `("recommend", None)`
-3. **Product Lookup** (`kg_compatibility.py:93-147`): `find_product_by_name()` finds RTX 4090 by slug
-4. **Compatibility Query** (`kg_compatibility.py:258-335`): `find_compatible_parts()` queries Neo4j:
+1. **Keyword Detection** (`analytical.py:1101-1119`): `_should_attempt_compatibility()` detects compatibility keywords ("compatible", "PSUs")
+2. **Request Analysis** (`request_analyzer.py:118-120`): Request analyzer flags as analytical query requiring compatibility tools
+3. **LLM Processing** (`analytical.py:269-296`): LLM detects compatibility intent from prompt instructions and extracts:
+   - Source product: "RTX 4090"
+   - Target part type: "psu" (from "PSUs")
+4. **Tool Call** (`analytical.py:533-600`): LLM calls `find_compatible_parts(source_product_name="RTX 4090", target_part_type="gpu")`
+5. **Product Lookup** (`kg_compatibility.py:93-147`): Tool uses `find_product_by_name()` to find RTX 4090 by slug
+6. **Compatibility Query** (`kg_compatibility.py:258-335`): `find_compatible_parts()` queries Neo4j:
    - Maps `(gpu, psu)` → `ELECTRICAL_COMPATIBLE_WITH` (with reverse fallback)
    - Executes bidirectional Cypher query: `MATCH (source)-[r:ELECTRICAL_COMPATIBLE_WITH]-(target)`
    - Returns compatible PSUs ordered by price
-5. **Reranking** (`compatibility.py:310-342`): `find_compatible_parts_recommendations()` reranks by price
-6. **Formatting** (`compatibility.py:345-432`): `format_compatibility_recommendations_table()` creates comparison table
-7. **Response**: Agent includes compatibility results in response to user
+7. **Result Parsing** (`analytical.py:800-846`): Tool results are parsed and formatted
+8. **Reranking** (`compatibility.py:30-53`): `find_compatible_parts_recommendations()` reranks by price (if called)
+9. **Formatting** (`compatibility.py:56-143`): `format_compatibility_recommendations_table()` creates comparison table
+10. **Response**: Agent includes compatibility results in response to user
 
 ### Example Cypher Queries
 

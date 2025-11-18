@@ -324,28 +324,25 @@ python scripts/kg/scrape_compatibility_data.py \
    - Parameters: `slug`
    - Returns: Product node data or None
 
-### Compatibility Handler
+### Compatibility Detection
 
-**Location**: `idss_agent/processing/compatibility.py`
+**Location**: `idss_agent/agents/analytical.py`
 
-**Class**: `CompatibilityHandler`
-
-**Functionality**:
-- Detects compatibility queries from user input
-- Classifies intent (compare vs. recommend)
-- Extracts part information from queries and cached products
-- Handles compatibility checking and recommendation generation
-- Formats compatibility results for display
-
-**Query Detection**: Identifies compatibility queries using keywords:
+**Keyword Detection**: `_should_attempt_compatibility()` function detects compatibility queries using keywords:
 - "compatible", "compatibility", "works with", "fits", "supports"
-- "will work", "can i use", "does it work"
+- "will work", "can i use", "does it work", "compatible with", "work with", "compatible for"
 
-**Intent Classification**:
-- **Compare**: Binary compatibility check ("Is X compatible with Y?")
-- **Recommend**: Find compatible parts ("What GPUs work with my motherboard?")
+**LLM-Based Detection**: The analytical agent prompt includes explicit instructions for:
+- Detecting compatibility intent from natural language
+- Extracting product names and part types from queries
+- Calling appropriate compatibility tools (`check_parts_compatibility` or `find_compatible_parts`)
+- Formatting results appropriately
 
-### Compatibility Checking Functions
+**Query Types**:
+- **Binary compatibility check**: "Is X compatible with Y?" → Uses `check_parts_compatibility` tool
+- **Compatibility recommendations**: "What GPUs work with my motherboard?" → Uses `find_compatible_parts` tool
+
+### Compatibility Helper Functions
 
 **Location**: `idss_agent/processing/compatibility.py`
 

@@ -99,7 +99,7 @@ Include this message naturally in your response: "{fallback_message}"
 **User's Preferences:**
 {json.dumps(implicit, indent=2)}
 
-**Current Listings ({len(products)} {product_plural} found, showing top {top_limit} as JSON):**
+**Current products ({len(products)} {product_plural} found, showing top {top_limit} as JSON):**
 {products_summary}
 
 **Topics Already Asked About:** {already_asked}

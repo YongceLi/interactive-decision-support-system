@@ -16,7 +16,6 @@ from idss_agent.state.schema import ProductSearchState, AgentResponse, Compariso
 from idss_agent.tools.electronics_api import search_products, get_product_details
 from idss_agent.utils.logger import get_logger
 from idss_agent.processing.compatibility import (
-    CompatibilityHandler,
     check_compatibility_binary,
     find_compatible_parts_recommendations,
     format_compatibility_recommendations_table
@@ -1097,6 +1096,27 @@ def _should_attempt_comparison(user_input: str) -> bool:
         return False
     lowered = user_input.lower()
     return any(keyword in lowered for keyword in ("compare", "vs", "versus", "#", "top", "which"))
+
+
+def _should_attempt_compatibility(user_input: str) -> bool:
+    """
+    Check if user input suggests a compatibility query using keyword detection.
+    
+    Args:
+        user_input: User's query text
+        
+    Returns:
+        True if query contains compatibility-related keywords
+    """
+    if not user_input:
+        return False
+    lowered = user_input.lower()
+    compatibility_keywords = [
+        "compatible", "compatibility", "works with", "fits", "supports",
+        "will work", "can i use", "does it work", "compatible with",
+        "work with", "compatible for"
+    ]
+    return any(keyword in lowered for keyword in compatibility_keywords)
 
 
 def _select_products_for_comparison(
