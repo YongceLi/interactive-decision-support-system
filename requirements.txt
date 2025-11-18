@@ -31,3 +31,6 @@ Jinja2>=3.1.0  # For prompt templating
 # PDF parsing (for scraping manufacturer documentation)
 pdfplumber>=0.10.0  # Preferred PDF parser (better text extraction)
 PyPDF2>=3.0.0  # Fallback PDF parser
+
+# Simulation UI
+streamlit>=1.36.0
