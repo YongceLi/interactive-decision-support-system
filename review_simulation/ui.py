@@ -30,15 +30,10 @@ def _format_price(value: Optional[float]) -> str:
         return str(value)
 
 
-def _format_attribute_json(attributes: dict[str, AttributeJudgement]) -> str:
-    rendered = {}
-    for key, outcome in attributes.items():
-        if outcome is None or (outcome.satisfied is None and not outcome.rationale):
-            rendered[key] = None
-            continue
-        result = "✅" if outcome.satisfied else "❌"
-        rendered[key] = {"result": result, "rationale": outcome.rationale or ""}
-    return json.dumps(rendered)
+def _format_attribute_result(outcome: Optional[AttributeJudgement]) -> str:
+    if outcome is None or not outcome.mentioned:
+        return "—"
+    return "✅" if outcome.satisfied else "❌"
 
 
 def compute_final_stats(results: Iterable[SimulationResult], metric_k: int) -> dict:
@@ -119,12 +114,25 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         table.add_column("Location")
         table.add_column("Satisfied")
         table.add_column("Rationale", overflow="fold")
-        table.add_column("Attribute checks", overflow="fold")
+        table.add_column("Price match", justify="center")
+        table.add_column("Condition match", justify="center")
+        table.add_column("Make match", justify="center")
+        table.add_column("Model match", justify="center")
+        table.add_column("Fuel match", justify="center")
+        table.add_column("Body match", justify="center")
+        table.add_column("Misc match", justify="center")
         table.add_column("Confidence", justify="right")
 
         for vehicle in result.vehicles:
             satisfaction = "✅" if vehicle.satisfied else "❌"
-            attributes_json = _format_attribute_json(vehicle.attribute_results)
+            attributes = vehicle.attribute_results or {}
+            price_match = _format_attribute_result(attributes.get("price"))
+            condition_match = _format_attribute_result(attributes.get("condition"))
+            make_match = _format_attribute_result(attributes.get("make"))
+            model_match = _format_attribute_result(attributes.get("model"))
+            fuel_match = _format_attribute_result(attributes.get("fuel_type"))
+            body_match = _format_attribute_result(attributes.get("body_type"))
+            misc_match = _format_attribute_result(attributes.get("all_misc"))
             confidence_text = _format_metric(vehicle.confidence) if vehicle.confidence is not None else "—"
             table.add_row(
                 str(vehicle.index),
@@ -136,7 +144,13 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
                 str(vehicle.location or "-"),
                 satisfaction,
                 str(vehicle.rationale or ""),
-                attributes_json,
+                price_match,
+                condition_match,
+                make_match,
+                model_match,
+                fuel_match,
+                body_match,
+                misc_match,
                 confidence_text,
             )
         console.print(table)

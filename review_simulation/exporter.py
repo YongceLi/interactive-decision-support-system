@@ -92,6 +92,7 @@ def serialize_vehicle_judgements(judgements: List[VehicleJudgement]) -> str:
                     key: {
                         "satisfied": value.satisfied,
                         "rationale": value.rationale,
+                        "mentioned": value.mentioned,
                     }
                     for key, value in (item.attribute_results or {}).items()
                 },

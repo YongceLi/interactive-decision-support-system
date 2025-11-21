@@ -62,8 +62,9 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
         for vehicle in vehicle_judgements:
             attribute_results = {
                 key: AttributeJudgement(
-                    satisfied=value.get("satisfied"),
+                    satisfied=bool(value.get("satisfied")),
                     rationale=value.get("rationale"),
+                    mentioned=bool(value.get("mentioned", True)),
                 )
                 for key, value in (vehicle.get("attribute_results") or {}).items()
             }
