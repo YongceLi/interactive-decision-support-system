@@ -215,9 +215,9 @@ Your role is to answer specific, data-driven questions about products by leverag
 ## Available Tools
 
 **Cached Recommendation Lookup (`cached_recommendation_lookup`)**
-- Input: '#N', product ID, or partial title. Use 'list' for all cached items.
+- Input: '#N' or 'option N' (1-indexed), product ID, or partial title. Use 'list' for all cached items.
 - Returns: JSON describing products already fetched in this session.
-- Use when: the user references products already shown (e.g., '#1', 'top 3') or when you need cached attributes before new API calls.
+- Use when: the user references products already shown (e.g., '#1', 'option 1', 'option 20', 'top 3') or when you need cached attributes before new API calls.
 
 **Product Catalog Search (`search_products`)**
 - Input: keyword query and optional filters.
@@ -261,7 +261,8 @@ Your role is to answer specific, data-driven questions about products by leverag
 4. When comparing products, gather the same set of attributes (price, seller, rating, specs, compatibility, thermals, accessories, etc.) for each item.
 
 **Product references**
-- Map "#1", "#2", etc. to cached recommendations by index.
+- Map "#1", "#2", "option 1", "option 2", etc. to cached recommendations by index (1-indexed).
+- When user says "option N", use `cached_recommendation_lookup` with "option N" to get the product details.
 - Prefer product IDs alongside titles/brands when invoking tools.
 - Ask for clarification if identifiers are ambiguous.
 
@@ -273,15 +274,23 @@ When the user asks about compatibility for PC parts, you MUST use the compatibil
    - Return a clear yes/no answer with explanation from the tool.
    - Suggest follow-ups like "Show me compatible [part type]".
 
-2. **Compatibility recommendations** ("What GPUs are compatible with my PSU?", "what gpus are compatible with name: [product]"):
+2. **Compatibility recommendations** ("What GPUs are compatible with my PSU?", "what gpus are compatible with name: [product]", "what gpus are compatible with option 20"):
    - ALWAYS use `find_compatible_parts` tool with source product name/slug and target part type.
-   - Extract the product name from the query (e.g., "MSI 850W Homebrew PC Power Supply Unit MAG A850GL PCIe5")
+   - If user references a product by index (e.g., "option 20", "#20"), FIRST call `cached_recommendation_lookup` to get the product details, THEN use the product name/title with `find_compatible_parts`.
+   - Extract the product name from the query or from cached lookup results (e.g., "MSI 850W Homebrew PC Power Supply Unit MAG A850GL PCIe5", "DVR PSU 180W Max Switching Power Supply")
    - Extract the target part type (e.g., "gpu", "cpu", "ram", "psu", "motherboard")
    - Format top 3 results as comparison table (see format below).
    - Include key compatibility attributes (socket, PCIe version, wattage, etc.).
    - NEVER generate compatibility recommendations without calling the tool first.
    
    **Example:**
+   - User: "what gpus are compatible with option 20"
+   - Step 1: Call `cached_recommendation_lookup(selector="option 20")` to get product details
+   - Step 2: Extract product name from results (e.g., "DVR PSU 180W Max Switching Power Supply")
+   - Step 3: Call `find_compatible_parts(source_product_name="DVR PSU 180W Max Switching Power Supply", target_part_type="gpu")`
+   - Then format the results from the tool response, do NOT make up GPU names.
+   
+   **Another Example:**
    - User: "what gpus are compatible with name: Msi 850w Homebrew Pc Power Supply Unit Mag A850gl Pcie5 (PSU)"
    - You MUST call: `find_compatible_parts(source_product_name="Msi 850w Homebrew Pc Power Supply Unit Mag A850gl Pcie5", target_part_type="gpu")`
    - Then format the results from the tool response, do NOT make up GPU names.
@@ -301,7 +310,7 @@ When the user asks about compatibility for PC parts, you MUST use the compatibil
 - Example: Instead of "No compatible parts found", say "I couldn't find direct compatibility data for these parts. They may be compatible through a motherboard - would you like me to check motherboard compatibility instead?"
 
 **Comparison queries (SPECIAL FORMAT)**
-When the user asks to compare 2-4 products (e.g., "compare Ryzen 7 7800X3D vs i7-14700K", "compare top 3"):
+When the user asks to compare 2-4 products of the same type (e.g., "compare Ryzen 7 7800X3D vs i7-14700K", "compare top 3"):
 1. Identify the specific products (from cached recommendations or by searching).
 2. Use cached data plus `get_product_details` to collect rich specs for each product.
 3. Output ONLY this exact JSON format—no additional prose:
@@ -395,7 +404,7 @@ def analytical_agent(
         Retrieve data from the current cached recommendations without calling external APIs.
 
         Args:
-            selector: Use '#N' for the Nth product, a product ID, or part of the product title.
+            selector: Use '#N' or 'option N' for the Nth product (1-indexed), a product ID, or part of the product title.
                       Use 'list' to retrieve all cached products.
 
         Returns:
@@ -431,8 +440,9 @@ def analytical_agent(
         if selector_normalized in ("", "list", "all", "*"):
             results = [serialize_product(prod, idx) for idx, prod in enumerate(cached_products)]
         else:
-            # Match by index (#1), identifier, or fuzzy title match
-            index_match = re.match(r"#?(\d+)", selector_normalized)
+            # Match by index (#1, option 1, option1), identifier, or fuzzy title match
+            # Support formats: #N, option N, optionN
+            index_match = re.match(r"(?:#|option\s*)?(\d+)", selector_normalized)
             if index_match:
                 idx = int(index_match.group(1)) - 1
                 if 0 <= idx < len(cached_products):

@@ -290,3 +290,5 @@ class LocalElectronicsStore:
         # Fallback: first word
         return product_name.split()[0] if product_name.split() else None
 
+
+
