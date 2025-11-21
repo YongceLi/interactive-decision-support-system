@@ -26,6 +26,15 @@ class PersonaTurn:
     interaction_style: str
     family_background: str
     goal_summary: str
+    upper_price_limit: Optional[float] = None
+
+
+@dataclass
+class AttributeJudgement:
+    """Result of assessing a specific vehicle attribute."""
+
+    satisfied: Optional[bool]
+    rationale: Optional[str]
 
 
 @dataclass
@@ -39,8 +48,11 @@ class VehicleJudgement:
     condition: str
     location: str
     vin: Optional[str]
+    price: Optional[float]
     satisfied: bool
     rationale: str
+    attribute_results: Dict[str, AttributeJudgement]
+    confidence: Optional[float]
 
 
 @dataclass
@@ -49,6 +61,21 @@ class SimulationMetrics:
     satisfied_count: int
     infra_list_diversity: Optional[float]
     ndcg_at_k: Optional[float]
+    attribute_satisfaction: Dict[str, "AttributeSatisfaction"]
+
+
+@dataclass
+class AttributeSatisfaction:
+    """Aggregate satisfaction data for a single attribute."""
+
+    satisfied_count: int
+    total_count: int
+
+    @property
+    def rate(self) -> Optional[float]:
+        if self.total_count == 0:
+            return None
+        return self.satisfied_count / self.total_count
 
 
 @dataclass
@@ -67,12 +94,36 @@ class PersonaDraft(BaseModel):
     family_background: str
     goal_summary: str
     user_message: str
+    upper_price_limit: Optional[float]
+
+
+class AttributeAssessment(BaseModel):
+    satisfied: Optional[bool] = Field(
+        None, description="Whether this attribute matches the persona preferences (None if not mentioned)"
+    )
+    rationale: Optional[str] = Field(
+        None, description="<=10 words explaining the decision or None if not evaluated"
+    )
 
 
 class VehicleAssessment(BaseModel):
     index: int = Field(..., description="1-based index of the vehicle in the presented list")
-    satisfied: bool = Field(..., description="Whether the persona would be satisfied")
+    satisfied: bool = Field(..., description="Whether the persona would be satisfied overall")
     rationale: str = Field(..., description="Short textual explanation")
+    confidence: Optional[float] = Field(
+        None,
+        description="Confidence in the overall satisfaction judgement between 0 and 1",
+        ge=0.0,
+        le=1.0,
+    )
+    price: Optional[AttributeAssessment] = None
+    condition: Optional[AttributeAssessment] = None
+    year: Optional[AttributeAssessment] = None
+    make: Optional[AttributeAssessment] = None
+    model: Optional[AttributeAssessment] = None
+    fuel_type: Optional[AttributeAssessment] = None
+    body_type: Optional[AttributeAssessment] = None
+    all_misc: Optional[AttributeAssessment] = None
 
 
 class VehicleAssessmentList(BaseModel):
@@ -94,7 +145,8 @@ PERSONA_PROMPT = ChatPromptTemplate.from_messages(
             "system",
             "You craft single-turn user utterances for a car recommendation demo."
             "Read the reviewer's background and produce a concise, natural query."
-            "Every generated query must restate the shopper's concrete preferences.",
+            "Every generated query must restate the shopper's concrete preferences."
+            "Identify the highest price the shopper would pay and include it.",
         ),
         (
             "human",
@@ -117,7 +169,7 @@ Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
 
 Create a JSON object with keys writing_style, interaction_style, family_background,
-goal_summary, and user_message. The user_message must be the exact text the
+goal_summary, upper_price_limit, and user_message. The user_message must be the exact text the
 persona will send to the assistant in a single turn. It should reflect their
 writing style and refer to their family/life context when appropriate. Keep it
 under 120 words and avoid lists/bullets. In details:
@@ -125,9 +177,10 @@ under 120 words and avoid lists/bullets. In details:
 - interaction_style: A brief description of how the user prefers to interact.
 - family_background: A brief summary of the user's family/life context relevant to car buying.
 - goal_summary: A concise summary of the user's goal when interacting with a car recommendation agent.
+- upper_price_limit: Your best estimate of the shopper's maximum acceptable price in USD (numbers only). Use null if unknown.
 - user_message: Must clearly mention the desired make/model (if any), relevant years, whether the car should be new or used, how
-  new they want the search to be, body style, preferred fuel type, willingness to consider alternatives, and any additional
-  priorities highlighted above.
+  new they want the search to be, body style, preferred fuel type, willingness to consider alternatives, the maximum price to pay,
+  and any additional priorities highlighted above.
 """,
         ),
     ]
@@ -140,8 +193,9 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "system",
             "You evaluate car recommendations for a simulated shopper."
             "Decide if each vehicle matches the persona's expressed likes/dislikes."
-            "Only use make, model, year, condition (new/used), body style, fuel type, and dealer location to judge."
-            "Respect their newness preference scale and openness to alternatives when deciding satisfaction.",
+            "Only use make, model, year, condition (new/used), body style, fuel type, dealer location, and price to judge."
+            "Respect their newness preference scale, budget ceiling, and openness to alternatives when deciding satisfaction."
+            "Return concise rationales (10 words or fewer).",
         ),
         (
             "human",
@@ -152,6 +206,7 @@ Interaction style: {interaction_style}
 Family background: {family_background}
 Likes: {likes}
 Dislikes: {dislikes}
+Persona query: {persona_query}
 Mentioned makes: {mentioned_makes}
 Mentioned models: {mentioned_models}
 Mentioned years: {mentioned_years}
@@ -161,9 +216,26 @@ Preferred vehicle type: {preferred_vehicle_type}
 Preferred fuel type: {preferred_fuel_type}
 Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
+Upper price limit (USD): {upper_price_limit}
 
-For each vehicle below decide if the persona would be satisfied. Respond with
-JSON: {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>}}, ...]}}.
+For each vehicle below decide if the persona would be satisfied. Judge only the
+criteria explicitly mentioned in the persona_query; if a criterion was not
+mentioned, return null for that criterion. Respond with JSON using this shape:
+{{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
+"price": {{"satisfied": <bool|null>, "rationale": <string|null>}}, "condition": {{...}}, "year": {{...}},
+"make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
+In details, for each attribute, to determine overall satisfaction, consider:
+price: (whether the price satisfies the users' preference in the query or not).
+condition: (whether the condition satisfies the users' preference in the query or not).
+year: (whether the year satisfies the users' preference in the query or not).
+make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
+model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
+fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not, return None if there is no mention of fuel type in the query).
+body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
+all_misc: (whether all others' preference of the users mentioned in the query satisfies the users' query or not . Examples: driving dynamics, reliability, safety, ...)
+For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
+that attribute to null. Make price decisions using the provided upper price
+limit and the vehicle's price.
 Vehicles:
 {vehicles}
 """,
@@ -246,6 +318,18 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     state = listing.get("state") or vehicle.get("dealer_state")
     location = ", ".join([part for part in [city, state] if part]) or "Unknown"
 
+    price = listing.get("price")
+    if price is None:
+        price = listing.get("list_price") or vehicle.get("price")
+    try:
+        price = float(price) if price is not None else None
+    except (TypeError, ValueError):
+        price = None
+    miles = listing.get("miles")
+    fuel_type = car.get("fuel")
+    body_type = car.get("type")
+
+
     return {
         "index": index,
         "make": make,
@@ -254,6 +338,10 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
         "condition": condition,
         "location": location,
         "vin": vehicle.get("vin") or car.get("vin"),
+        "price": price,
+        "miles": miles,
+        "fuel_type": fuel_type,
+        "body_type": body_type,
     }
 
 
@@ -289,6 +377,7 @@ def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn
         interaction_style=draft.interaction_style.strip(),
         family_background=draft.family_background.strip(),
         goal_summary=draft.goal_summary.strip(),
+        upper_price_limit=draft.upper_price_limit,
     )
 
 
@@ -310,6 +399,7 @@ def _assess_vehicles(
         family_background=persona_turn.family_background,
         likes=likes_text,
         dislikes=dislikes_text,
+        persona_query=persona_turn.message,
         mentioned_makes=_list_to_text(persona.mentioned_makes),
         mentioned_models=_list_to_text(persona.mentioned_models),
         mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
@@ -320,6 +410,7 @@ def _assess_vehicles(
         preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
         openness_to_alternatives=persona.alternative_openness or "unknown",
         misc_notes=persona.misc_notes or "None stated",
+        upper_price_limit=persona_turn.upper_price_limit or "unspecified",
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())
@@ -327,11 +418,33 @@ def _assess_vehicles(
     assessment_map = {item.index: item for item in response.assessments}
 
     results: List[VehicleJudgement] = []
+    attribute_keys = [
+        "price",
+        "condition",
+        "year",
+        "make",
+        "model",
+        "fuel_type",
+        "body_type",
+        "all_misc",
+    ]
+
+    def _attribute_judgement(value: Optional[AttributeAssessment]) -> AttributeJudgement:
+        if value is None:
+            return AttributeJudgement(satisfied=None, rationale=None)
+        return AttributeJudgement(
+            satisfied=value.satisfied,
+            rationale=value.rationale.strip() if value.rationale else None,
+        )
+
     for entry in vehicle_entries:
         assessment = assessment_map.get(entry["index"])
         if assessment is None:
             # Default to dissatisfaction if the model omitted an entry.
             assessment = VehicleAssessment(index=entry["index"], satisfied=False, rationale="No evaluation")
+        attribute_results = {
+            key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
+        }
         results.append(
             VehicleJudgement(
                 index=entry["index"],
@@ -341,8 +454,11 @@ def _assess_vehicles(
                 condition=str(entry.get("condition")),
                 location=str(entry.get("location")),
                 vin=entry.get("vin"),
+                price=entry.get("price"),
                 satisfied=assessment.satisfied,
                 rationale=assessment.rationale.strip(),
+                attribute_results=attribute_results,
+                confidence=assessment.confidence,
             )
         )
     return results
@@ -356,6 +472,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
             satisfied_count=0,
             infra_list_diversity=None,
             ndcg_at_k=None,
+            attribute_satisfaction={},
         )
 
     top_k = [j for j in judgements if j.index <= k]
@@ -365,6 +482,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
             satisfied_count=0,
             infra_list_diversity=None,
             ndcg_at_k=None,
+            attribute_satisfaction={},
         )
 
     satisfied = [j for j in top_k if j.satisfied]
@@ -398,11 +516,25 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     else:
         ndcg = 0.0 if not satisfied else None
 
+    attribute_satisfaction: Dict[str, AttributeSatisfaction] = {}
+    for judgement in top_k:
+        for attribute, outcome in judgement.attribute_results.items():
+            if outcome.satisfied is None:
+                continue
+            current = attribute_satisfaction.get(attribute) or AttributeSatisfaction(
+                satisfied_count=0, total_count=0
+            )
+            current.total_count += 1
+            if outcome.satisfied:
+                current.satisfied_count += 1
+            attribute_satisfaction[attribute] = current
+
     return SimulationMetrics(
         precision_at_k=precision,
         satisfied_count=len(satisfied),
         infra_list_diversity=infra_list_diversity,
         ndcg_at_k=ndcg,
+        attribute_satisfaction=attribute_satisfaction,
     )
 
 

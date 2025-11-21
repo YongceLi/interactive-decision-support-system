@@ -123,6 +123,7 @@ def _load_personas_and_turns(csv_path: Path) -> List[Tuple[ReviewPersona, Person
                 interaction_style=str(row.get("persona_interaction_style", "")),
                 family_background=str(row.get("persona_family_background", "")),
                 goal_summary=str(row.get("persona_goal_summary", "")),
+                upper_price_limit=row.get("persona_upper_price_limit"),
             )
         )
 
