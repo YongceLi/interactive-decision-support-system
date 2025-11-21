@@ -31,7 +31,7 @@ def _format_price(value: Optional[float]) -> str:
 
 
 def _format_attribute_result(outcome: Optional[AttributeJudgement]) -> str:
-    if outcome is None or not outcome.mentioned:
+    if outcome is None or outcome.satisfied is None:
         return "—"
     return "✅" if outcome.satisfied else "❌"
 

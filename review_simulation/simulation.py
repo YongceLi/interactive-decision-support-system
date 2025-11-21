@@ -33,9 +33,8 @@ class PersonaTurn:
 class AttributeJudgement:
     """Result of assessing a specific vehicle attribute."""
 
-    satisfied: bool
+    satisfied: Optional[bool]
     rationale: Optional[str]
-    mentioned: bool
 
 
 @dataclass
@@ -99,8 +98,8 @@ class PersonaDraft(BaseModel):
 
 
 class AttributeAssessment(BaseModel):
-    satisfied: bool = Field(
-        ..., description="Whether this attribute matches the persona preferences (always true/false)"
+    satisfied: Optional[bool] = Field(
+        None, description="Whether this attribute matches the persona preferences (None if not mentioned)"
     )
     rationale: Optional[str] = Field(
         None, description="<=10 words explaining the decision or None if not evaluated"
@@ -220,14 +219,23 @@ Other priorities: {misc_notes}
 Upper price limit (USD): {upper_price_limit}
 
 For each vehicle below decide if the persona would be satisfied. Judge only the
-criteria explicitly mentioned in the persona_query. Respond with JSON using this
-shape: {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
-"price": {{"satisfied": <bool>, "rationale": <string|null>}}, "condition": {{...}}, "year": {{...}},
+criteria explicitly mentioned in the persona_query; if a criterion was not
+mentioned, return null for that criterion. Respond with JSON using this shape:
+{{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
+"price": {{"satisfied": <bool|null>, "rationale": <string|null>}}, "condition": {{...}}, "year": {{...}},
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
-Use true/false for every attribute's "satisfied" value. If the persona_query
-does not mention an attribute, set its rationale to null and mark satisfied
-as false. Make price decisions using the provided upper price limit and the
-vehicle's price.
+In details, for each attribute, to determine overall satisfaction, consider:
+price: (whether the price satisfies the users' preference in the query or not).
+condition: (whether the condition satisfies the users' preference in the query or not).
+year: (whether the year satisfies the users' preference in the query or not).
+make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
+model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
+fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not, return None if there is no mention of fuel type in the query).
+body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
+all_misc: (whether all others' preference of the users mentioned in the query satisfies the users' query or not . Examples: driving dynamics, reliability, safety, ...)
+For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
+that attribute to null. Make price decisions using the provided upper price
+limit and the vehicle's price.
 Vehicles:
 {vehicles}
 """,
@@ -317,6 +325,10 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
         price = float(price) if price is not None else None
     except (TypeError, ValueError):
         price = None
+    miles = listing.get("miles")
+    fuel_type = car.get("fuel")
+    body_type = car.get("type")
+
 
     return {
         "index": index,
@@ -327,6 +339,9 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
         "location": location,
         "vin": vehicle.get("vin") or car.get("vin"),
         "price": price,
+        "miles": miles,
+        "fuel_type": fuel_type,
+        "body_type": body_type,
     }
 
 
@@ -416,11 +431,10 @@ def _assess_vehicles(
 
     def _attribute_judgement(value: Optional[AttributeAssessment]) -> AttributeJudgement:
         if value is None:
-            return AttributeJudgement(satisfied=False, rationale=None, mentioned=False)
+            return AttributeJudgement(satisfied=None, rationale=None)
         return AttributeJudgement(
-            satisfied=bool(value.satisfied),
+            satisfied=value.satisfied,
             rationale=value.rationale.strip() if value.rationale else None,
-            mentioned=True,
         )
 
     for entry in vehicle_entries:
@@ -505,7 +519,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     attribute_satisfaction: Dict[str, AttributeSatisfaction] = {}
     for judgement in top_k:
         for attribute, outcome in judgement.attribute_results.items():
-            if not outcome.mentioned:
+            if outcome.satisfied is None:
                 continue
             current = attribute_satisfaction.get(attribute) or AttributeSatisfaction(
                 satisfied_count=0, total_count=0
