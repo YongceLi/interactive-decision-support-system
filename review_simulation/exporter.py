@@ -35,6 +35,7 @@ PERSONA_EXPORT_COLUMNS = [
     "persona_family_background",
     "persona_goal_summary",
     "persona_query",
+    "persona_upper_price_limit",
 ]
 
 
@@ -48,6 +49,8 @@ RESULT_EXPORT_COLUMNS = PERSONA_EXPORT_COLUMNS + [
     "summary",
     "vehicle_judgements",
     "sql_query",
+    "attribute_satisfaction_at_k",
+    "overall_attribute_satisfaction",
 ]
 
 
@@ -81,8 +84,17 @@ def serialize_vehicle_judgements(judgements: List[VehicleJudgement]) -> str:
                 "condition": item.condition,
                 "location": item.location,
                 "vin": item.vin,
+                "price": item.price,
                 "satisfied": item.satisfied,
                 "rationale": item.rationale,
+                "confidence": item.confidence,
+                "attribute_results": {
+                    key: {
+                        "satisfied": value.satisfied,
+                        "rationale": value.rationale,
+                    }
+                    for key, value in (item.attribute_results or {}).items()
+                },
             }
             for item in judgements
         ]
@@ -119,6 +131,7 @@ def persona_to_row(persona: ReviewPersona, turn: PersonaTurn) -> Dict[str, objec
         "persona_family_background": turn.family_background,
         "persona_goal_summary": turn.goal_summary,
         "persona_query": turn.message,
+        "persona_upper_price_limit": turn.upper_price_limit,
     }
 
 
@@ -127,6 +140,11 @@ def result_to_row(result: SimulationResult) -> Dict[str, object]:
 
     row = persona_to_row(result.persona, result.persona_turn)
     metrics = result.metrics
+
+    attribute_rates = [stat.rate for stat in result.metrics.attribute_satisfaction.values() if stat.rate is not None]
+    overall_attribute_satisfaction = (
+        sum(attribute_rates) / len(attribute_rates) if attribute_rates else None
+    )
 
     row.update(
         {
@@ -139,6 +157,17 @@ def result_to_row(result: SimulationResult) -> Dict[str, object]:
             "summary": result.summary,
             "vehicle_judgements": serialize_vehicle_judgements(result.vehicles),
             "sql_query": result.recommendation_response.get("sql_query", None),
+            "attribute_satisfaction_at_k": json.dumps(
+                {
+                    key: {
+                        "satisfied_count": stats.satisfied_count,
+                        "total_count": stats.total_count,
+                        "rate": stats.rate,
+                    }
+                    for key, stats in result.metrics.attribute_satisfaction.items()
+                }
+            ),
+            "overall_attribute_satisfaction": overall_attribute_satisfaction,
         }
     )
     return row

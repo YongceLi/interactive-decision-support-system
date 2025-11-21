@@ -52,6 +52,7 @@ class ReviewPersona:
     preferred_fuel_type: Optional[str] = None
     alternative_openness: Optional[int] = None
     misc_notes: Optional[str] = None
+    upper_price_limit: Optional[float] = None
 
     @property
     def rating_value(self) -> Optional[float]:
@@ -111,6 +112,15 @@ def _try_parse_int(value: Optional[object]) -> Optional[int]:
         return None
 
 
+def _try_parse_float(value: Optional[object]) -> Optional[float]:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def load_personas_from_frame(frame: pd.DataFrame) -> List[ReviewPersona]:
     personas: List[ReviewPersona] = []
     for _, row in frame.iterrows():
@@ -134,6 +144,7 @@ def load_personas_from_frame(frame: pd.DataFrame) -> List[ReviewPersona]:
                 preferred_fuel_type=(row.get("preferred_fuel_type") or None),
                 alternative_openness=_try_parse_int(row.get("openness_to_alternatives")),
                 misc_notes=(row.get("misc_notes") or None),
+                upper_price_limit=_try_parse_float(row.get("upper_price_limit")),
             )
         )
     return personas
