@@ -494,7 +494,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
         )
 
     satisfied = [j for j in top_k if j.satisfied]
-    precision = len(satisfied) / k if k else None
+    precision = len(satisfied) / len(top_k)
 
     make_models = [
         (str(j.make).strip().lower() if j.make else "", str(j.model).strip().lower() if j.model else "")
@@ -502,8 +502,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     ]
     unique_make_models = {item for item in make_models if any(item)}
     infra_list_diversity = None
-    if k:
-        infra_list_diversity = len(unique_make_models) / k
+    infra_list_diversity = len(unique_make_models) / len(top_k)
 
     def _dcg(items: List[VehicleJudgement]) -> float:
         value = 0.0
