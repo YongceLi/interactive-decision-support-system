@@ -111,11 +111,11 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         table.add_column("Year", justify="right")
         table.add_column("Condition")
         table.add_column("Price", justify="right")
-        table.add_column("Location")
         table.add_column("Satisfied")
         table.add_column("Rationale", overflow="fold")
         table.add_column("Price match", justify="center")
         table.add_column("Condition match", justify="center")
+        table.add_column("Year match", justify="center")
         table.add_column("Make match", justify="center")
         table.add_column("Model match", justify="center")
         table.add_column("Fuel match", justify="center")
@@ -128,6 +128,7 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
             attributes = vehicle.attribute_results or {}
             price_match = _format_attribute_result(attributes.get("price"))
             condition_match = _format_attribute_result(attributes.get("condition"))
+            year_match = _format_attribute_result(attributes.get("year"))
             make_match = _format_attribute_result(attributes.get("make"))
             model_match = _format_attribute_result(attributes.get("model"))
             fuel_match = _format_attribute_result(attributes.get("fuel_type"))
@@ -141,11 +142,11 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
                 str(vehicle.year or "-"),
                 str(vehicle.condition or "-"),
                 _format_price(vehicle.price),
-                str(vehicle.location or "-"),
                 satisfaction,
                 str(vehicle.rationale or ""),
                 price_match,
                 condition_match,
+                year_match,
                 make_match,
                 model_match,
                 fuel_match,

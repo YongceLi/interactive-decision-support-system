@@ -167,6 +167,7 @@ Preferred vehicle type: {preferred_vehicle_type}
 Preferred fuel type: {preferred_fuel_type}
 Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
+Current year is 2025 (assume this for the most newness context).
 
 Create a JSON object with keys writing_style, interaction_style, family_background,
 goal_summary, upper_price_limit, and user_message. The user_message must be the exact text the
@@ -195,6 +196,7 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "Decide if each vehicle matches the persona's expressed likes/dislikes."
             "Only use make, model, year, condition (new/used), body style, fuel type, dealer location, and price to judge."
             "Respect their newness preference scale, budget ceiling, and openness to alternatives when deciding satisfaction."
+            "All vehicle information provided is accurate. DO NOT override them with assumptions. Use it to make informed judgements."
             "Return concise rationales (10 words or fewer).",
         ),
         (
@@ -236,6 +238,10 @@ all_misc: (whether all others' preference of the users mentioned in the query sa
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Make price decisions using the provided upper price
 limit and the vehicle's price.
+Confidence should be a number between 0 and 1 indicating how confident you are in the overall satisfaction judgement.
+If there are a lot of conflicts between attributes and the final satisfaction judgement, the confidence score should be lower.
+Vice versa, if there are a lot of attributes that align with the final satisfaction judgement, the confidence score should be higher.
+The delta of confidence should be proportional to the number of attributes that align with the final satisfaction judgement.
 Vehicles:
 {vehicles}
 """,
@@ -299,6 +305,7 @@ def _list_to_text(values: List[str]) -> str:
 def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]:
     car = vehicle.get("vehicle", {}) if isinstance(vehicle, dict) else {}
     listing = vehicle.get("retailListing", {}) if isinstance(vehicle, dict) else {}
+    build = vehicle.get("build", {}) if isinstance(vehicle, dict) else {}
 
     make = car.get("make")
     model = car.get("model")
@@ -326,8 +333,8 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     except (TypeError, ValueError):
         price = None
     miles = listing.get("miles")
-    fuel_type = car.get("fuel")
-    body_type = car.get("type")
+    fuel_type = car.get("fuel") or build.get("fuel_type")
+    body_type = car.get("bodyStyle") or build.get("body_type")
 
 
     return {
