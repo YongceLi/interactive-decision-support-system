@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--confidence-threshold",
         type=float,
-        default=0.5,
+        default=0.51,
         help="Minimum average confidence required to accept an assessment without retrying",
     )
     parser.add_argument(
