@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 
@@ -39,6 +39,30 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _parse_confidence(value: object) -> Optional[float]:
+    try:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _attribute_judgement_from_export(value: dict | None) -> AttributeJudgement:
+    if value is None:
+        return AttributeJudgement(satisfied=None, rationale=None)
+
+    satisfied = value.get("satisfied") if isinstance(value, dict) else None
+    mentioned = value.get("mentioned") if isinstance(value, dict) else None
+    if mentioned is False:
+        satisfied_value = None
+    else:
+        satisfied_value = satisfied
+
+    rationale = value.get("rationale") if isinstance(value, dict) else None
+    return AttributeJudgement(satisfied=satisfied_value, rationale=rationale)
+
+
 def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
     personas: List[ReviewPersona] = load_personas_from_frame(frame)
     turns: List[PersonaTurn] = []
@@ -61,11 +85,7 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
         vehicles: List[VehicleJudgement] = []
         for vehicle in vehicle_judgements:
             attribute_results = {
-                key: AttributeJudgement(
-                    satisfied=bool(value.get("satisfied")),
-                    rationale=value.get("rationale"),
-                    mentioned=bool(value.get("mentioned", True)),
-                )
+                key: _attribute_judgement_from_export(value)
                 for key, value in (vehicle.get("attribute_results") or {}).items()
             }
             vehicles.append(
@@ -81,7 +101,7 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
                     satisfied=vehicle.get("satisfied", False),
                     rationale=vehicle.get("rationale", ""),
                     attribute_results=attribute_results,
-                    confidence=vehicle.get("confidence"),
+                    confidence=_parse_confidence(vehicle.get("confidence")),
                 )
             )
 
@@ -106,6 +126,7 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
             "extracted_filters": json.loads(row.get("extracted_filters") or "null"),
             "implicit_preferences": json.loads(row.get("implicit_preferences") or "null"),
             "sql_query": row.get("sql_query"),
+            "overall_attribute_satisfaction": row.get("overall_attribute_satisfaction"),
         }
 
         results.append(

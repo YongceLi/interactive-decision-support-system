@@ -58,6 +58,18 @@ def parse_args() -> argparse.Namespace:
         help="Optional cap on number of personas processed",
     )
     parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.51,
+        help="Minimum average confidence required to accept an assessment without retrying",
+    )
+    parser.add_argument(
+        "--max-assessment-attempts",
+        type=int,
+        default=3,
+        help="Maximum number of assessment passes to run when confidence is low",
+    )
+    parser.add_argument(
         "--export",
         type=Path,
         default=None,
@@ -84,6 +96,8 @@ def main() -> None:
                 recommendation_limit=args.limit,
                 metric_k=args.metric_k,
                 recommendation_method=args.method,
+                confidence_threshold=args.confidence_threshold,
+                max_assessment_attempts=args.max_assessment_attempts,
             )
         )
 
