@@ -220,6 +220,7 @@ Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
 Upper price limit (USD): {upper_price_limit}
 Current year is 2025 (assume this for the most newness context).
+Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 
 For each vehicle below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
