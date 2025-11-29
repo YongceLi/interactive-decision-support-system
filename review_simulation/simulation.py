@@ -584,6 +584,8 @@ def run_simulation(
     recommendation_limit: int = 20,
     metric_k: Optional[int] = None,
     recommendation_method: int = 1,
+    confidence_threshold: float = 0.5,
+    max_assessment_attempts: int = 3,
 ) -> SimulationResult:
     persona_turn = build_persona_turn(persona, llm)
 
@@ -594,6 +596,8 @@ def run_simulation(
         recommendation_limit=recommendation_limit,
         metric_k=metric_k,
         recommendation_method=recommendation_method,
+        confidence_threshold=confidence_threshold,
+        max_assessment_attempts=max_assessment_attempts,
     )
 
 
@@ -604,6 +608,8 @@ def evaluate_persona(
     recommendation_limit: int = 20,
     metric_k: Optional[int] = None,
     recommendation_method: int = 1,
+    confidence_threshold: float = 0.5,
+    max_assessment_attempts: int = 3,
 ) -> SimulationResult:
 
     if recommendation_method == 1:
@@ -618,6 +624,70 @@ def evaluate_persona(
     vehicles = (response.get("recommended_vehicles") or [])[:recommendation_limit]
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
+    attempts: List[List[VehicleJudgement]] = [judgements]
+
+    def _avg_confidence(items: List[VehicleJudgement]) -> Optional[float]:
+        confidences = [j.confidence for j in items if j.confidence is not None]
+        if not confidences:
+            return None
+        return sum(confidences) / len(confidences)
+
+    def _select_majority(attempt_sets: List[List[VehicleJudgement]]) -> List[VehicleJudgement]:
+        if not attempt_sets:
+            return []
+
+        by_index: Dict[int, List[VehicleJudgement]] = {}
+        for attempt in attempt_sets:
+            for judgement in attempt:
+                by_index.setdefault(judgement.index, []).append(judgement)
+
+        final: List[VehicleJudgement] = []
+        for index, entries in sorted(by_index.items()):
+            true_count = sum(1 for entry in entries if entry.satisfied is True)
+            false_count = sum(1 for entry in entries if entry.satisfied is False)
+            if true_count > false_count:
+                majority_value: Optional[bool] = True
+            elif false_count > true_count:
+                majority_value = False
+            else:
+                majority_value = None
+
+            def _confidence_score(entry: VehicleJudgement) -> float:
+                return entry.confidence if entry.confidence is not None else -1.0
+
+            candidates = (
+                [entry for entry in entries if entry.satisfied == majority_value]
+                if majority_value is not None
+                else entries
+            )
+            selected = max(candidates or entries, key=_confidence_score)
+            final.append(selected)
+
+        return sorted(final, key=lambda item: item.index)
+
+    best_confidence = _avg_confidence(judgements)
+    threshold_met = best_confidence is not None and best_confidence >= confidence_threshold
+
+    remaining_attempts = max_assessment_attempts - 1
+    while not threshold_met and remaining_attempts > 0:
+        new_attempt = _assess_vehicles(persona, persona_turn, vehicles, llm)
+        attempts.append(new_attempt)
+        attempt_confidence = _avg_confidence(new_attempt)
+        if attempt_confidence is not None and attempt_confidence >= confidence_threshold:
+            judgements = new_attempt
+            threshold_met = True
+            best_confidence = attempt_confidence
+            break
+        if best_confidence is None or (
+            attempt_confidence is not None and attempt_confidence > best_confidence
+        ):
+            judgements = new_attempt
+            best_confidence = attempt_confidence
+        remaining_attempts -= 1
+
+    if not threshold_met:
+        judgements = _select_majority(attempts)
+
     metrics = _compute_metrics(judgements, persona, metric_k or recommendation_limit)
     summary = _summarize_judgements(judgements, llm)
 

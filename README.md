@@ -193,8 +193,23 @@ The repository now includes a complete pipeline for building single-turn user pe
    ```
    The simulator creates a single-turn user query for each persona, executes the full recommendation pipeline via
    `scripts/test_recommendation.py`, and has the LLM judge each of the top-k vehicles based on the persona's expressed likes
-   and dislikes. A Rich-powered terminal UI displays the persona description, their one-shot message, each recommended
-   vehicle (make/model/year/condition/location), the satisfaction verdict, rationale, and precision@k/recall@k metrics.
+   and dislikes. Assessments now retry automatically when the average confidence across vehicles falls below the configurable
+   threshold (`--confidence-threshold`, default `0.5`), up to a capped number of passes (`--max-assessment-attempts`, default
+   `3`). If no retry achieves the threshold, the final verdict is chosen by simple majority across attempts, selecting the
+   most confident rationale from the majority group for each vehicle. A Rich-powered terminal UI displays the persona
+   description, their one-shot message, each recommended vehicle (make/model/year/condition/location), per-attribute matches
+   (price, condition, year, make/model, fuel type, body type, and misc), overall satisfaction, confidence, and metrics
+   (precision@k, infra-list diversity, NDCG@k, satisfied@k, and attribute-level satisfied@k aggregates). Add `--method 2` to
+   evaluate the alternate recommendation stack.
+
+4. **Replay exported results**
+   ```bash
+   python review_simulation/replay_results.py data/persona_results.csv --metric-k 20 --stats-output data/persona_results_stats.json
+   ```
+   When the simulation is run with `--export <path>`, the CSV captures persona prompts, recommendation responses (including
+   extracted filters, implicit preferences, SQL queries), vehicle-level judgements with attribute checks, confidence scores,
+   and aggregate metrics. The replay helper faithfully reconstructs the Rich UI from that CSV and can emit JSON aggregates for
+   downstream dashboards.
 
 All steps require the OpenAI API key (set in `.env`). The scraping stage also needs outbound internet access to Edmunds.
 
