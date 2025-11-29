@@ -25,3 +25,4 @@ python-dotenv>=1.0.0
 # Configuration and templating
 PyYAML>=6.0.0  # For YAML configuration files
 Jinja2>=3.1.0  # For prompt templating
+neo4j
