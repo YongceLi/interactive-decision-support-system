@@ -1,0 +1,101 @@
+make,model,cnt
+Ford,F-150,7775
+Ram,1500,6293
+Ford,Escape,4470
+Chevrolet,Silverado 1500,3769
+Ford,Explorer,3620
+Chevrolet,Colorado,2791
+Chevrolet,Traverse,2599
+Ford,Mustang,2474
+BMW,3 Series,2241
+Honda,Civic,2162
+Honda,Accord,2065
+Chevrolet,Tahoe,2063
+Chevrolet,Malibu,2044
+Ford,Expedition,1962
+Jeep,Grand Cherokee,1953
+Honda,CR-V,1925
+Jeep,Wrangler,1845
+Ford,Bronco,1793
+Hyundai,Tucson,1651
+Chevrolet,Suburban,1560
+Chevrolet,Corvette,1530
+Toyota,Camry,1518
+Toyota,RAV4,1484
+Ford,F-250,1353
+Dodge,Durango,1284
+Acura,MDX,1272
+GMC,Acadia,1258
+Ford,F-350 Super Duty,1255
+Acura,ADX,1207
+Acura,RDX,1177
+Tesla,Model 3,1160
+Nissan,Rogue,1140
+Chevrolet,Equinox,1126
+BMW,X5,1089
+Ford,F-250 Super Duty,1069
+Cadillac,Escalade,1021
+Jeep,Grand Cherokee L,977
+Volkswagen,Jetta,932
+Hyundai,Elantra,904
+Jeep,Wagoneer,889
+Toyota,Corolla,874
+Chevrolet,Silverado 2500,862
+Nissan,Sentra,852
+Volkswagen,Tiguan,842
+Toyota,Tacoma,829
+Honda,Pilot,783
+Subaru,Forester,763
+Honda,HR-V,759
+Subaru,Crosstrek,752
+Subaru,Outback,745
+Ford,F150 SuperCrew Cab,740
+Acura,TL,714
+Honda,Odyssey,705
+Acura,TLX,701
+GMC,Yukon,692
+Jeep,Wrangler Unlimited,684
+Nissan,Altima,664
+Hyundai,Santa Fe,658
+Chevrolet,Silverado 3500,649
+Ram,1500 Crew Cab,626
+Chevrolet,Express,613
+GMC,Sierra 1500,608
+Jeep,Grand Wagoneer,589
+Ford,Ranger,586
+Jeep,Compass,584
+Ford,F-350,565
+Chevrolet,Silverado 2500HD,559
+Kia,Forte,555
+BMW,2 Series,552
+Chevrolet,Silverado 1500 Crew Cab,545
+Ford,Edge,543
+BMW,X3,542
+Kia,Soul,537
+Toyota,Prius,537
+Cadillac,CTS,534
+Ford,Focus,531
+Chevrolet,Camaro,519
+Ford,Mustang Mach-E,514
+Chevrolet,Trax,513
+Toyota,Highlander,513
+Ford,Bronco Sport,512
+Ford,F-150 Lightning,511
+Volvo,XC90,511
+Jeep,Gladiator,507
+Kia,Sportage,506
+Mazda,CX-5,502
+BMW,M2,490
+Cadillac,XT6,489
+Jeep,Cherokee,480
+Acura,Integra,476
+Ram,1500 Classic,470
+Honda,Civic Hatchback,455
+Buick,Lucerne,450
+GMC,Sierra 2500HD,441
+Mercedes-Benz,GLE,435
+Mercedes-Benz,GLC,431
+Volvo,XC60,423
+GMC,Yukon XL,421
+Ford,Transit Cargo Van,420
+Volkswagen,Atlas,410
