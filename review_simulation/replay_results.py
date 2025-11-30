@@ -16,7 +16,7 @@ from review_simulation.simulation import (
     PersonaTurn,
     SimulationMetrics,
     SimulationResult,
-    VehicleJudgement,
+    ProductJudgement,
 )
 from review_simulation.ui import compute_final_stats, render_results
 
@@ -82,21 +82,18 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
     results: List[SimulationResult] = []
     for persona, turn, (_, row) in zip(personas, turns, frame.iterrows()):
         vehicle_judgements = json.loads(row.get("vehicle_judgements", "[]"))
-        vehicles: List[VehicleJudgement] = []
+        vehicles: List[ProductJudgement] = []
         for vehicle in vehicle_judgements:
             attribute_results = {
                 key: _attribute_judgement_from_export(value)
                 for key, value in (vehicle.get("attribute_results") or {}).items()
             }
             vehicles.append(
-                VehicleJudgement(
+                ProductJudgement(
                     index=vehicle.get("index"),
-                    make=vehicle.get("make"),
-                    model=vehicle.get("model"),
-                    year=vehicle.get("year"),
-                    condition=vehicle.get("condition"),
-                    location=vehicle.get("location"),
-                    vin=vehicle.get("vin"),
+                    product_brand=vehicle.get("product_brand"),
+                    product_name=vehicle.get("product_name"),
+                    normalize_product_name=vehicle.get("normalize_product_name"),
                     price=vehicle.get("price"),
                     satisfied=vehicle.get("satisfied", False),
                     rationale=vehicle.get("rationale", ""),

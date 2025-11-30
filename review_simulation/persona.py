@@ -10,22 +10,20 @@ import pandas as pd
 
 
 @dataclass
-class VehicleAffinity:
-    """Represents a liked or disliked vehicle configuration."""
+class ProductAffinity:
+    """Represents a liked or disliked product configuration."""
 
-    make: Optional[str]
-    model: Optional[str]
-    year: Optional[int]
-    condition: Optional[str]
+    product_brand: Optional[str]
+    product_name: Optional[str]
+    normalize_product_name: Optional[str]
     rationale: Optional[str]
 
     @classmethod
-    def from_dict(cls, data: dict) -> "VehicleAffinity":
+    def from_dict(cls, data: dict) -> "ProductAffinity":
         return cls(
-            make=data.get("make"),
-            model=data.get("model"),
-            year=data.get("year"),
-            condition=(data.get("condition") or None),
+            product_brand=data.get("product_brand"),
+            product_name=data.get("product_name"),
+            normalize_product_name=data.get("normalize_product_name"),
             rationale=data.get("rationale"),
         )
 
@@ -34,22 +32,22 @@ class VehicleAffinity:
 class ReviewPersona:
     """Persona constructed from a single enriched review entry."""
 
-    make: str
-    model: str
+    product_brand: str
+    product_name: str
+    normalize_product_name: str
     review: str
     rating: Optional[float]
     date: Optional[str]
-    liked: List[VehicleAffinity] = field(default_factory=list)
-    disliked: List[VehicleAffinity] = field(default_factory=list)
+    liked: List[ProductAffinity] = field(default_factory=list)
+    disliked: List[ProductAffinity] = field(default_factory=list)
     intention: str = ""
-    mentioned_makes: List[str] = field(default_factory=list)
-    mentioned_models: List[str] = field(default_factory=list)
-    mentioned_years: List[int] = field(default_factory=list)
-    preferred_condition: Optional[str] = None
+    mentioned_product_brands: List[str] = field(default_factory=list)
+    mentioned_product_names: List[str] = field(default_factory=list)
+    mentioned_normalize_product_names: List[str] = field(default_factory=list)
+    performance_tier: Optional[str] = None
     newness_preference_score: Optional[int] = None
     newness_preference_notes: Optional[str] = None
-    preferred_vehicle_type: Optional[str] = None
-    preferred_fuel_type: Optional[str] = None
+    price_range: Optional[str] = None
     alternative_openness: Optional[int] = None
     misc_notes: Optional[str] = None
     upper_price_limit: Optional[float] = None
@@ -62,7 +60,7 @@ class ReviewPersona:
             return None
 
 
-def _parse_affinity_column(value: str) -> List[VehicleAffinity]:
+def _parse_affinity_column(value: str) -> List[ProductAffinity]:
     if not value or (isinstance(value, float) and pd.isna(value)):
         return []
     try:
@@ -71,10 +69,10 @@ def _parse_affinity_column(value: str) -> List[VehicleAffinity]:
         return []
     if isinstance(raw_list, dict):
         raw_list = [raw_list]
-    affinities: List[VehicleAffinity] = []
+    affinities: List[ProductAffinity] = []
     for item in raw_list:
         if isinstance(item, dict):
-            affinities.append(VehicleAffinity.from_dict(item))
+            affinities.append(ProductAffinity.from_dict(item))
     return affinities
 
 
@@ -126,22 +124,24 @@ def load_personas_from_frame(frame: pd.DataFrame) -> List[ReviewPersona]:
     for _, row in frame.iterrows():
         personas.append(
             ReviewPersona(
-                make=str(row.get("Make", "")),
-                model=str(row.get("Model", "")),
+                product_brand=str(row.get("Brand", "")),
+                product_name=str(row.get("Product", "")),
+                normalize_product_name=str(row.get("Norm_Product", "")),
                 review=str(row.get("Review", "")),
                 rating=row.get("ratings"),
                 date=row.get("date"),
                 liked=_parse_affinity_column(row.get("liked_options", "")),
                 disliked=_parse_affinity_column(row.get("disliked_options", "")),
                 intention=str(row.get("user_intention", "")),
-                mentioned_makes=_parse_json_list(row.get("mentioned_makes")),
-                mentioned_models=_parse_json_list(row.get("mentioned_models")),
-                mentioned_years=_parse_json_int_list(row.get("mentioned_years")),
-                preferred_condition=(row.get("preferred_condition") or None),
+                mentioned_product_brands=_parse_json_list(row.get("mentioned_product_brands")),
+                mentioned_product_names=_parse_json_list(row.get("mentioned_product_names")),
+                mentioned_normalize_product_names=_parse_json_list(
+                    row.get("mentioned_normalize_product_names")
+                ),
+                performance_tier=(row.get("performance_tier") or None),
                 newness_preference_score=_try_parse_int(row.get("newness_preference_score")),
                 newness_preference_notes=(row.get("newness_preference_notes") or None),
-                preferred_vehicle_type=(row.get("preferred_vehicle_type") or None),
-                preferred_fuel_type=(row.get("preferred_fuel_type") or None),
+                price_range=(row.get("price_range") or None),
                 alternative_openness=_try_parse_int(row.get("openness_to_alternatives")),
                 misc_notes=(row.get("misc_notes") or None),
                 upper_price_limit=_try_parse_float(row.get("upper_price_limit")),

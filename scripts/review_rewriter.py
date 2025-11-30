@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate augmented vehicle reviews by rewriting scraper output for new make/model pairs."""
+"""Generate augmented GPU reviews by rewriting scraper output for new brand/product pairs."""
 from __future__ import annotations
 
 import argparse
@@ -19,23 +19,23 @@ logger = logging.getLogger("review_rewriter")
 
 
 PROMPT_TEMPLATE = """
-You will rewrite an automotive review so that it matches a new vehicle make and model.
+You will rewrite a GPU/electronics review so that it matches a new brand and product name.
 
 Guidance:
 - Preserve the original sentiment, tone, and rating context of the review.
 - Keep the perspective, details, and style grounded in the provided original review.
-- Only change details that must shift to fit the target make/model; otherwise keep facts consistent.
+- Only change details that must shift to fit the target brand/product; otherwise keep facts consistent.
 - Do not invent specs unrelated to the original content. Keep it concise and natural.
 
 Original review metadata:
-- Make: {original_make}
-- Model: {original_model}
-- Year: {year}
+- Brand: {original_brand}
+- Product: {original_product}
+- Normalized product family: {norm_product}
 - Rating: {rating}
 - Source text: {review}
 
-Rewrite this review so it appears to be about the target vehicle while preserving the sentiment and implied rating.
-Target vehicle: {target_make} {target_model}
+Rewrite this review so it appears to be about the target product while preserving the sentiment and implied rating.
+Target product: {target_brand} {target_product}
 Return only the rewritten review text without any additional commentary.
 """
 
@@ -63,17 +63,17 @@ def sample_make_models(
 def rewrite_review(
     llm: ChatOpenAI,
     original_row: pd.Series,
-    target_make: str,
-    target_model: str,
+    target_brand: str,
+    target_product: str,
 ) -> str:
     prompt = PROMPT_TEMPLATE.format(
-        original_make=original_row.get("Make", ""),
-        original_model=original_row.get("Model", ""),
-        year=original_row.get("Year", ""),
-        rating=original_row.get("ratings", ""),
+        original_brand=original_row.get("Brand", ""),
+        original_product=original_row.get("Product", ""),
+        norm_product=original_row.get("Norm_Product", ""),
+        rating=original_row.get("Rating", ""),
         review=original_row.get("Review", ""),
-        target_make=target_make,
-        target_model=target_model,
+        target_brand=target_brand,
+        target_product=target_product,
     )
     response = llm.invoke(prompt)
     return response.content.strip()
@@ -81,28 +81,33 @@ def rewrite_review(
 
 def expand_reviews(
     reviews: pd.DataFrame,
-    make_models: Iterable[Tuple[str, str]],
+    brand_products: Iterable[Tuple[str, str]],
     llm: ChatOpenAI,
     variants_per_review: int,
     rng: random.Random,
 ) -> pd.DataFrame:
     results = []
-    make_model_list = list(make_models)
+    brand_product_list = list(brand_products)
     for _, row in reviews.iterrows():
-        sampled_pairs = sample_make_models(make_model_list, variants_per_review, rng)
-        for make, model in sampled_pairs:
+        sampled_pairs = sample_make_models(brand_product_list, variants_per_review, rng)
+        for brand, product in sampled_pairs:
             logger.info(
-                "Rewriting review for %s %s -> %s %s", row.get("Make"), row.get("Model"), make, model
+                "Rewriting review for %s %s -> %s %s",
+                row.get("Brand"),
+                row.get("Product"),
+                brand,
+                product,
             )
-            rewritten = rewrite_review(llm, row, make, model)
+            rewritten = rewrite_review(llm, row, brand, product)
             results.append(
                 {
-                    "Make": make,
-                    "Model": model,
-                    "Year": row.get("Year"),
+                    "Brand": brand,
+                    "Product": product,
+                    "Norm_Product": row.get("Norm_Product"),
                     "Review": rewritten,
-                    "ratings": row.get("ratings"),
-                    "date": row.get("date"),
+                    "ratings": row.get("Rating"),
+                    "Rating": row.get("Rating"),
+                    "date": row.get("Date"),
                     "source": "LLM",
                     "source_url": "LLM",
                 }
@@ -115,14 +120,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--reviews",
         type=Path,
-        default=Path("data") / "review_scraper_output.csv",
+        default=Path("data") / "review_electronics_gpu.csv",
         help="Path to the original scraper output CSV",
     )
     parser.add_argument(
         "--make-models",
         type=Path,
-        default=Path("data") / "top_100_make_model.csv",
-        help="Path to CSV containing top make/model pairs",
+        default=Path("data") / "review_electronics_gpu.csv",
+        help="Path to CSV containing target brand/product pairs",
     )
     parser.add_argument(
         "--output",
@@ -159,7 +164,7 @@ def main() -> None:
     reviews = load_csv(args.reviews)
     logger.info("Loading make/model pairs from %s", args.make_models)
     make_models_df = load_csv(args.make_models)
-    make_models = make_models_df[["make", "model"]].dropna().itertuples(index=False, name=None)
+    make_models = make_models_df[["Brand", "Product"]].dropna().itertuples(index=False, name=None)
 
     llm = ChatOpenAI(model=args.model, temperature=0.4)
     augmented = expand_reviews(
