@@ -4,13 +4,14 @@ from __future__ import annotations
 import json
 from typing import Dict, List
 
-from review_simulation.persona import ReviewPersona, VehicleAffinity
-from review_simulation.simulation import PersonaTurn, SimulationResult, VehicleJudgement
+from review_simulation.persona import ProductAffinity, ReviewPersona
+from review_simulation.simulation import PersonaTurn, ProductJudgement, SimulationResult
 
 
 PERSONA_EXPORT_COLUMNS = [
-    "Make",
-    "Model",
+    "Brand",
+    "Product",
+    "Norm_Product",
     "Review",
     "ratings",
     "Rating",
@@ -20,14 +21,13 @@ PERSONA_EXPORT_COLUMNS = [
     "liked_options",
     "disliked_options",
     "user_intention",
-    "mentioned_makes",
-    "mentioned_models",
-    "mentioned_years",
-    "preferred_condition",
+    "mentioned_product_brands",
+    "mentioned_product_names",
+    "mentioned_normalize_product_names",
+    "performance_tier",
     "newness_preference_score",
     "newness_preference_notes",
-    "preferred_vehicle_type",
-    "preferred_fuel_type",
+    "price_range",
     "openness_to_alternatives",
     "misc_notes",
     "persona_writing_style",
@@ -54,16 +54,15 @@ RESULT_EXPORT_COLUMNS = PERSONA_EXPORT_COLUMNS + [
 ]
 
 
-def serialize_affinities(affinities: List[VehicleAffinity]) -> str:
+def serialize_affinities(affinities: List[ProductAffinity]) -> str:
     """Convert affinity dataclasses into a JSON string."""
 
     return json.dumps(
         [
             {
-                "make": affinity.make,
-                "model": affinity.model,
-                "year": affinity.year,
-                "condition": affinity.condition,
+                "product_brand": affinity.product_brand,
+                "product_name": affinity.product_name,
+                "normalize_product_name": affinity.normalize_product_name,
                 "rationale": affinity.rationale,
             }
             for affinity in affinities
@@ -71,19 +70,16 @@ def serialize_affinities(affinities: List[VehicleAffinity]) -> str:
     )
 
 
-def serialize_vehicle_judgements(judgements: List[VehicleJudgement]) -> str:
+def serialize_vehicle_judgements(judgements: List[ProductJudgement]) -> str:
     """Convert vehicle judgements into a JSON payload."""
 
     return json.dumps(
         [
             {
                 "index": item.index,
-                "make": item.make,
-                "model": item.model,
-                "year": item.year,
-                "condition": item.condition,
-                "location": item.location,
-                "vin": item.vin,
+                "product_brand": item.product_brand,
+                "product_name": item.product_name,
+                "normalize_product_name": item.normalize_product_name,
                 "price": item.price,
                 "satisfied": item.satisfied,
                 "rationale": item.rationale,
@@ -105,8 +101,9 @@ def persona_to_row(persona: ReviewPersona, turn: PersonaTurn) -> Dict[str, objec
     """Produce the base export row shared by generation and evaluation steps."""
 
     return {
-        "Make": persona.make,
-        "Model": persona.model,
+        "Brand": persona.product_brand,
+        "Product": persona.product_name,
+        "Norm_Product": persona.normalize_product_name,
         "Review": persona.review,
         "ratings": persona.rating,
         "Rating": persona.rating,
@@ -116,14 +113,15 @@ def persona_to_row(persona: ReviewPersona, turn: PersonaTurn) -> Dict[str, objec
         "liked_options": serialize_affinities(persona.liked),
         "disliked_options": serialize_affinities(persona.disliked),
         "user_intention": persona.intention,
-        "mentioned_makes": json.dumps(persona.mentioned_makes),
-        "mentioned_models": json.dumps(persona.mentioned_models),
-        "mentioned_years": json.dumps(persona.mentioned_years),
-        "preferred_condition": persona.preferred_condition,
+        "mentioned_product_brands": json.dumps(persona.mentioned_product_brands),
+        "mentioned_product_names": json.dumps(persona.mentioned_product_names),
+        "mentioned_normalize_product_names": json.dumps(
+            persona.mentioned_normalize_product_names
+        ),
+        "performance_tier": persona.performance_tier,
         "newness_preference_score": persona.newness_preference_score,
         "newness_preference_notes": persona.newness_preference_notes,
-        "preferred_vehicle_type": persona.preferred_vehicle_type,
-        "preferred_fuel_type": persona.preferred_fuel_type,
+        "price_range": persona.price_range,
         "openness_to_alternatives": persona.alternative_openness,
         "misc_notes": persona.misc_notes,
         "persona_writing_style": turn.writing_style,

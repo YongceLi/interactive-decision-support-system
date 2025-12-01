@@ -10,7 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 
-from review_simulation.persona import ReviewPersona, VehicleAffinity
+from review_simulation.persona import ProductAffinity, ReviewPersona
 from scripts.test_recommendation_methods import (
     test_method1_pipeline,
     test_method2_pipeline,
@@ -38,16 +38,13 @@ class AttributeJudgement:
 
 
 @dataclass
-class VehicleJudgement:
-    """Result of assessing a recommended vehicle."""
+class ProductJudgement:
+    """Result of assessing a recommended product."""
 
     index: int
-    make: str
-    model: str
-    year: Optional[int]
-    condition: str
-    location: str
-    vin: Optional[str]
+    product_brand: Optional[str]
+    product_name: Optional[str]
+    normalize_product_name: Optional[str]
     price: Optional[float]
     satisfied: bool
     rationale: str
@@ -82,7 +79,7 @@ class AttributeSatisfaction:
 class SimulationResult:
     persona: ReviewPersona
     persona_turn: PersonaTurn
-    vehicles: List[VehicleJudgement]
+    vehicles: List[ProductJudgement]
     metrics: SimulationMetrics
     recommendation_response: Dict[str, Any]
     summary: str
@@ -106,8 +103,8 @@ class AttributeAssessment(BaseModel):
     )
 
 
-class VehicleAssessment(BaseModel):
-    index: int = Field(..., description="1-based index of the vehicle in the presented list")
+class ProductAssessment(BaseModel):
+    index: int = Field(..., description="1-based index of the product in the presented list")
     satisfied: bool = Field(..., description="Whether the persona would be satisfied overall")
     rationale: str = Field(..., description="Short textual explanation")
     confidence: Optional[float] = Field(
@@ -117,17 +114,15 @@ class VehicleAssessment(BaseModel):
         le=1.0,
     )
     price: Optional[AttributeAssessment] = None
-    condition: Optional[AttributeAssessment] = None
-    year: Optional[AttributeAssessment] = None
-    make: Optional[AttributeAssessment] = None
-    model: Optional[AttributeAssessment] = None
-    fuel_type: Optional[AttributeAssessment] = None
-    body_type: Optional[AttributeAssessment] = None
+    product_brand: Optional[AttributeAssessment] = None
+    product_name: Optional[AttributeAssessment] = None
+    normalize_product_name: Optional[AttributeAssessment] = None
+    performance_tier: Optional[AttributeAssessment] = None
     all_misc: Optional[AttributeAssessment] = None
 
 
-class VehicleAssessmentList(BaseModel):
-    assessments: List[VehicleAssessment]
+class ProductAssessmentList(BaseModel):
+    assessments: List[ProductAssessment]
 
 
 class SummaryResponse(BaseModel):
@@ -139,11 +134,38 @@ class SummaryResponse(BaseModel):
     )
 
 
+class NormalizedProductName(BaseModel):
+    normalize_product_name: Optional[str] = Field(
+        None,
+        description="The normalized family or series name (e.g., 'RTX 5060 Ti').",
+    )
+
+
+NORMALIZE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You extract concise normalized GPU or PC component family names from product titles."
+            "Return only the family/series identifier (e.g., 'RTX 5060 Ti', 'Quadro K2200')."
+            "If the title does not clearly indicate a specific normalized family, return null."
+        ),
+        (
+            "human",
+            """
+Product title: {product_title}
+
+Respond with JSON {{"normalize_product_name": <string>}}.
+""",
+        ),
+    ]
+)
+
+
 PERSONA_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You craft single-turn user utterances for a car recommendation demo."
+            "You craft single-turn user utterances for a GPU recommendation demo."
             "Read the reviewer's background and produce a concise, natural query."
             "Every generated query must restate the shopper's concrete preferences."
             "Identify the highest price the shopper would pay and include it.",
@@ -152,19 +174,18 @@ PERSONA_PROMPT = ChatPromptTemplate.from_messages(
             "human",
             """
 Review summary:
-Make/Model owned or discussed: {make} {model}
+Brand/Product owned or discussed: {product_brand} {product_name}
 Rating given: {rating}
 Review excerpt: "{review}"
 Likes: {likes}
 Dislikes: {dislikes}
 Stated intention: {intention}
-Mentioned makes: {mentioned_makes}
-Mentioned models: {mentioned_models}
-Mentioned years: {mentioned_years}
-Preferred condition: {preferred_condition}
+Mentioned product brands: {mentioned_product_brands}
+Mentioned product names: {mentioned_product_names}
+Mentioned normalized products: {mentioned_normalize_product_names}
+Performance expectation: {performance_tier}
 Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
-Preferred vehicle type: {preferred_vehicle_type}
-Preferred fuel type: {preferred_fuel_type}
+Price range: {price_range}
 Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
 Current year is 2025 (assume this for the most newness context).
@@ -179,9 +200,9 @@ under 120 words and avoid lists/bullets. In details:
 - family_background: A brief summary of the user's family/life context relevant to car buying.
 - goal_summary: A concise summary of the user's goal when interacting with a car recommendation agent.
 - upper_price_limit: Your best estimate of the shopper's maximum acceptable price in USD (numbers only). Use null if unknown.
-- user_message: Must clearly mention the desired make/model (if any), relevant years, whether the car should be new or used, how
-  new they want the search to be, body style, preferred fuel type, willingness to consider alternatives, the maximum price to pay,
-  and any additional priorities highlighted above.
+- user_message: Must clearly mention the desired product_brand/product_name (if any), normalized product family, how new they want the search to be,
+  performance expectations (high-end, mid-range, or low-end), desired price range/budget, willingness to consider alternatives,
+  and any additional priorities highlighted above (e.g., acoustics, thermals, workload).
 """,
         ),
     ]
@@ -192,11 +213,11 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You evaluate car recommendations for a simulated shopper."
-            "Decide if each vehicle matches the persona's expressed likes/dislikes."
-            "Only use make, model, year, condition (new/used), body style, fuel type, dealer location, and price to judge."
+            "You evaluate GPU recommendations for a simulated shopper."
+            "Decide if each product matches the persona's expressed likes/dislikes."
+            "Only use product_brand, product_name, normalized product family, performance tier (if provided), and price to judge."
             "Respect their newness preference scale, budget ceiling, and openness to alternatives when deciding satisfaction."
-            "All vehicle information provided is accurate. DO NOT override them with assumptions. Use it to make informed judgements."
+            "All product information provided is accurate. DO NOT override it with assumptions. Use it to make informed judgements."
             "Return concise rationales (10 words or fewer).",
         ),
         (
@@ -209,42 +230,39 @@ Family background: {family_background}
 Likes: {likes}
 Dislikes: {dislikes}
 Persona query: {persona_query}
-Mentioned makes: {mentioned_makes}
-Mentioned models: {mentioned_models}
-Mentioned years: {mentioned_years}
-Preferred condition: {preferred_condition}
+Mentioned product brands: {mentioned_product_brands}
+Mentioned product names: {mentioned_product_names}
+Mentioned normalized products: {mentioned_normalize_product_names}
+Performance expectation: {performance_tier}
 Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
-Preferred vehicle type: {preferred_vehicle_type}
-Preferred fuel type: {preferred_fuel_type}
+Price range: {price_range}
 Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
 Upper price limit (USD): {upper_price_limit}
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 
-For each vehicle below decide if the persona would be satisfied. Judge only the
+For each product below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
 mentioned, return null for that criterion. Respond with JSON using this shape:
 {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
-"price": {{"satisfied": <bool|null>, "rationale": <string|null>}}, "condition": {{...}}, "year": {{...}},
-"make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
+"price": {{"satisfied": <bool|null>, "rationale": <string|null>}}, "product_brand": {{...}}, "product_name": {{...}},
+"normalize_product_name": {{...}}, "performance_tier": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
-price: (whether the price satisfies the users' preference in the query or not).
-condition: (whether the condition satisfies the users' preference in the query or not).
-year: (whether the year satisfies the users' preference in the query or not).
-make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not, return None if there is no mention of fuel type in the query).
-body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
-all_misc: (whether all others' preference of the users mentioned in the query satisfies the users' query or not . Examples: driving dynamics, reliability, safety, ...)
+price: (whether the price satisfies the users' budget or price range in the query).
+product_brand: (whether the brand satisfies the users' preference in the query. If the users are fine with alternatives, return True.).
+product_name: (whether the specific product satisfies the users' preference in the query. If the users are fine with alternatives, return True.).
+normalize_product_name: (whether the normalized family matches what they asked for. If open to alternatives, return True.).
+performance_tier: (whether the product performance tier matches what they want: high-end, mid-range, or low-end. Return None if not mentioned.)
+all_misc: (whether all other preferences mentioned in the query are satisfied. Examples: thermals, acoustics, workload.)
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Make price decisions using the provided upper price
-limit and the vehicle's price.
+limit and the product's price.
 Confidence should be a number between 0 and 1 indicating how confident you are in the overall satisfaction judgement.
 If there are a lot of conflicts between attributes and the final satisfaction judgement, the confidence score should be lower.
 Vice versa, if there are a lot of attributes that align with the final satisfaction judgement, the confidence score should be higher.
 The delta of confidence should be proportional to the number of attributes that align with the final satisfaction judgement.
-Vehicles:
+Products:
 {vehicles}
 """,
         ),
@@ -256,7 +274,7 @@ SUMMARY_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You condense vehicle satisfaction rationales into concise summaries."
+            "You condense product satisfaction rationales into concise summaries."
             "Return JSON with two short sentences describing why the persona is satisfied or unsatisfied."
         ),
         (
@@ -277,21 +295,19 @@ If there are no reasons, respond None.
 )
 
 
-def _affinities_to_text(items: List[VehicleAffinity]) -> str:
+def _affinities_to_text(items: List[ProductAffinity]) -> str:
     if not items:
         return "None"
     parts = []
     for item in items:
         attributes = []
-        if item.make:
-            attributes.append(item.make)
-        if item.model:
-            attributes.append(item.model)
-        if item.year:
-            attributes.append(str(item.year))
-        if item.condition:
-            attributes.append(item.condition)
-        summary = " ".join(attributes) if attributes else "unspecified vehicle"
+        if item.product_brand:
+            attributes.append(item.product_brand)
+        if item.product_name:
+            attributes.append(item.product_name)
+        if item.normalize_product_name:
+            attributes.append(item.normalize_product_name)
+        summary = " ".join(attributes) if attributes else "unspecified product"
         if item.rationale:
             summary += f" ({item.rationale})"
         parts.append(summary)
@@ -304,53 +320,61 @@ def _list_to_text(values: List[str]) -> str:
     return ", ".join(values)
 
 
-def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]:
-    car = vehicle.get("vehicle", {}) if isinstance(vehicle, dict) else {}
-    listing = vehicle.get("retailListing", {}) if isinstance(vehicle, dict) else {}
-    build = vehicle.get("build", {}) if isinstance(vehicle, dict) else {}
+def _infer_normalize_product_name(
+    product_title: Optional[str], model: ChatOpenAI
+) -> Optional[str]:
+    if not product_title:
+        return None
+    try:
+        structured_model = model.with_structured_output(NormalizedProductName)
+        response = structured_model.invoke(
+            NORMALIZE_PROMPT.format_prompt(product_title=product_title).to_messages()
+        )
+        value = response.normalize_product_name
+        if value is None:
+            return None
+        return value.strip()
+    except Exception:
+        return None
 
-    make = car.get("make")
-    model = car.get("model")
-    year = car.get("year")
-    if year is not None:
-        try:
-            year = int(year)
-        except (TypeError, ValueError):
-            year = None
 
-    used_flag = listing.get("used")
-    if used_flag is None:
-        used_flag = vehicle.get("inventory_type") == "used"
-    condition = "used" if used_flag else "new"
+def _format_vehicle_entry(
+    vehicle: dict, index: int, model: ChatOpenAI
+) -> Dict[str, Optional[str]]:
+    product_brand = (
+        vehicle.get("product_brand")
+        or vehicle.get("brand")
+        or vehicle.get("product", {}).get("brand")
+    )
+    product_name = (
+        vehicle.get("product_name")
+        or vehicle.get("title")
+        or vehicle.get("product", {}).get("title")
+    )
+    normalize_product_name = (
+        vehicle.get("normalize_product_name")
+        or vehicle.get("normalized_product_name")
+        or vehicle.get("product", {}).get("normalized_product_name")
+    )
+    if not normalize_product_name:
+        normalize_product_name = _infer_normalize_product_name(product_name, model)
 
-    city = listing.get("city") or vehicle.get("dealer_city")
-    state = listing.get("state") or vehicle.get("dealer_state")
-    location = ", ".join([part for part in [city, state] if part]) or "Unknown"
-
-    price = listing.get("price")
-    if price is None:
-        price = listing.get("list_price") or vehicle.get("price")
+    price = (
+        vehicle.get("price_value")
+        or vehicle.get("price")
+        or vehicle.get("offer", {}).get("price")
+    )
     try:
         price = float(price) if price is not None else None
     except (TypeError, ValueError):
         price = None
-    miles = listing.get("miles")
-    fuel_type = car.get("fuel") or build.get("fuel_type")
-    body_type = car.get("bodyStyle") or build.get("body_type")
-
 
     return {
         "index": index,
-        "make": make,
-        "model": model,
-        "year": year,
-        "condition": condition,
-        "location": location,
-        "vin": vehicle.get("vin") or car.get("vin"),
+        "product_brand": product_brand,
+        "product_name": product_name,
+        "normalize_product_name": normalize_product_name,
         "price": price,
-        "miles": miles,
-        "fuel_type": fuel_type,
-        "body_type": body_type,
     }
 
 
@@ -361,21 +385,22 @@ def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn
     rating_text = persona.rating_value if persona.rating_value is not None else "unknown"
 
     prompt = PERSONA_PROMPT.format_prompt(
-        make=persona.make,
-        model=persona.model,
+        product_brand=persona.product_brand,
+        product_name=persona.product_name,
         rating=rating_text,
         review=persona.review,
         likes=likes_text,
         dislikes=dislikes_text,
         intention=persona.intention or "",
-        mentioned_makes=_list_to_text(persona.mentioned_makes),
-        mentioned_models=_list_to_text(persona.mentioned_models),
-        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
-        preferred_condition=persona.preferred_condition or "unspecified",
+        mentioned_product_brands=_list_to_text(persona.mentioned_product_brands),
+        mentioned_product_names=_list_to_text(persona.mentioned_product_names),
+        mentioned_normalize_product_names=_list_to_text(
+            persona.mentioned_normalize_product_names
+        ),
+        performance_tier=persona.performance_tier or "unspecified",
         newness_preference_score=persona.newness_preference_score or "unknown",
         newness_preference_notes=persona.newness_preference_notes or "",
-        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
-        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
+        price_range=persona.price_range or "unspecified",
         openness_to_alternatives=persona.alternative_openness or "unknown",
         misc_notes=persona.misc_notes or "None stated",
     )
@@ -395,12 +420,15 @@ def _assess_vehicles(
     persona_turn: PersonaTurn,
     vehicles: List[dict],
     model: ChatOpenAI,
-) -> List[VehicleJudgement]:
-    structured_model = model.with_structured_output(VehicleAssessmentList)
+) -> List[ProductJudgement]:
+    structured_model = model.with_structured_output(ProductAssessmentList)
     likes_text = _affinities_to_text(persona.liked)
     dislikes_text = _affinities_to_text(persona.disliked)
 
-    vehicle_entries = [_format_vehicle_entry(vehicle, idx + 1) for idx, vehicle in enumerate(vehicles)]
+    vehicle_entries = [
+        _format_vehicle_entry(vehicle, idx + 1, model)
+        for idx, vehicle in enumerate(vehicles)
+    ]
     prompt = ASSESSMENT_PROMPT.format_prompt(
         goal_summary=persona_turn.goal_summary,
         writing_style=persona_turn.writing_style,
@@ -409,14 +437,15 @@ def _assess_vehicles(
         likes=likes_text,
         dislikes=dislikes_text,
         persona_query=persona_turn.message,
-        mentioned_makes=_list_to_text(persona.mentioned_makes),
-        mentioned_models=_list_to_text(persona.mentioned_models),
-        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
-        preferred_condition=persona.preferred_condition or "unspecified",
+        mentioned_product_brands=_list_to_text(persona.mentioned_product_brands),
+        mentioned_product_names=_list_to_text(persona.mentioned_product_names),
+        mentioned_normalize_product_names=_list_to_text(
+            persona.mentioned_normalize_product_names
+        ),
+        performance_tier=persona.performance_tier or "unspecified",
         newness_preference_score=persona.newness_preference_score or "unknown",
         newness_preference_notes=persona.newness_preference_notes or "",
-        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
-        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
+        price_range=persona.price_range or "unspecified",
         openness_to_alternatives=persona.alternative_openness or "unknown",
         misc_notes=persona.misc_notes or "None stated",
         upper_price_limit=persona_turn.upper_price_limit or "unspecified",
@@ -426,17 +455,8 @@ def _assess_vehicles(
 
     assessment_map = {item.index: item for item in response.assessments}
 
-    results: List[VehicleJudgement] = []
-    attribute_keys = [
-        "price",
-        "condition",
-        "year",
-        "make",
-        "model",
-        "fuel_type",
-        "body_type",
-        "all_misc",
-    ]
+    results: List[ProductJudgement] = []
+    attribute_keys = ["price", "product_brand", "product_name", "normalize_product_name", "performance_tier", "all_misc"]
 
     def _attribute_judgement(value: Optional[AttributeAssessment]) -> AttributeJudgement:
         if value is None:
@@ -450,19 +470,16 @@ def _assess_vehicles(
         assessment = assessment_map.get(entry["index"])
         if assessment is None:
             # Default to dissatisfaction if the model omitted an entry.
-            assessment = VehicleAssessment(index=entry["index"], satisfied=False, rationale="No evaluation")
+            assessment = ProductAssessment(index=entry["index"], satisfied=False, rationale="No evaluation")
         attribute_results = {
             key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
         }
         results.append(
-            VehicleJudgement(
+            ProductJudgement(
                 index=entry["index"],
-                make=entry.get("make"),
-                model=entry.get("model"),
-                year=entry.get("year"),
-                condition=str(entry.get("condition")),
-                location=str(entry.get("location")),
-                vin=entry.get("vin"),
+                product_brand=entry.get("product_brand"),
+                product_name=entry.get("product_name"),
+                normalize_product_name=entry.get("normalize_product_name"),
                 price=entry.get("price"),
                 satisfied=assessment.satisfied,
                 rationale=assessment.rationale.strip(),
@@ -473,7 +490,7 @@ def _assess_vehicles(
     return results
 
 
-def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona, k: int) -> SimulationMetrics:
+def _compute_metrics(judgements: List[ProductJudgement], persona: ReviewPersona, k: int) -> SimulationMetrics:
     _ = persona
     if k <= 0:
         return SimulationMetrics(
@@ -497,15 +514,18 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     satisfied = [j for j in top_k if j.satisfied]
     precision = len(satisfied) / len(top_k)
 
-    make_models = [
-        (str(j.make).strip().lower() if j.make else "", str(j.model).strip().lower() if j.model else "")
+    brand_products = [
+        (
+            str(j.product_brand).strip().lower() if j.product_brand else "",
+            str(j.product_name).strip().lower() if j.product_name else "",
+        )
         for j in top_k
     ]
-    unique_make_models = {item for item in make_models if any(item)}
+    unique_brand_products = {item for item in brand_products if any(item)}
     infra_list_diversity = None
-    infra_list_diversity = len(unique_make_models) / len(top_k)
+    infra_list_diversity = len(unique_brand_products) / len(top_k)
 
-    def _dcg(items: List[VehicleJudgement]) -> float:
+    def _dcg(items: List[ProductJudgement]) -> float:
         value = 0.0
         for idx, judgement in enumerate(items, start=1):
             rel = 1.0 if judgement.satisfied else 0.0
@@ -547,7 +567,7 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
 
 
 def _summarize_judgements(
-    judgements: List[VehicleJudgement], model: ChatOpenAI
+    judgements: List[ProductJudgement], model: ChatOpenAI
 ) -> str:
     satisfied_reasons = [j.rationale for j in judgements if j.satisfied and j.rationale]
     unsatisfied_reasons = [j.rationale for j in judgements if not j.satisfied and j.rationale]
@@ -621,27 +641,31 @@ def evaluate_persona(
             "recommendation_method must be 1 or 2; received"
             f" {recommendation_method}"
         )
-    vehicles = (response.get("recommended_vehicles") or [])[:recommendation_limit]
+    vehicles = (
+        response.get("recommended_products")
+        or response.get("recommended_vehicles")
+        or []
+    )[:recommendation_limit]
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
-    attempts: List[List[VehicleJudgement]] = [judgements]
+    attempts: List[List[ProductJudgement]] = [judgements]
 
-    def _avg_confidence(items: List[VehicleJudgement]) -> Optional[float]:
+    def _avg_confidence(items: List[ProductJudgement]) -> Optional[float]:
         confidences = [j.confidence for j in items if j.confidence is not None]
         if not confidences:
             return None
         return sum(confidences) / len(confidences)
 
-    def _select_majority(attempt_sets: List[List[VehicleJudgement]]) -> List[VehicleJudgement]:
+    def _select_majority(attempt_sets: List[List[ProductJudgement]]) -> List[ProductJudgement]:
         if not attempt_sets:
             return []
 
-        by_index: Dict[int, List[VehicleJudgement]] = {}
+        by_index: Dict[int, List[ProductJudgement]] = {}
         for attempt in attempt_sets:
             for judgement in attempt:
                 by_index.setdefault(judgement.index, []).append(judgement)
 
-        final: List[VehicleJudgement] = []
+        final: List[ProductJudgement] = []
         for index, entries in sorted(by_index.items()):
             true_count = sum(1 for entry in entries if entry.satisfied is True)
             false_count = sum(1 for entry in entries if entry.satisfied is False)
@@ -652,7 +676,7 @@ def evaluate_persona(
             else:
                 majority_value = None
 
-            def _confidence_score(entry: VehicleJudgement) -> float:
+            def _confidence_score(entry: ProductJudgement) -> float:
                 return entry.confidence if entry.confidence is not None else -1.0
 
             candidates = (

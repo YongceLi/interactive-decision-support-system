@@ -76,20 +76,21 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
     for idx, result in enumerate(collected_results, start=1):
         persona = result.persona
         turn = result.persona_turn
-        console.rule(f"Persona {idx}: {persona.make} {persona.model}")
+        console.rule(
+            f"Persona {idx}: {persona.product_brand} {persona.product_name}"
+        )
         console.print(f"[bold]Writing style:[/bold] {turn.writing_style}")
         console.print(f"[bold]Interaction style:[/bold] {turn.interaction_style}")
         console.print(f"[bold]Family background:[/bold] {turn.family_background}")
         console.print(f"[bold]Goal summary:[/bold] {turn.goal_summary}")
         console.print(
             "[bold]Preferences:[/bold] "
-            f"Makes {', '.join(persona.mentioned_makes) if persona.mentioned_makes else 'unspecified'} | "
-            f"Models {', '.join(persona.mentioned_models) if persona.mentioned_models else 'unspecified'} | "
-            f"Years {', '.join(str(year) for year in persona.mentioned_years) if persona.mentioned_years else 'unspecified'} | "
-            f"Condition {persona.preferred_condition or 'unspecified'} | "
+            f"Brands {', '.join(persona.mentioned_product_brands) if persona.mentioned_product_brands else 'unspecified'} | "
+            f"Products {', '.join(persona.mentioned_product_names) if persona.mentioned_product_names else 'unspecified'} | "
+            f"Families {', '.join(persona.mentioned_normalize_product_names) if persona.mentioned_normalize_product_names else 'unspecified'} | "
+            f"Performance {persona.performance_tier or 'unspecified'} | "
             f"Newness {persona.newness_preference_score or 'unknown'} ({persona.newness_preference_notes or 'no context'}) | "
-            f"Type {persona.preferred_vehicle_type or 'unspecified'} | "
-            f"Fuel {persona.preferred_fuel_type or 'unspecified'} | "
+            f"Price range {persona.price_range or 'unspecified'} | "
             f"Openness {persona.alternative_openness or 'unknown'} | "
             f"Notes {persona.misc_notes or 'none'}"
         )
@@ -106,20 +107,17 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
 
         table = Table(show_lines=False)
         table.add_column("#", justify="right")
-        table.add_column("Make")
-        table.add_column("Model")
-        table.add_column("Year", justify="right")
-        table.add_column("Condition")
+        table.add_column("Brand")
+        table.add_column("Product")
+        table.add_column("Family")
         table.add_column("Price", justify="right")
         table.add_column("Satisfied")
         table.add_column("Rationale", overflow="fold")
         table.add_column("Price match", justify="center")
-        table.add_column("Condition match", justify="center")
-        table.add_column("Year match", justify="center")
-        table.add_column("Make match", justify="center")
-        table.add_column("Model match", justify="center")
-        table.add_column("Fuel match", justify="center")
-        table.add_column("Body match", justify="center")
+        table.add_column("Brand match", justify="center")
+        table.add_column("Product match", justify="center")
+        table.add_column("Family match", justify="center")
+        table.add_column("Performance match", justify="center")
         table.add_column("Misc match", justify="center")
         table.add_column("Confidence", justify="right")
 
@@ -127,30 +125,29 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
             satisfaction = "✅" if vehicle.satisfied else "❌"
             attributes = vehicle.attribute_results or {}
             price_match = _format_attribute_result(attributes.get("price"))
-            condition_match = _format_attribute_result(attributes.get("condition"))
-            year_match = _format_attribute_result(attributes.get("year"))
-            make_match = _format_attribute_result(attributes.get("make"))
-            model_match = _format_attribute_result(attributes.get("model"))
-            fuel_match = _format_attribute_result(attributes.get("fuel_type"))
-            body_match = _format_attribute_result(attributes.get("body_type"))
+            brand_match = _format_attribute_result(attributes.get("product_brand"))
+            product_match = _format_attribute_result(attributes.get("product_name"))
+            normalized_match = _format_attribute_result(
+                attributes.get("normalize_product_name")
+            )
+            performance_match = _format_attribute_result(
+                attributes.get("performance_tier")
+            )
             misc_match = _format_attribute_result(attributes.get("all_misc"))
             confidence_text = _format_metric(vehicle.confidence) if vehicle.confidence is not None else "—"
             table.add_row(
                 str(vehicle.index),
-                str(vehicle.make or "?"),
-                str(vehicle.model or "?"),
-                str(vehicle.year or "-"),
-                str(vehicle.condition or "-"),
+                str(vehicle.product_brand or "?"),
+                str(vehicle.product_name or "?"),
+                str(vehicle.normalize_product_name or "-"),
                 _format_price(vehicle.price),
                 satisfaction,
                 str(vehicle.rationale or ""),
                 price_match,
-                condition_match,
-                year_match,
-                make_match,
-                model_match,
-                fuel_match,
-                body_match,
+                brand_match,
+                product_match,
+                normalized_match,
+                performance_match,
                 misc_match,
                 confidence_text,
             )
