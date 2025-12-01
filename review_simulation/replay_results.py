@@ -81,9 +81,9 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
 
     results: List[SimulationResult] = []
     for persona, turn, (_, row) in zip(personas, turns, frame.iterrows()):
-        vehicle_judgements = json.loads(row.get("vehicle_judgements", "[]"))
+        product_judgements = json.loads(row.get("vehicle_judgements", "[]"))
         vehicles: List[ProductJudgement] = []
-        for vehicle in vehicle_judgements:
+        for vehicle in product_judgements:
             attribute_results = {
                 key: _attribute_judgement_from_export(value)
                 for key, value in (vehicle.get("attribute_results") or {}).items()
