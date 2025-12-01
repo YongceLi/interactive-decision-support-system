@@ -134,6 +134,34 @@ class SummaryResponse(BaseModel):
     )
 
 
+class NormalizedProductName(BaseModel):
+    normalize_product_name: Optional[str] = Field(
+        None,
+        description="The normalized family or series name (e.g., 'RTX 5060 Ti').",
+    )
+
+
+NORMALIZE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You extract concise normalized GPU or PC component family names from product titles.",
+            "Return only the family/series identifier (e.g., 'RTX 5060 Ti', 'Quadro K2200').",
+            "If unsure, return null.",
+        ),
+        (
+            "human",
+            """
+Product title: {product_title}
+
+Respond with JSON {"normalize_product_name": <string|null>}.
+Ensure the value is brief (<=6 words) and omits sellers or bundle notes.
+""",
+        ),
+    ]
+)
+
+
 PERSONA_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -293,7 +321,27 @@ def _list_to_text(values: List[str]) -> str:
     return ", ".join(values)
 
 
-def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]:
+def _infer_normalize_product_name(
+    product_title: Optional[str], model: ChatOpenAI
+) -> Optional[str]:
+    if not product_title:
+        return None
+    try:
+        structured_model = model.with_structured_output(NormalizedProductName)
+        response = structured_model.invoke(
+            NORMALIZE_PROMPT.format_prompt(product_title=product_title).to_messages()
+        )
+        value = response.normalize_product_name
+        if value is None:
+            return None
+        return value.strip()
+    except Exception:
+        return None
+
+
+def _format_vehicle_entry(
+    vehicle: dict, index: int, model: ChatOpenAI
+) -> Dict[str, Optional[str]]:
     product_brand = (
         vehicle.get("product_brand")
         or vehicle.get("brand")
@@ -309,10 +357,12 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
         or vehicle.get("normalized_product_name")
         or vehicle.get("product", {}).get("normalized_product_name")
     )
+    if not normalize_product_name:
+        normalize_product_name = _infer_normalize_product_name(product_name, model)
 
     price = (
-        vehicle.get("price")
-        or vehicle.get("price_value")
+        vehicle.get("price_value")
+        or vehicle.get("price")
         or vehicle.get("offer", {}).get("price")
     )
     try:
@@ -376,7 +426,10 @@ def _assess_vehicles(
     likes_text = _affinities_to_text(persona.liked)
     dislikes_text = _affinities_to_text(persona.disliked)
 
-    vehicle_entries = [_format_vehicle_entry(vehicle, idx + 1) for idx, vehicle in enumerate(vehicles)]
+    vehicle_entries = [
+        _format_vehicle_entry(vehicle, idx + 1, model)
+        for idx, vehicle in enumerate(vehicles)
+    ]
     prompt = ASSESSMENT_PROMPT.format_prompt(
         goal_summary=persona_turn.goal_summary,
         writing_style=persona_turn.writing_style,
@@ -589,7 +642,11 @@ def evaluate_persona(
             "recommendation_method must be 1 or 2; received"
             f" {recommendation_method}"
         )
-    vehicles = (response.get("recommended_vehicles") or [])[:recommendation_limit]
+    vehicles = (
+        response.get("recommended_products")
+        or response.get("recommended_vehicles")
+        or []
+    )[:recommendation_limit]
 
     judgements = _assess_vehicles(persona, persona_turn, vehicles, llm)
     attempts: List[List[ProductJudgement]] = [judgements]
