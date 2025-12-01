@@ -145,17 +145,16 @@ NORMALIZE_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You extract concise normalized GPU or PC component family names from product titles.",
-            "Return only the family/series identifier (e.g., 'RTX 5060 Ti', 'Quadro K2200').",
-            "If unsure, return null.",
+            "You extract concise normalized GPU or PC component family names from product titles."
+            "Return only the family/series identifier (e.g., 'RTX 5060 Ti', 'Quadro K2200')."
+            "If the title does not clearly indicate a specific normalized family, return null."
         ),
         (
             "human",
             """
 Product title: {product_title}
 
-Respond with JSON {"normalize_product_name": <string|null>}.
-Ensure the value is brief (<=6 words) and omits sellers or bundle notes.
+Respond with JSON {{"normalize_product_name": <string>}}.
 """,
         ),
     ]
