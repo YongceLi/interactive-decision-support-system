@@ -25,6 +25,40 @@ The knowledge graph system stores PC component products as nodes in Neo4j and cr
 
 The system supports a three-step build process: creating nodes from database, scraping compatibility data from web sources, and updating the graph with scraped attributes. Compatibility data is cached in SQLite for reuse, and the system can operate in cached mode (default) or active scraping mode.
 
+### Benefits of the Knowledge Graph Approach
+
+The knowledge graph provides several key advantages over traditional database approaches for PC compatibility checking:
+
+**1. Relationship-First Design**
+- **Efficient Compatibility Queries**: Direct graph traversal allows O(1) compatibility lookups between products, rather than complex JOIN operations across multiple tables
+- **Bidirectional Relationships**: Compatibility relationships are naturally bidirectional - finding compatible GPUs for a PSU is as efficient as finding compatible PSUs for a GPU
+- **Multi-dimensional Compatibility**: Products can have multiple compatibility relationships (socket, PCIe, power, form factor) represented as separate edges, enabling nuanced compatibility checking
+
+**2. Real-World Accuracy**
+- **Web-Scraped Data**: Compatibility relationships are built from real product specifications scraped from manufacturer websites, Newegg, MicroCenter, and Wikipedia
+- **Verified Attributes**: Product attributes (socket, PCIe version, wattage, etc.) are extracted from official sources, ensuring accuracy over heuristic parsing
+- **Continuous Updates**: The scraping system can be updated to refresh compatibility data as new products are released
+
+**3. Scalability and Performance**
+- **Graph Database Optimization**: Neo4j is optimized for relationship traversal, making complex compatibility queries fast even with thousands of products
+- **Cached Scraping**: Scraped data is cached in SQLite, allowing the system to build the graph quickly without re-scraping on every build
+- **Incremental Updates**: New products can be added to the graph without rebuilding the entire structure
+
+**4. Intelligent PC Building**
+- **Complete Build Generation**: The graph enables building complete PC configurations by traversing compatibility relationships across all required components
+- **Budget-Aware Selection**: Compatible parts can be filtered and ranked by price, enabling budget-constrained builds
+- **Alternative Part Discovery**: Finding alternative compatible parts for any component in a build is a simple graph traversal operation
+
+**5. Domain Knowledge Encapsulation**
+- **Separation of Concerns**: PC part compatibility logic is encapsulated in the knowledge graph, separate from general product search
+- **MCP Server Integration**: The graph can be exposed via MCP (Model Context Protocol) servers, allowing LLM agents to query compatibility without domain-specific code
+- **Reusable Compatibility Engine**: The same compatibility checking logic can be used across different interfaces (web UI, API, CLI)
+
+**6. Validation and Quality Assurance**
+- **Automated Testing**: The graph structure enables automated validation of compatibility relationships against known-good configurations
+- **Data Quality Metrics**: Scraping confidence scores and source attribution allow tracking data quality
+- **Error Detection**: Inconsistent compatibility relationships can be detected through graph analysis
+
 ---
 
 ## Graph Structure and Design

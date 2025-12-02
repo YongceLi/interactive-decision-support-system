@@ -7,48 +7,48 @@ CREATE TABLE IF NOT EXISTS pc_parts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
 
     -- Unique identifiers
-    part_id TEXT NOT NULL UNIQUE,        -- Canonical identifier (source:id)
-    source TEXT NOT NULL,                -- Data source (rapidapi)
+    product_id TEXT NOT NULL UNIQUE,     -- Canonical product identifier
+    slug TEXT NOT NULL UNIQUE,           -- brand + series + model (computed field)
 
     -- Core product metadata
-    part_type TEXT NOT NULL,             -- Component category (cpu, gpu, motherboard, etc.)
-    product_name TEXT NOT NULL,
-    model_number TEXT,
+    product_type TEXT NOT NULL,          -- Component category (cpu, gpu, motherboard, etc.)
     series TEXT,
+    model TEXT,
+    brand TEXT,
 
-    -- Pricing & availability
-    price REAL,
-    currency TEXT DEFAULT 'USD',
-    availability TEXT,                   -- Free-form availability text
-    stock_status TEXT,                   -- Normalized stock status (in_stock, out_of_stock, preorder, unknown)
-    seller TEXT,                         -- Retailer or marketplace name (e.g., "Walmart", "Best Buy", "Newegg")
+    -- Optional attributes
+    size TEXT,                           -- Optional
+    color TEXT,                          -- Optional
 
-    -- Ratings & engagement
-    rating REAL,
-    review_count INTEGER,
-
-    -- Media & references
-    url TEXT,
-    image_url TEXT,
-    description TEXT,
+    -- Pricing & seller
+    price REAL,                          -- Minimum price (for backward compatibility)
+    price_min REAL,                      -- Minimum price across all sellers
+    price_max REAL,                      -- Maximum price across all sellers
+    price_avg REAL,                      -- Average price across all sellers
+    year INTEGER,
+    seller TEXT,                         -- Current retailer or marketplace name (for backward compatibility)
+    sellers TEXT,                        -- Comma-delimited list of all sellers
+    rating REAL,                         -- Product rating
+    rating_count INTEGER,                -- Number of ratings
 
     -- Structured attributes
-    specs_json TEXT,                     -- JSON blob for technical specs (clock speeds, chipset, etc.)
-    attributes_json TEXT,                -- JSON for miscellaneous attributes (warranty, bundle info, etc.)
+    base_attributes TEXT,                -- JSON string for base attributes
 
     -- Audit metadata
-    data_fetched_at TEXT NOT NULL,       -- ISO timestamp when record was fetched
-    last_seen_at TEXT,                   -- ISO timestamp when record was last observed in source
+    created_at TEXT NOT NULL,            -- ISO timestamp when record was created
+    updated_at TEXT,                     -- ISO timestamp when record was last updated (optional)
 
-    -- Complete raw payload
-    raw_json TEXT                        -- Original payload for traceability
+    -- Additional field
+    raw_name TEXT                        -- Raw product name from source
 );
 
 -- Indexes to support fast filtering (mirrors vehicle dataset philosophy)
-CREATE INDEX IF NOT EXISTS idx_pc_parts_type ON pc_parts(part_type);
+CREATE INDEX IF NOT EXISTS idx_pc_parts_type ON pc_parts(product_type);
 CREATE INDEX IF NOT EXISTS idx_pc_parts_seller ON pc_parts(seller);
 CREATE INDEX IF NOT EXISTS idx_pc_parts_price ON pc_parts(price);
-CREATE INDEX IF NOT EXISTS idx_pc_parts_source ON pc_parts(source);
+CREATE INDEX IF NOT EXISTS idx_pc_parts_brand ON pc_parts(brand);
+CREATE INDEX IF NOT EXISTS idx_pc_parts_year ON pc_parts(year);
+CREATE INDEX IF NOT EXISTS idx_pc_parts_rating ON pc_parts(rating);
 
 -- Progress tracking table (inspired by fetch_progress in vehicle dataset)
 CREATE TABLE IF NOT EXISTS pc_parts_fetch_progress (

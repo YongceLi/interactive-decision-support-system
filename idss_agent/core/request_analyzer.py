@@ -65,6 +65,7 @@ class RequestAnalysis(BaseModel):
         )
     )
 
+
     reasoning: str = Field(
         description="Brief explanation of the analysis"
     )
@@ -115,18 +116,20 @@ Analyze the user's request and detect what they need:
 
 3. **needs_analytical**: User asks questions requiring research
    - Examples: "what's the...", "compare", "which is better", "tell me about"
-   - **IMPORTANT**: Compatibility queries are analytical questions
-     - Examples: "what GPUs are compatible with...", "is X compatible with Y", "what CPUs work with my motherboard"
-     - These require using compatibility checking tools
+   - **IMPORTANT**: Compatibility queries AND PC build queries are analytical questions
+     - Compatibility: "what GPUs are compatible with...", "is X compatible with Y", "what CPUs work with my motherboard"
+     - PC Builds: "Best PC build for $1000", "Best gaming PC under $1500", "Best budget build under $600", 
+       "Best workstation build for video editing", "Best 1440p gaming build", "Best PC build for Blender rendering"
+     - These require using compatibility checking tools or PC build tools
 
 4. **analytical_questions**: Extract specific questions
    - List each question separately
    - Include compatibility questions like "what GPUs are compatible with [PSU]"
 
-5. **has_filter_update**: User mentioned product criteria
+6. **has_filter_update**: User mentioned product criteria
    - Brand, model, specs, price, retailer, features, etc.
 
-6. **is_general_conversation**: Just chatting, not searching
+7. **is_general_conversation**: Just chatting, not searching
    - Greetings, thank you, What can you do?, etc.
 
 **Important**: A request can have MULTIPLE needs simultaneously!
@@ -135,6 +138,13 @@ Example: "I want a 4K monitor under $400 and which one has the best color accura
 - needs_analytical: True (asks about color accuracy)
 - has_filter_update: True (4K resolution, price limit)
 - analytical_questions: ["Which one has the best color accuracy?"]
+
+**PC Build Examples** (handled by analytical agent):
+- "Best PC build for $1000" → needs_analytical: True, analytical_questions: ["Build PC for $1000"]
+- "Best gaming PC under $1500" → needs_analytical: True, analytical_questions: ["Build gaming PC for $1500"]
+- "Best budget build under $600" → needs_analytical: True, analytical_questions: ["Build budget PC for $600"]
+- "Best workstation build for video editing" → needs_analytical: True, analytical_questions: ["Build workstation PC for video editing"]
+- "Show me GPUs" → needs_search: True (NOT analytical, just searching for GPUs)
 """
 
     user_prompt = f"""{context}

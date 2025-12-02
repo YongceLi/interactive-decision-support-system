@@ -1,0 +1,184 @@
+{
+  "protected_fields": [
+    "product_id",
+    "product_type",
+    "raw_name",
+    "brand",
+    "series",
+    "model",
+    "seller",
+    "price",
+    "rating",
+    "rating_count"
+  ],
+  "part_types": {
+    "cpu": {
+      "required": [
+        "socket",
+        "architecture",
+        "pcie_version",
+        "ram_standard",
+        "tdp"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "CPU Attributes"
+    },
+    "gpu": {
+      "required": [
+        "vram",
+        "memory_type",
+        "cooler_type",
+        "variant",
+        "is_oc",
+        "revision",
+        "interface",
+        "power_connector"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "GPU Attributes"
+    },
+    "motherboard": {
+      "required": [
+        "chipset",
+        "form_factor",
+        "pcie_version",
+        "ram_standard",
+        "socket"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "Motherboard Attributes"
+    },
+    "psu": {
+      "required": [
+        "wattage",
+        "certification",
+        "modularity",
+        "form_factor",
+        "atx_version",
+        "noise",
+        "supports_pcie5_power"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "PSU Attributes"
+    },
+    "case": {
+      "required": [
+        "storage",
+        "capacity",
+        "storage_type"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "Case Attributes"
+    },
+    "ram": {
+      "required": [
+        "ram_standard",
+        "form_factor",
+        "capacity"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "RAM Attributes"
+    },
+    "cooling": {
+      "required": [
+        "cooling_type",
+        "tdp_support"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "Cooling Attributes"
+    },
+    "storage": {
+      "required": [
+        "storage_type",
+        "capacity",
+        "interface",
+        "form_factor"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "Storage Attributes"
+    },
+    "internal_storage": {
+      "required": [
+        "storage_type",
+        "capacity",
+        "interface",
+        "form_factor"
+      ],
+      "optional": [
+        "year",
+        "color",
+        "size"
+      ],
+      "description": "Internal Storage Attributes"
+    }
+  },
+  "attribute_descriptions": {
+    "socket": "CPU socket type (e.g., 'LGA 1700', 'AM5', 'sTR5')",
+    "architecture": "CPU architecture (e.g., 'Intel Core', 'AMD Ryzen')",
+    "pcie_version": "PCIe version supported (e.g., '5.0', '4.0')",
+    "ram_standard": "RAM standard supported (e.g., 'DDR5', 'DDR4')",
+    "tdp": "Thermal Design Power in watts (e.g., '125')",
+    "vram": "Video RAM in GB (e.g., '12', '16')",
+    "memory_type": "Memory type (e.g., 'GDDR6X', 'GDDR6')",
+    "cooler_type": "Cooler type (e.g., 'air', 'liquid', 'blower')",
+    "variant": "GPU variant (e.g., 'Founders Edition', 'OC', 'Gaming')",
+    "is_oc": "Whether overclocked (boolean: 'true', 'false')",
+    "revision": "Revision number (e.g., 'A1', 'Rev 2.0')",
+    "interface": "PCIe interface (e.g., 'PCIe 4.0 x16', 'PCIe 5.0 x16')",
+    "power_connector": "Power connector type (e.g., '8-pin + 8-pin', '12VHPWR')",
+    "chipset": "Chipset model (e.g., 'Z790', 'B650', 'X570')",
+    "form_factor": "Form factor (e.g., 'ATX', 'Micro-ATX', 'Mini-ITX', 'E-ATX')",
+    "wattage": "Total wattage in watts (e.g., '850', '1000')",
+    "certification": "Efficiency certification (e.g., '80+ Gold', '80+ Platinum', '80+ Bronze')",
+    "modularity": "Modularity type (e.g., 'fully modular', 'semi-modular', 'non-modular')",
+    "atx_version": "ATX version (e.g., 'ATX 3.0', 'ATX 2.52')",
+    "noise": "Noise level in dB (e.g., '20', '25')",
+    "supports_pcie5_power": "Whether supports PCIe 5.0 power connector (boolean: 'true', 'false')",
+    "storage": "Storage drive support (e.g., '2x 3.5\"', '4x 2.5\"')",
+    "capacity": "Total capacity in GB or TB (e.g., '1000', '2TB')",
+    "storage_type": "Storage type (e.g., 'SSD', 'HDD', 'NVMe')",
+    "year": "Release year (important for knowledge graph)",
+    "color": "Product color (optional)",
+    "size": "Product size (optional)"
+  },
+  "notes": {
+    "numeric_values": "All numeric values should be stored as strings for consistency",
+    "boolean_values": "Boolean values should be stored as strings: 'true' or 'false'",
+    "year_priority": "The 'year' attribute is critical for the knowledge graph and should be prioritized",
+    "optional_fields": "color and size are nice-to-have but optional",
+    "normalization": "Attribute values should be normalized (e.g., 'DDR5' not 'ddr5' or 'DDR 5')"
+  }
+}
+

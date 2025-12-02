@@ -244,6 +244,7 @@ class ProductSearchState(TypedDict):
     suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
     comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare products
     compatibility_result: Optional[Dict[str, Any]]  # Compatibility check result (for binary compatibility queries)
+    build_pc_result: Optional[Dict[str, Any]]  # PC build configuration result (deprecated - agents should build iteratively)
     _latency: Optional[Dict[str, Any]]  # Latency snapshot for the latest turn
     _latency_stats: Optional[Dict[str, Any]]  # Aggregated latency statistics for the session
 
@@ -270,6 +271,7 @@ def create_initial_state() -> ProductSearchState:
         suggested_followups=[],
         comparison_table=None,
         compatibility_result=None,
+        build_pc_result=None,
         _latency=None,
         _latency_stats={
             "turn_count": 0,
