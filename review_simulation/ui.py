@@ -39,8 +39,14 @@ def _format_attribute_result(outcome: Optional[AttributeJudgement]) -> str:
 def compute_final_stats(results: Iterable[SimulationResult], metric_k: int) -> dict:
     collected = list(results)
     precision_vals = [r.metrics.precision_at_k for r in collected if r.metrics.precision_at_k is not None]
+    precision_confident_vals = [
+        r.metrics.precision_at_k_confident for r in collected if r.metrics.precision_at_k_confident is not None
+    ]
     infra_vals = [r.metrics.infra_list_diversity for r in collected if r.metrics.infra_list_diversity is not None]
     ndcg_vals = [r.metrics.ndcg_at_k for r in collected if r.metrics.ndcg_at_k is not None]
+    ndcg_confident_vals = [
+        r.metrics.ndcg_at_k_confident for r in collected if r.metrics.ndcg_at_k_confident is not None
+    ]
     satisfied_rates = []
     if metric_k:
         for r in collected:
@@ -61,8 +67,10 @@ def compute_final_stats(results: Iterable[SimulationResult], metric_k: int) -> d
 
     return {
         "precision_at_k": _avg(precision_vals),
+        "precision_at_k_confident": _avg(precision_confident_vals),
         "infra_list_diversity": _avg(infra_vals),
         "ndcg_at_k": _avg(ndcg_vals),
+        "ndcg_at_k_confident": _avg(ndcg_confident_vals),
         "satisfied_at_k": _avg(satisfied_rates),
         "attribute_satisfaction_rates": attribute_rates,
         "overall_attribute_satisfaction": _avg(list(attribute_rates.values())),
@@ -157,8 +165,10 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
         console.print(table)
         console.print(
             f"Precision@{metric_k}: {_format_metric(result.metrics.precision_at_k)} | "
+            f"Precision@{metric_k} (conf>0.6): {_format_metric(result.metrics.precision_at_k_confident)} | "
             f"Infra-list diversity: {_format_metric(result.metrics.infra_list_diversity)} | "
             f"NDCG@{metric_k}: {_format_metric(result.metrics.ndcg_at_k)} | "
+            f"NDCG@{metric_k} (conf>0.6): {_format_metric(result.metrics.ndcg_at_k_confident)} | "
             f"Satisfied in top {metric_k}: {result.metrics.satisfied_count}"
         )
         if result.metrics.attribute_satisfaction:
@@ -173,8 +183,10 @@ def render_results(results: Iterable[SimulationResult], metric_k: int) -> None:
     console.print("[bold]Final averages across personas:[/bold]")
     console.print(
         f"Precision@{metric_k}: {_format_metric(final_stats['precision_at_k'])} | "
+        f"Precision@{metric_k} (conf>0.6): {_format_metric(final_stats['precision_at_k_confident'])} | "
         f"Infra-list diversity: {_format_metric(final_stats['infra_list_diversity'])} | "
         f"NDCG@{metric_k}: {_format_metric(final_stats['ndcg_at_k'])} | "
+        f"NDCG@{metric_k} (conf>0.6): {_format_metric(final_stats['ndcg_at_k_confident'])} | "
         f"Satisfied@{metric_k}: {_format_metric(final_stats['satisfied_at_k'])}"
     )
     if final_stats["attribute_satisfaction_rates"]:

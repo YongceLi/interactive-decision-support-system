@@ -116,9 +116,11 @@ def _load_results(frame: pd.DataFrame) -> List[SimulationResult]:
 
         metrics = SimulationMetrics(
             precision_at_k=row.get("precision_at_k"),
+            precision_at_k_confident=row.get("precision_at_k_confident"),
             satisfied_count=int(row.get("satisfied_in_top_k", 0)),
             infra_list_diversity=row.get("infra_list_diversity"),
             ndcg_at_k=row.get("ndcg_at_k"),
+            ndcg_at_k_confident=row.get("ndcg_at_k_confident"),
             attribute_satisfaction=attribute_satisfaction,
         )
 

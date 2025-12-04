@@ -58,9 +58,11 @@ class VehicleJudgement:
 @dataclass
 class SimulationMetrics:
     precision_at_k: Optional[float]
+    precision_at_k_confident: Optional[float]
     satisfied_count: int
     infra_list_diversity: Optional[float]
     ndcg_at_k: Optional[float]
+    ndcg_at_k_confident: Optional[float]
     attribute_satisfaction: Dict[str, "AttributeSatisfaction"]
 
 
@@ -485,9 +487,11 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     if k <= 0:
         return SimulationMetrics(
             precision_at_k=None,
+            precision_at_k_confident=None,
             satisfied_count=0,
             infra_list_diversity=None,
             ndcg_at_k=None,
+            ndcg_at_k_confident=None,
             attribute_satisfaction={},
         )
 
@@ -495,14 +499,23 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     if not top_k:
         return SimulationMetrics(
             precision_at_k=None,
+            precision_at_k_confident=None,
             satisfied_count=0,
             infra_list_diversity=None,
             ndcg_at_k=None,
+            ndcg_at_k_confident=None,
             attribute_satisfaction={},
         )
 
     satisfied = [j for j in top_k if j.satisfied]
     precision = len(satisfied) / len(top_k)
+
+    confident_top_k = [j for j in top_k if j.confidence is not None and j.confidence > 0.6]
+    if confident_top_k:
+        confident_satisfied = [j for j in confident_top_k if j.satisfied]
+        precision_confident = len(confident_satisfied) / len(confident_top_k)
+    else:
+        precision_confident = None
 
     make_models = [
         (str(j.make).strip().lower() if j.make else "", str(j.model).strip().lower() if j.model else "")
@@ -531,6 +544,20 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
     else:
         ndcg = 0.0 if not satisfied else None
 
+    confident_dcg = _dcg(confident_top_k)
+    confident_ideal_count = min(
+        len(confident_top_k), len([j for j in confident_top_k if j.satisfied])
+    )
+    confident_ideal_items = confident_top_k[:]
+    confident_ideal_items.sort(key=lambda item: item.satisfied, reverse=True)
+    confident_idcg = _dcg(confident_ideal_items[:confident_ideal_count])
+    if confident_idcg:
+        ndcg_confident = confident_dcg / confident_idcg
+    elif confident_top_k:
+        ndcg_confident = 0.0 if not confident_satisfied else None
+    else:
+        ndcg_confident = None
+
     attribute_satisfaction: Dict[str, AttributeSatisfaction] = {}
     for judgement in top_k:
         for attribute, outcome in judgement.attribute_results.items():
@@ -546,9 +573,11 @@ def _compute_metrics(judgements: List[VehicleJudgement], persona: ReviewPersona,
 
     return SimulationMetrics(
         precision_at_k=precision,
+        precision_at_k_confident=precision_confident,
         satisfied_count=len(satisfied),
         infra_list_diversity=infra_list_diversity,
         ndcg_at_k=ndcg,
+        ndcg_at_k_confident=ndcg_confident,
         attribute_satisfaction=attribute_satisfaction,
     )
 

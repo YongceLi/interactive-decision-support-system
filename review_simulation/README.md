@@ -4,8 +4,8 @@ Tools for generating persona-based evaluation runs of the interactive decision s
 
 ## Components
 - **generate_persona_queries.py**: Builds persona prompts and single-turn user queries (including inferred upper price limits) from enriched review CSVs.
-- **run.py**: Evaluates generated personas against recommendation pipelines, renders console UI, and optionally exports detailed metrics and vehicle judgements (with per-attribute checks and confidence).
-- **replay_results.py**: Recreates the console UI from an exported CSV and can persist aggregated metrics (precision, diversity, NDCG, satisfied@k, and attribute-level satisfied@k averages).
+- **run.py**: Evaluates generated personas against recommendation pipelines, renders console UI, and optionally exports detailed metrics and vehicle judgements (with per-attribute checks and confidence-aware scoring).
+- **replay_results.py**: Recreates the console UI from an exported CSV and can persist aggregated metrics (precision, diversity, NDCG, precision/NDCG with confidence > 0.6, satisfied@k, and attribute-level satisfied@k averages).
 
 ## Usage
 
