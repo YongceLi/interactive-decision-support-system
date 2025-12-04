@@ -194,8 +194,7 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "system",
             "You evaluate car recommendations for a simulated shopper."
             "Decide if each vehicle matches the persona's expressed likes/dislikes."
-            "Only use make, model, year, condition (new/used), body style, fuel type, dealer location, and price to judge."
-            "Respect their newness preference scale, budget ceiling, and openness to alternatives when deciding satisfaction."
+            "Only use make, model, year, condition (new/used), body style, fuel type, and price to judge."
             "All vehicle information provided is accurate. DO NOT override them with assumptions. Use it to make informed judgements."
             "Return concise rationales (10 words or fewer).",
         ),
@@ -221,6 +220,10 @@ Other priorities: {misc_notes}
 Upper price limit (USD): {upper_price_limit}
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
+Do NOT assume the modernity of the vehicle beyond the year provided (The closer the year to 2025, the newer and more modern the vehicle).
+Do NOT make assumptions about the make or model beyond what is explicitly given.
+Only consider the information given in the Persona Query and the vehicle details provided to evaluate satisfaction.
+Use the rest of the information only as a guideline, as they might not reflect the actual preferences expressed in the Persona Query.
 
 For each vehicle below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
@@ -230,11 +233,15 @@ mentioned, return null for that criterion. Respond with JSON using this shape:
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
 price: (whether the price satisfies the users' preference in the query or not).
-condition: (whether the condition satisfies the users' preference in the query or not).
+condition: (whether the condition satisfies the users' preference in the query or not. 
+If the users are fine with both new and used or do not have preferences, return True).
 year: (whether the year satisfies the users' preference in the query or not).
 make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not, return None if there is no mention of fuel type in the query).
+fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not. 
+Do NOT assume fuel efficiency in here, only compare fuel_type. 
+For example, if the query wants Gasoline, and the fuel_type returns Gasoline, 
+Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
 body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
 all_misc: (whether all others' preference of the users mentioned in the query satisfies the users' query or not . Examples: driving dynamics, reliability, safety, ...)
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
