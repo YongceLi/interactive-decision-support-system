@@ -3,6 +3,7 @@ langgraph>=0.2.0
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-openai>=0.2.0  # For OpenAI models
+openai>=1.44.0
 langchain-anthropic>=0.2.0  # For Anthropic models (optional)
 langchain-community>=0.3.0  # For SQL database tools
 
