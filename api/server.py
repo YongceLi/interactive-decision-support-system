@@ -36,7 +36,7 @@ from api.models import (
     FavoriteRequest
 )
 
-required_env_vars = ["OPENAI_API_KEY", "AUTODEV_API_KEY"]
+required_env_vars = ["OPENAI_API_KEY"]
 missing_vars = [var for var in required_env_vars if not os.getenv(var)]
 if missing_vars:
     print(f" ERROR: Missing required environment variables: {', '.join(missing_vars)}")

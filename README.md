@@ -1,96 +1,201 @@
 # Interactive Decision Support System (IDSS)
 
-An intelligent conversational AI assistant designed to help users discover and evaluate vehicles through natural dialogue. The system employs a supervisor-based multi-agent architecture built on LangGraph, orchestrating specialized agents to deliver personalized vehicle recommendations.
+An intelligent conversational AI assistant designed to help users discover and evaluate PC components and electronics through natural dialogue. The system employs a supervisor-based multi-agent architecture built on LangGraph, orchestrating specialized agents to deliver personalized product recommendations with compatibility checking via a Neo4j knowledge graph.
 
 ---
 
-## Installation and Deployment
+## Table of Contents
 
-### Setup Instructions
+1. [Quick Start](#quick-start)
+2. [Installation and Setup](#installation-and-setup)
+3. [Project Structure](#project-structure)
+4. [System Architecture](#system-architecture)
+5. [Knowledge Graph System](#knowledge-graph-system)
+6. [Local Database](#local-database)
+7. [Running the Application](#running-the-application)
+8. [Testing](#testing)
+9. [Configuration](#configuration)
+10. [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- **Python 3.10+** (3.13 recommended)
+- **Node.js 18+** and npm
+- **Neo4j** (for compatibility checking - optional but recommended)
+- **OpenAI API Key** (required for LLM functionality)
+
+### Quick Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/YongceLi/interactive-decision-support-system.git
+# 1. Clone repository
+git clone <repository-url>
 cd interactive-decision-support-system
 
-# Create conda environment
-conda create -n idss python=3.10
-conda activate idss
-
-# Install Python dependencies
+# 2. Install Python dependencies
 pip install -r requirements.txt
 
-# Download vehicle database from Google Drive
-# Download the car_dataset_idss.zip file from:  https://drive.google.com/drive/folders/17TqIRStI9mwEvcshx4jjzqiN9rLfTcZZ?usp=drive_link
-# Extract and place it in the data/ directory:
-mkdir -p data
-# Extract car_dataset_idss.zip to data/car_dataset_idss/
-# The final structure should be: data/car_dataset_idss/uni_vehicles.db
+# 3. Install frontend dependencies
+cd web && npm install && cd ..
 
-# Create .env file in project root
-cat > .env << EOF
-OPENAI_API_KEY=your-openai-api-key-here
-TAVILY_API_KEY=your-tavily-api-key-here  # for analytical agent web search
-AUTODEV_API_KEY=your-autodev-api-key-here  # if using Auto.dev API instead of local DB
-EOF
+# 4. Create .env file (see Environment Variables section)
+cp .env.example .env
+# Edit .env and add your API keys
 
-# Start API server
-python -m api.server
+# 5. Start Neo4j (optional but recommended)
+# Using Docker:
+docker run -d --name neo4j -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/your-password neo4j:latest
 
-# In separate terminal, start web interface
-cd web
-npm install
-npm run dev
+# 6. Build the knowledge graph (if using PC parts)
+python scripts/kg/build_kg_from_augmented.py
+
+# 7. Start the application
+./start_dev.sh
 ```
 
-**Note**: The application will be available at:
-- API: `http://localhost:8000`
-- Web Interface: `http://localhost:3000`
+The application will be available at:
+- **Frontend UI**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Neo4j Browser**: http://localhost:7474 (if Neo4j is running)
+
+---
+
+## Installation and Setup
+
+### Python Environment Setup
+
+**Option 1: Using Conda (Recommended)**
+```bash
+conda create -n idss python=3.10
+conda activate idss
+pip install -r requirements.txt
+```
+
+**Option 2: Using venv**
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Node.js Setup
+
+```bash
+cd web
+npm install
+cd ..
+```
+
+### Neo4j Setup
+
+Neo4j is required for PC parts compatibility checking. The system will work without it, but compatibility features will be unavailable.
+
+#### Option 1: Docker (Recommended)
+
+```bash
+docker run -d \
+  --name neo4j \
+  -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/your-password \
+  neo4j:latest
+```
+
+#### Option 2: Homebrew (macOS)
+
+```bash
+brew install neo4j
+brew services start neo4j
+```
+
+#### Option 3: Direct Installation
+
+1. Download from https://neo4j.com/download/
+2. Extract and run: `./bin/neo4j start`
+3. Access Neo4j Browser at http://localhost:7474
+
+#### Option 4: Neo4j Aura Cloud
+
+1. Navigate to https://console.neo4j.io/
+2. Create a free account
+3. Create a database instance
+4. Copy connection details to `.env` file
+
+**Verify Neo4j is running:**
+```bash
+lsof -i :7687  # Should show Neo4j process
+cypher-shell -u neo4j -p your-password  # Test connection
+```
+
+### Environment Variables
+
+Create a `.env` file in the project root (copy from `.env.example`):
+
+```bash
+# Required: OpenAI API Key
+OPENAI_API_KEY=your-openai-api-key-here
+
+# Required: Neo4j Connection (for PC parts compatibility)
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-neo4j-password
+
+# For Neo4j Aura Cloud, use:
+# NEO4J_URI=neo4j+s://xxxxx.databases.neo4j.io
+# NEO4J_USER=neo4j
+# NEO4J_PASSWORD=your-aura-password
+
+# Optional: Tavily API Key (for analytical agent web search)
+TAVILY_API_KEY=your-tavily-api-key-here
+
+# Optional: RapidAPI Key (only needed for populating database via dataset builder)
+RAPIDAPI_KEY=your-rapidapi-key-here
+
+# Optional: Auto.dev API Key (legacy, not currently used)
+AUTODEV_API_KEY=your-autodev-api-key-here
+
+# Optional: Backend API URL (defaults to http://localhost:8000)
+IDSS_API_URL=http://localhost:8000
+
+# Optional: Frontend API URL (defaults to http://localhost:8000)
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+# Optional: PC Parts Database Path (defaults to data/pc_parts.db)
+PC_PARTS_DB=data/pc_parts.db
+```
 
 ### Database Setup
 
-The system requires the unified vehicle database to function. Due to its size (~840MB), the database is hosted externally.
+The system uses two databases:
 
-**Download Instructions:**
+1. **Local SQLite Database** (`data/pc_parts.db`): Product catalog with prices, sellers, ratings
+2. **Neo4j Knowledge Graph**: Compatibility relationships between PC components
 
-1. **Download** the database from Google Drive: `[GOOGLE_DRIVE_LINK_HERE]`
-2. **Extract** the downloaded `car_dataset_idss.zip` file
-3. **Place** the extracted `car_dataset_idss` folder in the `data/` directory
+#### Building the Local Database
 
-**Expected directory structure:**
-```
-interactive-decision-support-system/
-├── data/
-│   ├── car_dataset_idss/
-│   │   └── uni_vehicles.db          # 167,760 vehicles (840MB)
-│   ├── feature_data.db
-│   ├── safety_data.db
-│   └── zip_code_database.csv
-```
+The local database is populated using the dataset builder script:
 
-**Verification:**
 ```bash
-# Verify the database is in the correct location
-ls -lh data/car_dataset_idss/uni_vehicles.db
-
-# Should show: uni_vehicles.db (~840MB)
+python dataset_builder/fetch_pc_parts_dataset.py \
+    --db-path data/pc_parts.db \
+    --limit 1000
 ```
 
-**Database Contents:**
-- **167,760 vehicles** from nationwide dealers
-- Includes both MarketCheck and Auto.dev data sources
-- California: 55,818 vehicles with location data
-- Price range: $0 - $500,000+
-- Years: 1990 - 2026
+This script:
+- Fetches products from RapidAPI Shopping API
+- Normalizes product data
+- Stores in SQLite with deduplication
+- Supports multiple categories (CPU, GPU, motherboard, PSU, RAM, storage, case, cooling, etc.)
 
-### API Endpoints
+**Note**: The dataset builder requires a RapidAPI key. Once populated, the recommendation system uses the local database directly without requiring RapidAPI access.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/chat` | POST | Main conversation interface |
-| `/session/{id}/event` | POST | Server-Sent Events stream |
-| `/session/{id}/favorite` | POST | Mark vehicle as favorite |
-| `/session/{id}/history` | GET | Retrieve conversation history |
+#### Building the Knowledge Graph
+
+See [Knowledge Graph System](#knowledge-graph-system) section for detailed instructions.
 
 ---
 
@@ -110,26 +215,34 @@ interactive-decision-support-system/
 │   │
 │   ├── agents/
 │   │   ├── analytical.py           # Analytical ReAct agent
-│   │   ├── discovery.py            # Vehicle presentation
+│   │   ├── discovery.py            # Product presentation
 │   │   └── general.py              # General conversation
 │   │
 │   ├── processing/
 │   │   ├── semantic_parser.py      # Filter extraction
-│   │   ├── recommendation.py       # Vehicle search engine
-│   │   └── vector_ranker.py        # Similarity ranking
+│   │   ├── recommendation.py      # Product search engine
+│   │   ├── recommendation_method1.py  # Method 1: Local DB + vector ranking + MMR
+│   │   ├── recommendation_method2.py  # Method 2: Web search + parallel queries
+│   │   ├── vector_ranker.py        # Similarity ranking
+│   │   ├── diversification.py     # MMR diversification
+│   │   ├── compatibility.py        # Compatibility helper functions
+│   │   └── proactive_responses.py  # Proactive response generation
 │   │
 │   ├── tools/
-│   │   ├── local_vehicle_store.py  # SQLite interface
-│   │   ├── zipcode_lookup.py       # Geographic lookup
-│   │   └── autodev_api.py          # External API client
+│   │   ├── local_electronics_store.py  # SQLite interface
+│   │   ├── kg_compatibility.py         # Neo4j knowledge graph queries
+│   │   ├── pc_build.py                 # PC build configuration tools
+│   │   ├── mcp_kg_server.py            # MCP server wrapper
+│   │   └── zipcode_lookup.py           # Geographic lookup
 │   │
 │   ├── state/
 │   │   └── schema.py               # State type definitions
 │   │
 │   └── utils/
 │       ├── config.py               # Configuration management
-│       ├── logger.py               # Logging utilities
-│       └── prompts.py              # Template rendering
+│       ├── logger.py                # Logging utilities
+│       ├── prompts.py               # Template rendering
+│       └── conversation_logger.py   # Conversation logging
 │
 ├── api/                            # FastAPI backend
 │   ├── server.py                   # API server
@@ -137,26 +250,61 @@ interactive-decision-support-system/
 │
 ├── web/                            # Next.js frontend
 │   └── src/
-│       ├── app/
-│       └── components/
+│       ├── app/                    # Next.js App Router
+│       │   ├── api/                # API route proxies
+│       │   ├── page.tsx            # Main application page
+│       │   └── layout.tsx          # Root layout
+│       ├── components/             # React components
+│       │   ├── ChatBox.tsx         # Chat interface
+│       │   ├── ItemGrid.tsx        # Product grid
+│       │   ├── ItemDetailModal.tsx # Product detail modal
+│       │   ├── FilterMenu.tsx      # Filter sidebar
+│       │   ├── ComparisonTable.tsx  # Comparison table
+│       │   ├── CompatibilityResult.tsx  # Compatibility display
+│       │   └── FavoritesPage.tsx   # Favorites management
+│       ├── services/                # Service layer
+│       │   ├── api.ts              # API client
+│       │   └── logging.ts          # Logging service
+│       ├── types/                  # TypeScript types
+│       └── hooks/                  # Custom React hooks
 │
 ├── config/
 │   ├── agent_config.yaml           # System configuration
 │   └── prompts/                    # Jinja2 templates
+│       ├── semantic_parser.j2
+│       ├── interview_system.j2
+│       ├── discovery.j2
+│       ├── analytical.j2
+│       └── general.j2
 │
 ├── data/
-│   ├── car_dataset_idss/
-│   │   └── uni_vehicles.db         # Unified vehicle database (167,760 vehicles, nationwide)
-│   ├── feature_data.db             # Vehicle features database
-│   ├── safety_data.db              # Safety ratings database
-│   └── zip_code_database.csv       # ZIP coordinate data (41,695 ZIP codes)
+│   ├── pc_parts.db                 # SQLite product database
+│   ├── pc_parts_augmented.db       # Augmented database with validated attributes
+│   ├── compatibility_cache.db      # Cached scraped compatibility data
+│   └── kg_backups/                 # Knowledge graph backups
+│
+├── dataset_builder/
+│   ├── fetch_pc_parts_dataset.py   # Database population script
+│   ├── pc_parts_attributes.json   # Attribute definitions per product type
+│   └── pc_parts_schema.sql         # Database schema
+│
+├── scripts/
+│   ├── kg/
+│   │   ├── build_kg_from_augmented.py  # Build Neo4j KG from augmented DB
+│   │   ├── augment_pc_parts_db.py      # Augment database with scraped attributes
+│   │   ├── llm_extractor.py            # LLM-based attribute extraction
+│   │   └── validate_reviewed_attributes.py  # Validate attributes
+│   ├── test_recommendation.py      # Test recommendation engine
+│   ├── test_recommendation_methods.py  # Test recommendation methods
+│   └── demo.py                     # Demo/testing script
 │
 ├── tests/                          # Test suites
-│   └── test_location_system.py
+│   └── test_kg_compatibility.py    # Knowledge graph compatibility tests
 │
-└── scripts/                        # Utility scripts
-    ├── convert_zipcode_to_sqlite.py  # Convert ZIP CSV to SQLite (optional)
-    └── demo.py                       # Demo/testing script
+├── start_dev.sh                    # Development server startup script
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment variables template
+└── README.md                       # This file
 ```
 
 ---
@@ -173,10 +321,11 @@ User Message
 Request Analyzer
     │ - Intent Classification
     │ - Mode Detection
-    │ - Analytical Question Extracting 
+    │ - Analytical Question Extraction
     ↓
 Semantic Parser
     │ - Filter/State Extraction
+    │ - Implicit Preference Inference
     ↓
 Supervisor Decision Engine
     │ - Agent Selection
@@ -185,6 +334,7 @@ Supervisor Decision Engine
 Sub-Agent Execution
     │ - Interview Workflow
     │ - Analytical Agent
+    │ - Discovery Agent
     │ - Search/Recommendation
     │ - General Conversation
     ↓
@@ -210,214 +360,344 @@ Unified Response to User
 
 **Output**: Extracted filters and implicit preferences stored in state
 
----
-
 #### Analytical Agent
-**Purpose**: Research-backed insights and vehicle comparisons
+**Purpose**: Research-backed insights and product comparisons
 
 **Implementation**: `agents/analytical.py`
 
-**Architecture**: ReAct agent with web search integration (Tavily API)
+**Architecture**: ReAct agent with tool access including:
+- Local database product search
+- Neo4j knowledge graph compatibility queries
+- Web search (Tavily API)
+- Product detail lookup
 
 **Capabilities**:
-- Comparative analysis between vehicle models
-- Market research and reliability data
+- Comparative analysis between products
+- Compatibility checking for PC parts
+- Market research and technical specifications
 - Structured comparison table generation
-- Safety ratings and feature comparisons
 
 **Output**: Analytical insights with source citations
 
----
-
 #### Discovery Agent
-**Purpose**: Conversational presentation of vehicle recommendations
+**Purpose**: Conversational presentation of product recommendations
 
 **Implementation**: `agents/discovery.py`
 
 **Capabilities**:
-- Natural language vehicle presentation
+- Natural language product presentation
 - Context-aware follow-up questions
 - Avoids redundant questions from interview phase
 - Personalized recommendations based on user preferences
 
-**Output**: Engaging vehicle descriptions with actionable questions
-
----
+**Output**: Engaging product descriptions with actionable questions
 
 #### Search/Recommendation Engine
-**Purpose**: Vehicle discovery through semantic matching
+**Purpose**: Product discovery through semantic matching and knowledge graph queries
 
 **Implementation**: `processing/recommendation.py`
 
 **Pipeline**:
-1. SQL-based filtering with user constraints
-2. Vehicle deduplication by VIN
-3. Photo enrichment (parallel fetching, 8 workers)
-4. Vector similarity ranking
-5. Multi-dimensional sorting
+1. **Query Routing**: Detects PC parts queries → uses Neo4j knowledge graph; other electronics → uses SQLite
+2. **Filter Application**: Applies user constraints (brand, price, attributes)
+3. **Consumer Filtering**: Filters out professional/workstation products, prioritizes consumer options
+4. **Product Deduplication**: Removes duplicates by product ID
+5. **Vector Similarity Ranking**: Ranks by relevance to user preferences
+6. **Multi-dimensional Sorting**: Price, rating, relevance
 
 **Features**:
-- Progressive fallback strategy (model → make → open search)
-- Geographic filtering via haversine distance
-- Configurable result limits (default: 20 vehicles)
+- Automatic Neo4j/SQLite routing based on product type
+- Progressive fallback strategy
+- Configurable result limits (default: 20 products)
+- Consumer-focused filtering (excludes professional/workstation products)
 
 ---
 
-## State Management
+## Knowledge Graph System
 
-### VehicleSearchState Schema
+### Overview
 
-The system maintains comprehensive state across conversation turns:
+The knowledge graph system stores PC component products as nodes in Neo4j and creates typed compatibility relationships as edges. The system uses validated attributes from the augmented database to build accurate compatibility relationships.
 
-```python
-{
-    # Core Data Structures
-    "explicit_filters": VehicleFilters,        # User-specified search criteria
-    "conversation_history": List[BaseMessage], # Complete dialogue history
-    "implicit_preferences": ImplicitPreferences, # Inferred user preferences
-    "recommended_vehicles": List[Dict],        # Current recommendation set
+### Graph Structure
 
-    # Location Data
-    "user_latitude": Optional[float],          # From browser geolocation
-    "user_longitude": Optional[float],         # From browser geolocation
+**Node Labels**: `PCProduct` with type-specific labels (`:CPU`, `:GPU`, `:RAM`, etc.)
 
-    # Session Tracking
-    "previous_filters": VehicleFilters,        # Change detection
-    "interviewed": bool,                       # Interview completion flag
-    "questions_asked": List[str],              # Covered topics
-    "favorites": List[Dict],                   # User-favorited vehicles
-    "interaction_events": List[Dict],          # User interaction log
+**Node Properties**:
+- Core: `slug`, `name`, `product_type`, `brand`, `model`, `series`
+- Pricing: `price`, `price_min`, `price_max`, `price_avg`
+- Attributes: `socket`, `pcie_version`, `ram_standard`, `wattage`, `form_factor`, `chipset`, `vram`, `tdp`, etc.
+- Metadata: `namespace`, `seller`, `rating`, `rating_count`, `imageurl`
 
-    # Response Components
-    "ai_response": str,                        # Generated response text
-    "quick_replies": Optional[List[str]],      # Suggested quick replies
-    "comparison_table": Optional[Dict]         # Structured comparison data
-}
+**Compatibility Relationship Types**:
+1. **SOCKET_COMPATIBLE_WITH**: CPU ↔ Motherboard (socket matching)
+2. **RAM_COMPATIBLE_WITH**: RAM ↔ Motherboard (DDR standard matching)
+3. **MEMORY_COMPATIBLE_WITH**: CPU ↔ RAM (memory controller compatibility)
+4. **INTERFACE_COMPATIBLE_WITH**: Motherboard ↔ GPU (PCIe version compatibility)
+5. **ELECTRICAL_COMPATIBLE_WITH**: PSU ↔ GPU/CPU (power requirements)
+6. **FORM_FACTOR_COMPATIBLE_WITH**: Case ↔ Motherboard (physical size)
+7. **THERMAL_COMPATIBLE_WITH**: Cooler ↔ CPU (socket + TDP capacity)
+
+### Building the Knowledge Graph
+
+The knowledge graph is built from the augmented database (`pc_parts_augmented.db`) which contains validated attributes from multiple sources.
+
+#### Step 1: Augment the Database
+
+First, augment the base database with validated attributes:
+
+```bash
+# Basic augmentation (copies data, no scraping)
+python scripts/kg/augment_pc_parts_db.py --copy-only
+
+# Full augmentation with LLM extraction (recommended)
+python scripts/kg/augment_pc_parts_db.py --use-llm
+
+# Limit for testing
+python scripts/kg/augment_pc_parts_db.py --use-llm --limit 100
 ```
 
-### Filter System
+**What it does**:
+- Reads products from `pc_parts.db`
+- Creates `pc_parts_augmented.db` with base schema
+- Scrapes attributes from multiple sources (Newegg, Amazon, Wikipedia, Manufacturer)
+- Validates attributes using cross-source validation (requires at least 2 sources to agree)
+- Stores validated attributes with source tracking, timestamps, and confidence scores
+- Tags products for manual review if no manufacturer source is found
 
-The system supports 17 distinct vehicle filters organized into semantic categories:
+**Database Schema**:
+- `pc_parts_augmented`: Main products table (same as `pc_parts` plus `needs_manual_review` flag)
+- `product_attributes_augmented`: All attribute extractions from all sources
+- `validated_attributes`: Validated attributes (agreed upon by at least 2 sources)
+- `manufacturer_map`: Manufacturer documentation URL patterns
 
-| Category | Filters | Type | Example |
-|----------|---------|------|---------|
-| **Vehicle Specifications** | `make`, `model`, `year`, `trim`, `body_style` | String/Range | `"Honda"`, `"2020-2023"` |
-| **Powertrain** | `engine`, `transmission`, `drivetrain`, `fuel_type` | Multi-value | `"Electric,Hybrid"` |
-| **Appearance** | `exterior_color`, `interior_color` | Multi-value | `"Red,Blue,White"` |
-| **Physical Attributes** | `doors`, `seating_capacity` | Integer | `4`, `7` |
-| **Pricing** | `price`, `mileage` | Range | `"20000-30000"`, `"0-50000"` |
-| **Location** | `state`, `zip`, `search_radius` | String/Integer | `"CA"`, `"94043"`, `50` |
+**Validation Rules**:
+- Cross-source validation: At least 2 sources must agree on an attribute value
+- Source priority: Manufacturer > Wikipedia > Retailers
+- Manual review: Products without manufacturer sources are tagged
 
-### Implicit Preference System
+#### Step 2: Build Knowledge Graph from Augmented Database
 
-The system infers and tracks user preferences beyond explicit filters:
+Build the Neo4j knowledge graph from the augmented database:
 
-- **Priorities**: Safety, fuel efficiency, reliability, luxury, performance
-- **Lifestyle Indicators**: Family-oriented, urban commuter, outdoor enthusiast
-- **Usage Patterns**: Daily commuter, weekend trips, family transportation
-- **Financial Sensitivity**: Budget-conscious, moderate, luxury-focused
-- **Brand Affinity**: Preferred manufacturers based on conversation
-- **Concerns**: Maintenance costs, resale value, insurance costs
+```bash
+# Build and replace entire graph
+python scripts/kg/build_kg_from_augmented.py
+
+# With custom Neo4j connection
+python scripts/kg/build_kg_from_augmented.py \
+    --neo4j-uri bolt://localhost:7687 \
+    --neo4j-user neo4j \
+    --neo4j-password your-password
+
+# Limit for testing
+python scripts/kg/build_kg_from_augmented.py --limit 100
+```
+
+**What it does**:
+- Loads products from `pc_parts_augmented.db`
+- Merges attributes from:
+  - Individual table columns
+  - `base_attributes` JSON column
+  - `validated_attributes` table (validated attributes take precedence)
+- Creates `PCProduct` nodes in Neo4j with type-specific labels (`:CPU`, `:GPU`, etc.)
+- Creates `ProductType` nodes and `HAS_TYPE` relationships
+- Creates compatibility edges based on attribute matching:
+  - Socket compatibility (CPU ↔ Motherboard)
+  - RAM compatibility (RAM ↔ Motherboard, CPU ↔ RAM)
+  - PCIe compatibility (GPU ↔ Motherboard)
+  - Power compatibility (PSU ↔ GPU/CPU)
+  - Form factor compatibility (Case ↔ Motherboard)
+  - Thermal compatibility (Cooler ↔ CPU)
+- Replaces entire graph (purges existing nodes first)
+
+**Output**: Neo4j graph with product nodes and compatibility relationships
+
+**Time**: ~2-5 minutes for 900+ products
+
+### Querying the Knowledge Graph
+
+The system automatically uses the knowledge graph for PC parts queries:
+
+- **Recommendation queries** for PC parts automatically query Neo4j
+- **Compatibility checking** uses Neo4j for PC components
+- **PC build queries** use iterative knowledge graph traversal
+
+**Example Cypher Queries**:
+
+```cypher
+// Find compatible GPUs for a motherboard
+MATCH (mb:PCProduct {slug: "asus-rog-strix-z790-e"})-[r:INTERFACE_COMPATIBLE_WITH]-(gpu:PCProduct)
+WHERE gpu.product_type = "gpu"
+RETURN gpu.name, gpu.price_avg, r.board_pcie, r.gpu_requirement
+ORDER BY gpu.price_avg ASC
+LIMIT 10
+
+// Find compatible PSUs for a GPU
+MATCH (gpu:PCProduct {slug: "nvidia-rtx-4090"})-[r:ELECTRICAL_COMPATIBLE_WITH]-(psu:PCProduct)
+WHERE psu.product_type = "psu"
+RETURN psu.name, psu.wattage, r.margin_watts, r.psu_watts, r.required_watts
+ORDER BY psu.price_avg ASC
+LIMIT 10
+
+// Check compatibility between two parts
+MATCH (p1:PCProduct {slug: "intel-core-i9-13900k"})-[r]-(p2:PCProduct {slug: "asus-rog-strix-z790-e"})
+RETURN type(r) AS relationship_type, p1.name, p2.name, r
+```
+
+### Viewing the Knowledge Graph
+
+**Neo4j Browser**:
+1. Ensure Neo4j is running
+2. Navigate to http://localhost:7474
+3. Log in with credentials
+4. Run Cypher queries to explore the graph
+
+**For Neo4j Aura**:
+1. Log in to https://console.neo4j.io/
+2. Select your database instance
+3. Click "Open with Neo4j Browser"
 
 ---
 
-## Data Layer
+## Local Database
 
-### Local Vehicle Database
+### Database Schema
 
-**Technology**: SQLite
-**Location**: `data/california_vehicles.db`
-**Size**: 22,623 vehicles in California
+The system uses SQLite databases for product storage:
 
-### Query Construction
+**Main Database: `data/pc_parts.db`**
+- Product catalog with prices, sellers, ratings
+- Used for non-PC parts and as fallback for PC parts
 
-Example SQL query generation:
+**Augmented Database: `data/pc_parts_augmented.db`**
+- Enhanced version with validated attributes
+- Used as source for knowledge graph building
+- Contains cross-validated attributes from multiple sources
 
-```sql
-SELECT raw_json, price, mileage, primary_image_url, photo_count
-FROM vehicle_listings
-WHERE
-    UPPER(make) IN ('HONDA', 'TOYOTA')
-    AND year >= 2020 AND year <= 2023
-    AND price >= 20000 AND price <= 30000
-    AND UPPER(fuel_type) IN ('ELECTRIC', 'HYBRID')
-    AND (
-        (3959.0 * 2 * ASIN(SQRT(
-            POW(SIN((RADIANS(latitude) - RADIANS(37.41)) / 2), 2) +
-            COS(RADIANS(37.41)) * COS(RADIANS(latitude)) *
-            POW(SIN((RADIANS(longitude) - RADIANS(-122.05)) / 2), 2)
-        ))) <= 50.0
-    )
-    AND (COALESCE(photo_count, 0) > 0 OR primary_image_url IS NOT NULL)
-ORDER BY price ASC, vin ASC
-LIMIT 60
-```
+**Compatibility Cache: `data/compatibility_cache.db`**
+- Cached scraped compatibility data
+- Used during knowledge graph building
 
-### Vector Similarity Ranking
+### Database Access
 
-**Implementation**: `processing/vector_ranker.py`
+Products are queried through `LocalElectronicsStore` class:
 
-**Algorithm**:
+**Location**: `idss_agent/tools/local_electronics_store.py`
 
-1. **User Vector Construction**
-   - Tokenize explicit filters with semantic weighting
-   - Integrate implicit preferences
-   - Apply category-specific weights (make: 3.0, color: 1.0)
+**Methods**:
+- `search_products()`: Search with filters (part_type, brand, price, attributes, etc.)
+- `get_product_by_id()`: Get detailed product information
 
-2. **Vehicle Embedding**
-   - Generate per-vehicle token vectors
-   - Cache embeddings for performance
-   - Include price and mileage bins
-
-3. **Similarity Computation**
-   - Calculate cosine similarity between user vector and vehicle embeddings
-   - Rank vehicles by similarity score
-   - Apply multi-factor sorting (similarity, photos, value ratio)
+**Query Features**:
+- Text search on product name, model, series
+- Filter by part type, brand, price range, seller
+- Technical specification filters (socket, VRAM, wattage, form factor, etc.)
+- Pagination support
 
 ---
 
-## Location System
+## Running the Application
 
-### Dual-Mode Architecture
+### Using the Startup Script (Recommended)
 
-The system implements a two-tier location strategy to maximize geographic search capabilities:
+The `start_dev.sh` script automates starting all services:
 
-#### Primary Mode: Browser Geolocation
-
-When users grant location permissions, the system directly captures coordinates via the browser's Geolocation API:
-
-```javascript
-navigator.geolocation.getCurrentPosition((position) => {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude
-});
+```bash
+./start_dev.sh
 ```
 
-#### Fallback Mode: ZIP Code Lookup
+**What it does**:
+- Cleans up existing processes on ports 8000 and 3000
+- Attempts to start Neo4j if not already running
+- Starts FastAPI backend server on port 8000
+- Starts Next.js frontend server on port 3000
+- Monitors both servers and handles graceful shutdown on Ctrl+C
 
-When browser geolocation is unavailable or denied:
+**Access Points**:
+- Frontend UI: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- Neo4j Browser: http://localhost:7474
 
-1. System prompts user for ZIP code
-2. Lookup performed against cached dictionary (41,695 US ZIP codes)
-3. ZIP code converted to geocoordinates
-4. Same geographic search applied as primary mode
-
-**Implementation**: `tools/zipcode_lookup.py`
-
-### Geographic Distance Calculation
-
-All location-based searches utilize the haversine formula for great-circle distance:
-
-```python
-earth_radius = 3959.0  # miles
-distance = earth_radius * 2 * ASIN(SQRT(
-    POW(SIN((RADIANS(lat1) - RADIANS(lat2)) / 2), 2) +
-    COS(RADIANS(lat1)) * COS(RADIANS(lat2)) *
-    POW(SIN((RADIANS(lon1) - RADIANS(lon2)) / 2), 2)
-))
+**Viewing Logs**:
+```bash
+tail -f /tmp/idss_backend.log    # Backend logs
+tail -f /tmp/idss_frontend.log   # Frontend logs
+tail -f /tmp/idss_neo4j.log      # Neo4j logs
 ```
 
-**Default Search Radius**: 100 miles (configurable)
+### Manual Startup
+
+**Backend**:
+```bash
+python -m uvicorn api.server:app --host 0.0.0.0 --port 8000
+```
+
+**Frontend**:
+```bash
+cd web
+npm run dev
+```
+
+### Single Turn vs Multi-Turn
+
+**Single Turn (Testing)**:
+Use the test script for isolated recommendation testing:
+```bash
+python scripts/test_recommendation.py "I need a gaming CPU under $300"
+```
+
+**Multi-Turn (Full UI)**:
+1. Start the application: `./start_dev.sh`
+2. Open http://localhost:3000 in your browser
+3. Chat with the agent through the web interface
+4. The system maintains conversation state across turns
+5. Use filters, favorites, and compatibility checking features
+
+---
+
+## Testing
+
+### Recommendation Engine Test
+
+Test the recommendation pipeline in isolation:
+
+```bash
+# Basic usage
+python scripts/test_recommendation.py "I want a mid-range gaming CPU under $300"
+
+# Save to file
+python scripts/test_recommendation.py "I need DDR5 RAM for gaming" > results.json
+```
+
+**Output**: JSON with extracted filters, search parameters, and recommended products.
+
+### Recommendation Methods Test
+
+Test different recommendation methods:
+
+```bash
+python scripts/test_recommendation_methods.py
+```
+
+### Knowledge Graph Compatibility Test
+
+Test Neo4j compatibility checking:
+
+```bash
+python -m pytest tests/test_kg_compatibility.py -v
+```
+
+**Note**: Requires Neo4j to be running and configured in `.env`.
+
+### Demo Script
+
+Run the interactive demo:
+
+```bash
+python scripts/demo.py
+```
 
 ---
 
@@ -444,7 +724,6 @@ limits:
   max_recommended_items: 20
   max_conversation_history: 10
   max_interview_questions: 3
-  default_search_radius: 100
   top_products_to_show: 3
   web_search_max_results: 3
 ```
@@ -453,26 +732,93 @@ limits:
 
 ```yaml
 features:
-  use_local_vehicle_store: true
-  require_photos: true
   enable_quick_replies: true
   enable_streaming: true
 ```
 
 ---
 
-## Testing
+## Troubleshooting
 
-### Recommendation Engine Test Script
-
-Test the recommendation pipeline in isolation with natural language queries:
+### Port Already in Use
 
 ```bash
-# Basic usage
-python scripts/test_recommendation.py "I want a safe car for my daughter"
-
-# Save to file
-python scripts/test_recommendation.py "I want a safe car for my daughter" > results.json
+# Kill processes manually
+lsof -ti :8000 | xargs kill -9  # Backend
+lsof -ti :3000 | xargs kill -9  # Frontend
 ```
 
-**Output**: JSON with extracted filters, SQL query, location data, and 20 recommended vehicles.
+### Neo4j Connection Issues
+
+- Verify Neo4j is running: `docker ps | grep neo4j` or `neo4j status`
+- Check credentials in `.env` file match Neo4j configuration
+- Test connection: `cypher-shell -u neo4j -p your-password`
+- For Aura: Verify connection URI format (`neo4j+s://` for secure)
+
+### Missing Environment Variables
+
+- Ensure `.env` file exists in project root
+- Verify all required variables are set (check startup script output for warnings)
+- Required: `OPENAI_API_KEY`, `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`
+
+### Knowledge Graph Issues
+
+- Verify graph is built: Check Neo4j for `PCProduct` nodes
+- Check product slugs match between database and knowledge graph
+- Verify compatibility relationships exist: Run Cypher queries in Neo4j Browser
+- Check logs for Neo4j connection errors
+
+### Database Issues
+
+- Verify `data/pc_parts.db` exists
+- Check database permissions
+- Rebuild database if corrupted: `python dataset_builder/fetch_pc_parts_dataset.py`
+
+### Frontend Issues
+
+- Clear browser cache
+- Check browser console for errors
+- Verify backend API is running on port 8000
+- Check `NEXT_PUBLIC_API_URL` in `.env` matches backend URL
+
+### Database Augmentation Details
+
+The augmentation process enriches the base database with validated attributes:
+
+**Sources**:
+- Newegg product pages
+- Amazon product listings
+- Wikipedia technical specifications
+- Manufacturer official documentation
+
+**Validation Process**:
+1. Extract attributes from each source
+2. Cross-validate: At least 2 sources must agree on a value
+3. Apply source priority: Manufacturer > Wikipedia > Retailers
+4. Store validated attributes with confidence scores
+5. Tag products for manual review if no manufacturer source found
+
+**Attribute Storage**:
+- `base_attributes` JSON: Original attributes from source database
+- `validated_attributes` table: Cross-validated attributes with source tracking
+- Attributes parsed at KG creation time from both sources
+
+**Source Priority** (higher = more trusted):
+- Manufacturer official: 100
+- Manufacturer official (LLM): 95
+- Wikipedia: 80
+- Wikipedia (LLM): 75
+- Newegg: 60
+- Newegg (LLM): 55
+- Amazon: 50
+- Amazon (LLM): 45
+
+---
+
+## Additional Resources
+
+- **API Documentation**: See `api/README.md` for detailed API reference
+- **UI Documentation**: See `web/README.md` for frontend architecture
+- **Changelog**: See `CHANGELOG.md` for version history
+
+---

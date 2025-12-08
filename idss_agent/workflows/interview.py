@@ -1,7 +1,7 @@
 """
 Interview workflow - asks questions to understand user needs before making recommendations.
 
-This workflow runs until the interview is complete (threshold reached or user requests vehicles).
+This workflow runs until the interview is complete (threshold reached or user requests products).
 """
 import os
 from typing import Any, Optional, Callable
