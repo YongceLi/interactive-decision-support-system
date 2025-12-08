@@ -14,12 +14,13 @@ Output Format Example (JSON):
 {
   "has_new_filters": true,
   "explicit_filters": {
-    "make": "AMD,Intel",                 // Use for BRAND (comma-separated)
-    "model": "Ryzen 7 7800X3D,i7-14700K",// Use for specific product names (comma-separated)
-    "year": "2022-2024",                 // Use for release year or generation range
-    "body_style": "CPU",                 // Use for CATEGORY (CPU, GPU, Laptop, Monitor, etc.)
+    "brand": "AMD,Intel",                 // Brand or manufacturer (comma-separated)
+    "product_name": "Ryzen 7 7800X3D,i7-14700K",// Specific product names or model numbers (comma-separated)
+    "year": "2022-2024",                 // Release year or generation range
+    "category": "CPU",                    // Product category (CPU, GPU, Laptop, Monitor, etc.)
+    "part_type": "CPU",                   // Specific part type (CPU, GPU, Motherboard, etc.)
+    "series": "Ryzen 7,Core i7",         // Product series (comma-separated)
     "price": "0-500",                    // Price range in USD (min-max format)
-    "fuel_type": "Liquid Cooling Ready", // Reuse additional fields for key capabilities/features when helpful
     "features": ["AM5 socket", "PCIe Gen5 support"], // Free-form feature list
     "seller": "Best Buy,Micro Center"    // Preferred retailers or marketplaces
   },
@@ -35,14 +36,16 @@ Output Format Example (JSON):
 
 Rules:
 - Generate COMPLETE filters based on the ENTIRE conversation, not just the latest message.
-- Interpret existing filter keys for electronics context:
-  * `make` → brand or manufacturer (AMD, Intel, ASUS, etc.)
-  * `model` → specific product lines or model numbers.
+- Use appropriate filter keys for electronics:
+  * `brand` → brand or manufacturer (AMD, Intel, ASUS, NVIDIA, etc.)
+  * `product_name` → specific product names or model numbers.
   * `year` → release year, generation, or acceptable range (e.g., "2022-2024").
-  * `body_style` → product category or form factor (CPU, GPU, Laptop, Monitor, Router, etc.).
+  * `category` → product category or form factor (CPU, GPU, Laptop, Monitor, Router, etc.).
+  * `part_type` → specific part type (CPU, GPU, Motherboard, RAM, SSD, etc.).
+  * `series` → product series (Ryzen 7, Core i7, RTX 40 series, etc.).
   * `features` → list important requirements (e.g., "Wi-Fi 6E", "PCIe Gen4", "mechanical keyboard", "240Hz refresh").
 - Price ranges must use "min-max" format (e.g., "100-300"). If user says "under $500", convert to "0-500".
-- If user references multiple brands/models/categories, use comma-separated values.
+- If user references multiple brands/products/categories, use comma-separated values.
 - If user says "latest" or "recent", prefer the last 2-3 release years.
 - Infer implicit preferences from context clues (e.g., "streaming and gaming" → priorities include "multitasking", usage "gaming + content creation").
 - REMOVE outdated filters when the user explicitly changes their mind—replace with the new intent.
@@ -55,7 +58,8 @@ Output:
 {
   "has_new_filters": true,
   "explicit_filters": {
-    "body_style": "CPU",
+    "category": "CPU",
+    "part_type": "CPU",
     "price": "0-300",
     "features": ["optimized for gaming"]
   },
@@ -71,8 +75,9 @@ Output:
 {
   "has_new_filters": true,
   "explicit_filters": {
-    "make": "AMD,Nvidia",
-    "body_style": "GPU",
+    "brand": "AMD,Nvidia",
+    "category": "GPU",
+    "part_type": "GPU",
     "year": "2022-2024",
     "features": ["12GB VRAM"]
   },
@@ -90,8 +95,9 @@ Output:
 {
   "has_new_filters": true,
   "explicit_filters": {
-    "make": "AMD",
-    "body_style": "CPU"
+    "brand": "AMD",
+    "category": "CPU",
+    "part_type": "CPU"
   },
   "implicit_preferences": {
     "brand_affinity": ["AMD"]
@@ -107,7 +113,8 @@ Output:
 {
   "has_new_filters": true,
   "explicit_filters": {
-    "body_style": "SSD",
+    "category": "SSD",
+    "part_type": "SSD",
     "features": ["PCIe Gen4", "2TB capacity"]
   },
   "implicit_preferences": {

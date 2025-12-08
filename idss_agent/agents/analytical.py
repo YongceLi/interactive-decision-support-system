@@ -13,7 +13,7 @@ from langgraph.prebuilt import create_react_agent
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.state.schema import ProductSearchState, AgentResponse, ComparisonTable
-from idss_agent.tools.electronics_api import search_products, get_product_details
+from idss_agent.tools.local_electronics_store import LocalElectronicsStore
 from idss_agent.utils.logger import get_logger
 from idss_agent.processing.compatibility import (
     check_compatibility_binary,
@@ -221,14 +221,14 @@ Your role is to answer specific, data-driven questions about products by leverag
 - Use when: the user references products already shown (e.g., '#1', 'option 1', 'option 20', 'top 3') or when you need cached attributes before new API calls.
 
 **Product Catalog Search (`search_products`)**
-- Input: keyword query and optional filters.
-- Returns: JSON array of products with pricing, seller, rating, and metadata.
+- Input: keyword query and optional filters (part_type, brand, price range, seller).
+- Returns: JSON array of products with pricing, seller, rating, and metadata from local database.
 - Use when: you need more options, to confirm availability, or to retrieve identifiers for follow-up questions.
 
 **Product Detail Lookup (`get_product_details`)**
 - Input: product_id from cached results or catalog search.
-- Returns: Detailed specifications, descriptions, seller info, photos (RapidAPI `/products/{id}` endpoint).
-- Use when: you need rich specs (clock speeds, memory timings, ports, warranty, etc.) for recommendations or comparisons.
+- Returns: Detailed specifications, attributes, seller info from local database.
+- Use when: you need rich specs (socket, VRAM, capacity, wattage, form factor, chipset, etc.) for recommendations or comparisons.
 
 **Compatibility Check (`check_parts_compatibility`)**
 - Input: Two product slugs or names to check compatibility.
@@ -401,8 +401,8 @@ def analytical_agent(
     Agent that answers specific questions about electronics products using available data sources.
 
     This creates a ReAct agent with access to:
-    - RapidAPI product catalog search
-    - RapidAPI product detail lookup
+    - Local database product catalog search
+    - Local database product detail lookup
     - Web search for up-to-date reviews and benchmarks
 
     Uses system + user message format for optimal prompt caching:
@@ -444,6 +444,188 @@ def analytical_agent(
     # Get available tools
     cached_products = state.get("recommended_products", [])
 
+    # Initialize local electronics store for database queries
+    store = LocalElectronicsStore()
+    
+    @tool("search_products")
+    def search_products_tool(
+        query: str,
+        part_type: Optional[str] = None,
+        brand: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        seller: Optional[str] = None,
+        limit: int = 20,
+    ) -> str:
+        """
+        Search electronics products from the knowledge graph (for PC parts) or local database.
+        
+        Args:
+            query: Search keywords (searches product name, model, series, brand).
+            part_type: Component category filter (e.g., "CPU", "GPU", "Motherboard").
+            brand: Brand filter (comma-separated for multiple).
+            min_price: Minimum price filter.
+            max_price: Maximum price filter.
+            seller: Seller/retailer filter.
+            limit: Maximum number of results (default 20).
+        
+        Returns:
+            JSON string with array of products.
+        """
+        try:
+            # Normalize part_type
+            part_type_normalized = None
+            if part_type:
+                part_type_normalized = part_type.lower().strip()
+            
+            # Determine if this is a PC part query - use Neo4j if so
+            is_pc_part_query = part_type_normalized and is_pc_part(part_type_normalized)
+            results = []
+            
+            if is_pc_part_query:
+                # Use Neo4j knowledge graph for PC parts
+                kg_tool = get_compatibility_tool()
+                if kg_tool.is_available():
+                    try:
+                        kg_products = kg_tool.search_products(
+                            part_type=part_type_normalized,
+                            brand=brand,
+                            min_price=min_price,
+                            max_price=max_price,
+                            query=query if query else None,
+                            seller=seller,
+                            limit=limit,
+                        )
+                        
+                        # Convert KG products to format expected by analytical agent
+                        for kg_product in kg_products:
+                            price = kg_product.get("price_avg") or kg_product.get("price") or kg_product.get("price_min")
+                            results.append({
+                                "id": kg_product.get("product_id") or kg_product.get("slug"),
+                                "product_id": kg_product.get("product_id") or kg_product.get("slug"),
+                                "title": kg_product.get("name") or kg_product.get("raw_name"),
+                                "name": kg_product.get("name") or kg_product.get("raw_name"),
+                                "brand": kg_product.get("brand"),
+                                "price": price,
+                                "price_text": f"${price:,.2f}" if price else None,
+                                "price_value": float(price) if price else None,
+                                "currency": "USD",
+                                "rating": kg_product.get("rating"),
+                                "rating_count": kg_product.get("rating_count"),
+                                "source": kg_product.get("seller"),
+                                "seller": kg_product.get("seller"),
+                                "category": kg_product.get("product_type"),
+                                "part_type": kg_product.get("product_type"),
+                                "attributes": {k: v for k, v in kg_product.items() 
+                                             if k not in ["product_id", "slug", "name", "raw_name", 
+                                                          "brand", "price", "price_avg", "price_min", 
+                                                          "price_max", "seller", "rating", "rating_count", 
+                                                          "product_type", "model", "series", "namespace"]},
+                                "specs": {k: v for k, v in kg_product.items() 
+                                         if k not in ["product_id", "slug", "name", "raw_name", 
+                                                     "brand", "price", "price_avg", "price_min", 
+                                                     "price_max", "seller", "rating", "rating_count", 
+                                                     "product_type", "model", "series", "namespace"]},
+                            })
+                    except Exception as exc:
+                        logger.warning(f"Neo4j search failed: {exc}, falling back to local database")
+                        is_pc_part_query = False
+            
+            if not is_pc_part_query or not products:
+                # Use local database for non-PC parts or as fallback
+                db_products = store.search_products(
+                    query=query if query else None,
+                    part_type=part_type,
+                    brand=brand,
+                    min_price=min_price,
+                    max_price=max_price,
+                    seller=seller,
+                    limit=limit,
+                )
+                
+                # Format products for compatibility with existing code
+                for product in db_products:
+                    results.append({
+                        "id": product.get("id"),
+                        "product_id": product.get("product_id"),
+                        "title": product.get("title"),
+                        "name": product.get("title"),
+                        "brand": product.get("brand"),
+                        "price": product.get("price"),
+                        "price_text": f"${product.get('price', 0):,.2f}" if product.get("price") else None,
+                        "price_value": product.get("price"),
+                        "currency": "USD",
+                        "rating": product.get("rating"),
+                        "rating_count": product.get("rating_count"),
+                        "source": product.get("seller"),
+                        "seller": product.get("seller"),
+                        "category": product.get("category"),
+                        "part_type": product.get("part_type"),
+                        "attributes": product.get("attributes", {}),
+                        "specs": product.get("attributes", {}),
+                    })
+            
+            return json.dumps({"items": results, "total": len(results)})
+        except Exception as exc:
+            logger.error(f"Product search failed: {exc}")
+            return json.dumps({"error": f"Search failed: {str(exc)}", "items": []})
+    
+    @tool("get_product_details")
+    def get_product_details_tool(
+        product_id: str,
+        country: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> str:
+        """
+        Get detailed information for a single product by product_id from the local database.
+        
+        Args:
+            product_id: Product identifier to look up.
+            country: Ignored (kept for compatibility).
+            language: Ignored (kept for compatibility).
+        
+        Returns:
+            JSON string with detailed product information.
+        """
+        try:
+            product = store.get_product_by_id(product_id)
+            if not product:
+                return json.dumps({"error": f"Product {product_id} not found"})
+            
+            # Format product details
+            details = {
+                "id": product.get("id"),
+                "product_id": product.get("product_id"),
+                "title": product.get("title"),
+                "name": product.get("title"),
+                "brand": product.get("brand"),
+                "model": product.get("model"),
+                "series": product.get("series"),
+                "category": product.get("category"),
+                "part_type": product.get("part_type"),
+                "price": product.get("price"),
+                "price_text": f"${product.get('price', 0):,.2f}" if product.get("price") else None,
+                "price_value": product.get("price"),
+                "currency": "USD",
+                "rating": product.get("rating"),
+                "rating_count": product.get("rating_count"),
+                "source": product.get("seller"),
+                "seller": product.get("seller"),
+                "year": product.get("year"),
+                "attributes": product.get("attributes", {}),
+                "specs": product.get("attributes", {}),
+            }
+            
+            # Add all technical attributes to top level
+            for key, value in (product.get("attributes", {}) or {}).items():
+                if value is not None and key not in details:
+                    details[key] = value
+            
+            return json.dumps(details)
+        except Exception as exc:
+            logger.error(f"Product detail lookup failed for {product_id}: {exc}")
+            return json.dumps({"error": f"Failed to fetch product details: {str(exc)}"})
+    
     @tool("cached_recommendation_lookup")
     def cached_recommendation_lookup(selector: str) -> str:
         """
@@ -761,8 +943,8 @@ def analytical_agent(
 
     tools_list = [
         cached_recommendation_lookup,
-        search_products,
-        get_product_details,
+        search_products_tool,
+        get_product_details_tool,
         check_parts_compatibility,
         find_compatible_parts,
         search_pc_parts_by_type,
@@ -1438,7 +1620,12 @@ def _fetch_product_detail(
         payload["language"] = language
 
     try:
-        response = get_product_details.invoke(payload)
+        # Use local database lookup instead of RapidAPI
+        product = store.get_product_by_id(product_id)
+        if product:
+            response = json.dumps(product)
+        else:
+            response = json.dumps({"error": f"Product {product_id} not found"})
         if isinstance(response, str):
             return json.loads(response)
         if isinstance(response, dict):

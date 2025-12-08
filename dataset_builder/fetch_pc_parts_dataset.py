@@ -865,7 +865,7 @@ def _parse_title_fields(title: str, product_type: str) -> Tuple[Optional[str], O
                 series = series_match.group(1)
                 break
         
-        # Extract chipset (B550, X870E, Z790, B650, etc.) - store in base_attributes, not series
+        # Extract chipset (B550, X870E, Z790, B650, etc.) - stored in chipset field
         chipset_match = re.search(r'\b([BXZH]\d{3,4}[A-Z]?[EM]?)\b', title_upper)
         chipset = None
         if chipset_match:
@@ -1387,7 +1387,19 @@ def _export_unparseable_to_csv(records: List["PCPartRecord"], csv_path: Path) ->
         fieldnames = [
             "product_id", "product_type", "raw_name", "brand", "series", "model",
             "price", "seller", "rating", "rating_count", "size", "color", "year",
-            "base_attributes", "created_at"
+            "created_at",
+            # CPU Attributes
+            "socket", "architecture", "pcie_version", "ram_standard", "tdp",
+            # GPU Attributes
+            "vram", "memory_type", "cooler_type", "variant", "is_oc", "revision", "interface", "power_connector",
+            # Motherboard Attributes
+            "chipset", "form_factor",
+            # PSU Attributes
+            "wattage", "certification", "modularity", "atx_version", "noise", "supports_pcie5_power",
+            # Case Attributes
+            "storage", "capacity", "storage_type",
+            # Cooling Attributes
+            "cooling_type", "tdp_support"
         ]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         
@@ -1410,8 +1422,39 @@ def _export_unparseable_to_csv(records: List["PCPartRecord"], csv_path: Path) ->
                 "size": row.get("size") or "",
                 "color": row.get("color") or "",
                 "year": row.get("year") or "",
-                "base_attributes": row.get("base_attributes") or "",
                 "created_at": row.get("created_at") or "",
+                # CPU Attributes
+                "socket": row.get("socket") or "",
+                "architecture": row.get("architecture") or "",
+                "pcie_version": row.get("pcie_version") or "",
+                "ram_standard": row.get("ram_standard") or "",
+                "tdp": row.get("tdp") or "",
+                # GPU Attributes
+                "vram": row.get("vram") or "",
+                "memory_type": row.get("memory_type") or "",
+                "cooler_type": row.get("cooler_type") or "",
+                "variant": row.get("variant") or "",
+                "is_oc": row.get("is_oc") or "",
+                "revision": row.get("revision") or "",
+                "interface": row.get("interface") or "",
+                "power_connector": row.get("power_connector") or "",
+                # Motherboard Attributes
+                "chipset": row.get("chipset") or "",
+                "form_factor": row.get("form_factor") or "",
+                # PSU Attributes
+                "wattage": row.get("wattage") or "",
+                "certification": row.get("certification") or "",
+                "modularity": row.get("modularity") or "",
+                "atx_version": row.get("atx_version") or "",
+                "noise": row.get("noise") or "",
+                "supports_pcie5_power": row.get("supports_pcie5_power") or "",
+                # Case Attributes
+                "storage": row.get("storage") or "",
+                "capacity": row.get("capacity") or "",
+                "storage_type": row.get("storage_type") or "",
+                # Cooling Attributes
+                "cooling_type": row.get("cooling_type") or "",
+                "tdp_support": row.get("tdp_support") or "",
             }
             writer.writerow(csv_row)
     
@@ -1423,7 +1466,8 @@ def _import_from_csv(csv_path: Path) -> List["PCPartRecord"]:
     """Import records from manually edited CSV file.
     
     CSV should have columns: product_id, product_type, raw_name, brand, series, model,
-    price, seller, rating, rating_count, size, color, year, base_attributes, created_at
+    price, seller, rating, rating_count, size, color, year, created_at,
+    and all attribute columns (socket, architecture, etc.)
     """
     if not csv_path.exists():
         logger.warning("CSV file not found: %s", csv_path)
@@ -1434,14 +1478,6 @@ def _import_from_csv(csv_path: Path) -> List["PCPartRecord"]:
         reader = csv.DictReader(f)
         for row in reader:
             try:
-                # Parse JSON fields
-                base_attrs = {}
-                if row.get("base_attributes"):
-                    try:
-                        base_attrs = json.loads(row["base_attributes"])
-                    except json.JSONDecodeError:
-                        pass
-                
                 # Parse numeric fields
                 price = _safe_float(row.get("price")) if row.get("price") else None
                 rating = _safe_float(row.get("rating")) if row.get("rating") else None
@@ -1452,6 +1488,11 @@ def _import_from_csv(csv_path: Path) -> List["PCPartRecord"]:
                 brand = row.get("brand") or None
                 series = row.get("series") or None
                 model = row.get("model") or None
+                
+                # Helper to get attribute value (empty string becomes None)
+                def get_attr(key):
+                    val = row.get(key)
+                    return val if val else None
                 
                 record = PCPartRecord(
                     product_id=row["product_id"],
@@ -1467,8 +1508,39 @@ def _import_from_csv(csv_path: Path) -> List["PCPartRecord"]:
                     seller=row.get("seller") or None,
                     rating=rating,
                     rating_count=rating_count,
-                    base_attributes=base_attrs,
                     raw_name=row.get("raw_name") or row.get("title") or "",
+                    # CPU Attributes
+                    socket=get_attr("socket"),
+                    architecture=get_attr("architecture"),
+                    pcie_version=get_attr("pcie_version"),
+                    ram_standard=get_attr("ram_standard"),
+                    tdp=get_attr("tdp"),
+                    # GPU Attributes
+                    vram=get_attr("vram"),
+                    memory_type=get_attr("memory_type"),
+                    cooler_type=get_attr("cooler_type"),
+                    variant=get_attr("variant"),
+                    is_oc=get_attr("is_oc"),
+                    revision=get_attr("revision"),
+                    interface=get_attr("interface"),
+                    power_connector=get_attr("power_connector"),
+                    # Motherboard Attributes
+                    chipset=get_attr("chipset"),
+                    form_factor=get_attr("form_factor"),
+                    # PSU Attributes
+                    wattage=get_attr("wattage"),
+                    certification=get_attr("certification"),
+                    modularity=get_attr("modularity"),
+                    atx_version=get_attr("atx_version"),
+                    noise=get_attr("noise"),
+                    supports_pcie5_power=get_attr("supports_pcie5_power"),
+                    # Case Attributes
+                    storage=get_attr("storage"),
+                    capacity=get_attr("capacity"),
+                    storage_type=get_attr("storage_type"),
+                    # Cooling Attributes
+                    cooling_type=get_attr("cooling_type"),
+                    tdp_support=get_attr("tdp_support"),
                 )
                 records.append(record)
             except Exception as exc:
@@ -1491,18 +1563,51 @@ class PCPartRecord:
     brand: Optional[str] = None
     size: Optional[str] = None
     color: Optional[str] = None
-    price: Optional[float] = None  # Minimum price (for backward compatibility)
-    price_min: Optional[float] = None
-    price_max: Optional[float] = None
-    price_avg: Optional[float] = None
+    price: Optional[float] = None  # Minimum price (best deal)
     year: Optional[int] = None
-    seller: Optional[str] = None  # Current seller (for backward compatibility)
-    sellers: Optional[str] = None  # Comma-delimited list of sellers
+    seller: Optional[str] = None  # Seller with minimum price (best deal)
     rating: Optional[float] = None
     rating_count: Optional[int] = None
-    base_attributes: Dict[str, Any] = field(default_factory=dict)
     updated_at: Optional[str] = None
     raw_name: Optional[str] = None
+    
+    # CPU Attributes
+    socket: Optional[str] = None
+    architecture: Optional[str] = None
+    pcie_version: Optional[str] = None
+    ram_standard: Optional[str] = None
+    tdp: Optional[str] = None
+    
+    # GPU Attributes
+    vram: Optional[str] = None
+    memory_type: Optional[str] = None
+    cooler_type: Optional[str] = None
+    variant: Optional[str] = None
+    is_oc: Optional[str] = None
+    revision: Optional[str] = None
+    interface: Optional[str] = None
+    power_connector: Optional[str] = None
+    
+    # Motherboard Attributes
+    chipset: Optional[str] = None
+    form_factor: Optional[str] = None
+    
+    # PSU Attributes
+    wattage: Optional[str] = None
+    certification: Optional[str] = None
+    modularity: Optional[str] = None
+    atx_version: Optional[str] = None
+    noise: Optional[str] = None
+    supports_pcie5_power: Optional[str] = None
+    
+    # Case Attributes
+    storage: Optional[str] = None
+    capacity: Optional[str] = None
+    storage_type: Optional[str] = None
+    
+    # Cooling Attributes
+    cooling_type: Optional[str] = None
+    tdp_support: Optional[str] = None
 
     def to_row(self) -> Dict[str, Any]:
         # Generate slug if not provided, fallback to product_id if brand/series/model are all None
@@ -1521,18 +1626,45 @@ class PCPartRecord:
             "size": self.size,
             "color": self.color,
             "price": self.price,
-            "price_min": self.price_min,
-            "price_max": self.price_max,
-            "price_avg": self.price_avg,
             "year": self.year,
             "seller": self.seller,
-            "sellers": self.sellers,
             "rating": self.rating,
             "rating_count": self.rating_count,
-            "base_attributes": json.dumps(self.base_attributes, ensure_ascii=False) if self.base_attributes else None,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "raw_name": self.raw_name,
+            # CPU Attributes
+            "socket": self.socket,
+            "architecture": self.architecture,
+            "pcie_version": self.pcie_version,
+            "ram_standard": self.ram_standard,
+            "tdp": self.tdp,
+            # GPU Attributes
+            "vram": self.vram,
+            "memory_type": self.memory_type,
+            "cooler_type": self.cooler_type,
+            "variant": self.variant,
+            "is_oc": self.is_oc,
+            "revision": self.revision,
+            "interface": self.interface,
+            "power_connector": self.power_connector,
+            # Motherboard Attributes
+            "chipset": self.chipset,
+            "form_factor": self.form_factor,
+            # PSU Attributes
+            "wattage": self.wattage,
+            "certification": self.certification,
+            "modularity": self.modularity,
+            "atx_version": self.atx_version,
+            "noise": self.noise,
+            "supports_pcie5_power": self.supports_pcie5_power,
+            # Case Attributes
+            "storage": self.storage,
+            "capacity": self.capacity,
+            "storage_type": self.storage_type,
+            # Cooling Attributes
+            "cooling_type": self.cooling_type,
+            "tdp_support": self.tdp_support,
         }
 
 
@@ -1683,17 +1815,19 @@ class RapidAPISource:
                     cpu_attrs = _extract_cpu_attributes(title, series, model)
                     base_attrs.update(cpu_attrs)
                 
-                # Extract price
+                # Extract price (this will be the minimum/best deal price)
                 price_float = _safe_float(str(price_value) if price_value is not None else None)
                 
-                # Initialize price tracking (will be aggregated later)
-                price_min = price_float
-                price_max = price_float
-                price_avg = price_float
-                
-                # Initialize sellers list
-                sellers_list = [seller] if seller else []
-                sellers_str = seller if seller else None
+                # Map attributes from dict to individual fields
+                # Convert values to strings as per schema (all attributes stored as TEXT)
+                def attr_str(value):
+                    if value is None:
+                        return None
+                    if isinstance(value, bool):
+                        return "true" if value else "false"
+                    if isinstance(value, (int, float)):
+                        return str(value)
+                    return str(value) if value else None
                 
                 record = PCPartRecord(
                     product_id=product_id,
@@ -1704,17 +1838,44 @@ class RapidAPISource:
                     brand=brand,
                     size=size,
                     color=color,
-                    price=price_float,  # Minimum price (backward compatibility)
-                    price_min=price_min,
-                    price_max=price_max,
-                    price_avg=price_avg,
+                    price=price_float,  # Minimum price (best deal)
                     year=year,
-                    seller=seller,  # Current seller (backward compatibility)
-                    sellers=sellers_str,  # Comma-delimited sellers
+                    seller=seller,  # Seller with minimum price (best deal)
                     rating=_safe_float(str(rating_value) if rating_value is not None else None),
                     rating_count=_safe_int(str(rating_count_value) if rating_count_value is not None else None),
-                    base_attributes=base_attrs,
                     raw_name=title,
+                    # CPU Attributes
+                    socket=attr_str(base_attrs.get("socket")),
+                    architecture=attr_str(base_attrs.get("architecture")),
+                    pcie_version=attr_str(base_attrs.get("pcie_version")),
+                    ram_standard=attr_str(base_attrs.get("ram_standard")),
+                    tdp=attr_str(base_attrs.get("tdp")),
+                    # GPU Attributes
+                    vram=attr_str(base_attrs.get("vram")),
+                    memory_type=attr_str(base_attrs.get("memory_type")),
+                    cooler_type=attr_str(base_attrs.get("cooler_type")),
+                    variant=attr_str(base_attrs.get("variant")),
+                    is_oc=attr_str(base_attrs.get("is_oc")),
+                    revision=attr_str(base_attrs.get("revision")),
+                    interface=attr_str(base_attrs.get("interface")),
+                    power_connector=attr_str(base_attrs.get("power_connector")),
+                    # Motherboard Attributes
+                    chipset=attr_str(base_attrs.get("chipset")),
+                    form_factor=attr_str(base_attrs.get("form_factor")),
+                    # PSU Attributes
+                    wattage=attr_str(base_attrs.get("wattage")),
+                    certification=attr_str(base_attrs.get("certification")),
+                    modularity=attr_str(base_attrs.get("modularity")),
+                    atx_version=attr_str(base_attrs.get("atx_version")),
+                    noise=attr_str(base_attrs.get("noise")),
+                    supports_pcie5_power=attr_str(base_attrs.get("supports_pcie5_power")),
+                    # Case Attributes
+                    storage=attr_str(base_attrs.get("storage")),
+                    capacity=attr_str(base_attrs.get("capacity")),
+                    storage_type=attr_str(base_attrs.get("storage_type")),
+                    # Cooling Attributes
+                    cooling_type=attr_str(base_attrs.get("cooling_type")),
+                    tdp_support=attr_str(base_attrs.get("tdp_support")),
                 )
                 records.append(record)
                 seen_ids.add(product_id)
@@ -1765,6 +1926,282 @@ class RapidAPISource:
             return [payload["main_item"]]
 
         return []
+
+
+# ---------------------------------------------------------------------------
+# Image URL updater
+# ---------------------------------------------------------------------------
+
+
+class ImageURLUpdater:
+    """Update image URLs for existing database entries by querying RapidAPI and matching products."""
+
+    def __init__(
+        self,
+        db_path: str = "data/pc_parts.db",
+        session: Optional[requests.Session] = None,
+        host: str = DEFAULT_RAPIDAPI_HOST,
+        endpoint: str = DEFAULT_RAPIDAPI_ENDPOINT,
+        country: str = DEFAULT_RAPIDAPI_COUNTRY,
+    ) -> None:
+        self.db_path = Path(db_path)
+        self.session = session or _create_session()
+        self.host = host
+        self.endpoint = endpoint
+        self.country = country
+        self.api_key = RAPIDAPI_KEY
+        self._ensure_imageurl_column()
+
+    def _ensure_imageurl_column(self) -> None:
+        """Ensure the imageurl column exists in the database."""
+        if not self.db_path.exists():
+            logger.warning("Database does not exist: %s", self.db_path)
+            return
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            # Check if column exists
+            cursor.execute("PRAGMA table_info(pc_parts)")
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if "imageurl" not in columns:
+                logger.info("Adding imageurl column to pc_parts table")
+                cursor.execute("ALTER TABLE pc_parts ADD COLUMN imageurl TEXT")
+                conn.commit()
+                logger.info("Successfully added imageurl column")
+
+    def _normalize_name(self, name: str) -> str:
+        """Normalize product name for matching (lowercase, remove extra spaces)."""
+        if not name:
+            return ""
+        # Convert to lowercase and remove extra whitespace
+        normalized = " ".join(name.lower().split())
+        return normalized
+
+    def _extract_image_url(self, product: Dict[str, Any]) -> Optional[str]:
+        """Extract image URL from RapidAPI product response."""
+        # Try common image URL fields
+        image_fields = [
+            "image",
+            "imageUrl",
+            "image_url",
+            "thumbnail",
+            "thumbnailUrl",
+            "thumbnail_url",
+            "photo",
+            "photoUrl",
+            "photo_url",
+            "imageLink",
+            "image_link",
+        ]
+        
+        for field in image_fields:
+            value = product.get(field)
+            if value and isinstance(value, str) and value.strip():
+                return value.strip()
+        
+        # Check if there's an images array
+        images = product.get("images") or product.get("photos")
+        if isinstance(images, list) and len(images) > 0:
+            first_image = images[0]
+            if isinstance(first_image, str):
+                return first_image.strip()
+            elif isinstance(first_image, dict):
+                url = first_image.get("url") or first_image.get("image") or first_image.get("src")
+                if url and isinstance(url, str):
+                    return url.strip()
+        
+        return None
+
+    def _query_rapidapi(self, query: str, page: int = 1) -> List[Dict[str, Any]]:
+        """Query RapidAPI for products matching the given query."""
+        if not self.api_key:
+            logger.warning("Skipping RapidAPI query: RAPIDAPI_KEY not configured")
+            return []
+
+        url = f"https://{self.host}{self.endpoint}"
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-RapidAPI-Key": self.api_key,
+            "X-RapidAPI-Host": self.host,
+        }
+
+        payload = {
+            "query": query,
+            "page": str(page),
+            "country": self.country,
+        }
+
+        try:
+            response = self.session.post(
+                url,
+                data=payload,
+                headers=headers,
+                timeout=DEFAULT_TIMEOUT,
+            )
+            response.raise_for_status()
+            payload_json = response.json()
+            products = RapidAPISource._extract_products(payload_json)
+            return products
+        except requests.HTTPError as exc:
+            logger.error("RapidAPI request failed for query '%s': %s", query, exc)
+            return []
+        except Exception as exc:
+            logger.error("RapidAPI unexpected error for query '%s': %s", query, exc)
+            return []
+
+    def update_image_urls(self, limit_per_category: Optional[int] = None) -> Dict[str, int]:
+        """Update image URLs for all products in the database.
+        
+        Args:
+            limit_per_category: Maximum number of RapidAPI results to process per category.
+                               If None, processes all pages until no more results.
+        
+        Returns:
+            Dictionary mapping category names to number of products updated.
+        """
+        if not self.api_key:
+            logger.warning("Cannot update image URLs: RAPIDAPI_KEY not configured")
+            return {}
+
+        if not self.db_path.exists():
+            logger.error("Database does not exist: %s", self.db_path)
+            return {}
+
+        # Load all existing products from database
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT product_id, raw_name, product_type FROM pc_parts WHERE imageurl IS NULL OR imageurl = ''")
+            existing_products = cursor.fetchall()
+
+        logger.info("Found %d products without image URLs", len(existing_products))
+
+        # Group products by category
+        products_by_category: Dict[str, List[Tuple[str, str, str]]] = {}
+        for product_id, raw_name, product_type in existing_products:
+            if product_type not in products_by_category:
+                products_by_category[product_type] = []
+            products_by_category[product_type].append((product_id, raw_name, product_type))
+
+        # Normalize existing product names for matching
+        normalized_db_names: Dict[str, Dict[str, str]] = {}
+        for category, products in products_by_category.items():
+            normalized_db_names[category] = {}
+            for product_id, raw_name, _ in products:
+                if raw_name:
+                    normalized = self._normalize_name(raw_name)
+                    if normalized:
+                        normalized_db_names[category][product_id] = normalized
+
+        updates_by_category: Dict[str, int] = {}
+
+        # Process each category
+        for category, config in ELECTRONICS_CATEGORIES.items():
+            query = config["query"]
+            logger.info("Processing category '%s' with query '%s'", category, query)
+
+            if category not in products_by_category:
+                logger.info("No products without image URLs for category '%s'", category)
+                updates_by_category[category] = 0
+                continue
+
+            category_products = products_by_category[category]
+            category_normalized = normalized_db_names[category]
+            logger.info("Searching for %d products in category '%s'", len(category_products), category)
+
+            # Query RapidAPI and match products
+            page = 1
+            matched_count = 0
+            processed_count = 0
+
+            while True:
+                if limit_per_category is not None and processed_count >= limit_per_category:
+                    break
+
+                products = self._query_rapidapi(query, page)
+                if not products:
+                    logger.info("No more products for category '%s' at page %d", category, page)
+                    break
+
+                # Match products
+                for product in products:
+                    if limit_per_category is not None and processed_count >= limit_per_category:
+                        break
+
+                    processed_count += 1
+                    
+                    # Extract product name from RapidAPI response
+                    product_name = product.get("name") or product.get("title") or product.get("product_title")
+                    if not product_name:
+                        continue
+
+                    normalized_product_name = self._normalize_name(product_name)
+
+                    # Try to find matching product in database
+                    matched_product_id = None
+                    best_match_score = 0.0
+
+                    for db_product_id, normalized_db_name in category_normalized.items():
+                        # Exact match
+                        if normalized_product_name == normalized_db_name:
+                            matched_product_id = db_product_id
+                            best_match_score = 1.0
+                            break
+                        
+                        # Partial match (check if one contains the other or vice versa)
+                        if normalized_db_name in normalized_product_name or normalized_product_name in normalized_db_name:
+                            # Calculate a simple similarity score
+                            shorter = min(len(normalized_db_name), len(normalized_product_name))
+                            longer = max(len(normalized_db_name), len(normalized_product_name))
+                            if shorter > 0:
+                                similarity = shorter / longer
+                                if similarity > best_match_score and similarity >= 0.7:  # 70% similarity threshold
+                                    matched_product_id = db_product_id
+                                    best_match_score = similarity
+
+                    if matched_product_id and best_match_score >= 0.7:
+                        # Extract image URL
+                        image_url = self._extract_image_url(product)
+                        if image_url:
+                            # Update database
+                            with sqlite3.connect(self.db_path) as conn:
+                                cursor = conn.cursor()
+                                cursor.execute(
+                                    "UPDATE pc_parts SET imageurl = ? WHERE product_id = ?",
+                                    (image_url, matched_product_id)
+                                )
+                                conn.commit()
+                            
+                            matched_count += 1
+                            logger.debug(
+                                "Matched '%s' (DB: '%s') -> image URL: %s",
+                                product_name,
+                                category_normalized[matched_product_id],
+                                image_url
+                            )
+                            
+                            # Remove from category_normalized to avoid duplicate matches
+                            if matched_product_id in category_normalized:
+                                del category_normalized[matched_product_id]
+
+                page += 1
+                time.sleep(0.5)  # Rate limiting
+
+                # If we've matched all products for this category, break
+                if not category_normalized:
+                    break
+
+            updates_by_category[category] = matched_count
+            logger.info(
+                "Category '%s': matched %d/%d products with image URLs",
+                category,
+                matched_count,
+                len(category_products)
+            )
+
+        total_updated = sum(updates_by_category.values())
+        logger.info("Total products updated with image URLs: %d", total_updated)
+        return updates_by_category
 
 
 # ---------------------------------------------------------------------------
@@ -1898,8 +2335,11 @@ class PCPartsDatasetBuilder:
         
         return inserted
 
-    def _load_existing_slugs_and_prices(self) -> Dict[str, float]:
-        """Load existing slugs and their prices for conflict resolution."""
+    def _load_existing_slugs_and_price(self) -> Dict[str, float]:
+        """Load existing slugs and their prices for conflict resolution.
+        
+        Returns: Dict mapping slug to price (the best deal price)
+        """
         if not self.db_path.exists():
             return {}
         try:
@@ -1910,10 +2350,10 @@ class PCPartsDatasetBuilder:
         except sqlite3.Error:
             return {}
     
-    def _load_existing_price_seller_data(self) -> Dict[str, Dict[str, Any]]:
-        """Load existing price and seller data by slug for aggregation.
+    def _load_existing_full_data_by_slug(self) -> Dict[str, Dict[str, Any]]:
+        """Load full existing record data by slug for minimum price conflict resolution.
         
-        Returns: Dict mapping slug to {price_min, price_max, price_avg, sellers}
+        Returns: Dict mapping slug to {price, seller, rating, rating_count}
         """
         if not self.db_path.exists():
             return {}
@@ -1921,19 +2361,19 @@ class PCPartsDatasetBuilder:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    SELECT slug, price_min, price_max, price_avg, sellers 
+                    SELECT slug, price, seller, rating, rating_count 
                     FROM pc_parts 
                     WHERE slug IS NOT NULL
                 """)
                 result = {}
                 for row in cursor.fetchall():
-                    slug, price_min, price_max, price_avg, sellers = row
+                    slug, price, seller, rating, rating_count = row
                     if slug:
                         result[slug] = {
-                            "price_min": price_min,
-                            "price_max": price_max,
-                            "price_avg": price_avg,
-                            "sellers": sellers,
+                            "price": price,
+                            "seller": seller,
+                            "rating": rating,
+                            "rating_count": rating_count,
                         }
                 return result
         except sqlite3.Error:
@@ -1943,9 +2383,9 @@ class PCPartsDatasetBuilder:
         if not records:
             return 0
 
-        # Load existing slugs and prices for conflict resolution
-        existing_slugs_prices = self._load_existing_slugs_and_prices()
-        existing_price_seller_data = self._load_existing_price_seller_data()
+        # Load existing slugs and prices for conflict resolution (best deal approach)
+        existing_slugs_price = self._load_existing_slugs_and_price()
+        existing_full_data = self._load_existing_full_data_by_slug()
         
         unique_rows: List[Dict[str, Any]] = []
         seen_ids: Set[str] = set()
@@ -1956,60 +2396,36 @@ class PCPartsDatasetBuilder:
             row = record.to_row()
             slug = row.get("slug")
             new_price = row.get("price")
-            new_seller = row.get("seller")
+            new_seller = row.get("seller")  # Seller with this price
 
             # Skip if we've already seen this product_id in this batch
             if product_id in seen_ids or product_id in self._existing_part_ids:
                 logger.debug("Skipping duplicate product_id %s", product_id)
                 continue
 
-            # Handle slug conflicts: aggregate prices and sellers
-            if slug and slug in existing_slugs_prices:
-                existing_price = existing_slugs_prices[slug]
-                existing_data = existing_price_seller_data.get(slug, {})
+            # Handle slug conflicts: Option 2 - Minimum price approach (best deal)
+            if slug and slug in existing_slugs_price:
+                existing_price = existing_slugs_price[slug]
+                existing_data = existing_full_data.get(slug, {})
                 
-                # Aggregate prices
-                existing_prices = []
-                if existing_data.get("price_min") is not None:
-                    existing_prices.append(existing_data["price_min"])
-                if existing_data.get("price_max") is not None:
-                    existing_prices.append(existing_data["price_max"])
-                if existing_data.get("price_avg") is not None:
-                    existing_prices.append(existing_data["price_avg"])
-                # Also use the old price field if available
-                if existing_price is not None:
-                    existing_prices.append(existing_price)
+                if new_price is None:
+                    # Skip if no price available
+                    logger.debug("Skipping slug %s: new record has no price", slug)
+                    continue
                 
-                if new_price is not None:
-                    existing_prices.append(new_price)
+                if existing_price is not None and new_price >= existing_price:
+                    # New price is not better - skip this record (we already have a better deal)
+                    logger.debug("Skipping slug %s: new price %.2f >= existing price %.2f (keeping better deal)", slug, new_price, existing_price)
+                    continue
                 
-                if existing_prices:
-                    row["price_min"] = min(existing_prices)
-                    row["price_max"] = max(existing_prices)
-                    row["price_avg"] = sum(existing_prices) / len(existing_prices)
-                    row["price"] = row["price_min"]  # Keep minimum for backward compatibility
-                
-                # Aggregate sellers
-                existing_sellers = set()
-                if existing_data.get("sellers"):
-                    existing_sellers.update([s.strip() for s in existing_data["sellers"].split(",") if s.strip()])
-                if new_seller:
-                    existing_sellers.add(new_seller)
-                
-                if existing_sellers:
-                    row["sellers"] = ", ".join(sorted(existing_sellers))
+                    row["seller"] = new_seller
+                    # Use the new record's rating and rating_count (no aggregation)
+                    # rating and rating_count are already in row from record.to_row()
                 
                 # Set updated_at for updates
                 row["updated_at"] = _now_iso()
-            else:
-                # New record - initialize price tracking
-                if new_price is not None:
-                    row["price_min"] = new_price
-                    row["price_max"] = new_price
-                    row["price_avg"] = new_price
-                    row["price"] = new_price  # Backward compatibility
-                if new_seller:
-                    row["sellers"] = new_seller
+                logger.debug("Replacing slug %s: new price %.2f < existing price %.2f (found better deal from %s)", slug, new_price, existing_price, new_seller)
+            # else: new record - price and seller are already set in row from record.to_row()
 
             # Skip if we've already seen this slug in this batch
             if slug and slug in seen_slugs:
@@ -2017,7 +2433,7 @@ class PCPartsDatasetBuilder:
                 continue
 
             # For new records, ensure created_at is set and updated_at is None
-            if slug not in existing_slugs_prices:
+            if slug not in existing_slugs_price:
                 row["updated_at"] = None
 
             unique_rows.append(row)
@@ -2030,11 +2446,11 @@ class PCPartsDatasetBuilder:
 
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            # First, delete old records that will be replaced (slug conflict with lower price)
+            # Delete old records that will be replaced (we have a better deal with lower price)
             for row in unique_rows:
                 slug = row.get("slug")
-                if slug and slug in existing_slugs_prices:
-                    # Delete old record with conflicting slug
+                if slug and slug in existing_slugs_price:
+                    # Delete old record with conflicting slug (we're replacing with better deal)
                     cursor.execute("DELETE FROM pc_parts WHERE slug = ?", (slug,))
             
             # Now insert all records
@@ -2046,12 +2462,24 @@ class PCPartsDatasetBuilder:
                         """
                         INSERT INTO pc_parts (
                             product_id, slug, product_type, series, model, brand,
-                            size, color, price, price_min, price_max, price_avg, year, seller, sellers, rating, rating_count,
-                            base_attributes, created_at, updated_at, raw_name
+                            size, color, price, year, seller, rating, rating_count,
+                            created_at, updated_at, raw_name,
+                            socket, architecture, pcie_version, ram_standard, tdp,
+                            vram, memory_type, cooler_type, variant, is_oc, revision, interface, power_connector,
+                            chipset, form_factor,
+                            wattage, certification, modularity, atx_version, noise, supports_pcie5_power,
+                            storage, capacity, storage_type,
+                            cooling_type, tdp_support
                         ) VALUES (
                             :product_id, :slug, :product_type, :series, :model, :brand,
-                            :size, :color, :price, :price_min, :price_max, :price_avg, :year, :seller, :sellers, :rating, :rating_count,
-                            :base_attributes, :created_at, :updated_at, :raw_name
+                            :size, :color, :price, :year, :seller, :rating, :rating_count,
+                            :created_at, :updated_at, :raw_name,
+                            :socket, :architecture, :pcie_version, :ram_standard, :tdp,
+                            :vram, :memory_type, :cooler_type, :variant, :is_oc, :revision, :interface, :power_connector,
+                            :chipset, :form_factor,
+                            :wattage, :certification, :modularity, :atx_version, :noise, :supports_pcie5_power,
+                            :storage, :capacity, :storage_type,
+                            :cooling_type, :tdp_support
                         )
                         ON CONFLICT(product_id) DO UPDATE SET
                             slug=COALESCE(excluded.slug, pc_parts.slug),
@@ -2061,18 +2489,39 @@ class PCPartsDatasetBuilder:
                             brand=COALESCE(excluded.brand, pc_parts.brand),
                             size=COALESCE(excluded.size, pc_parts.size),
                             color=COALESCE(excluded.color, pc_parts.color),
-                            price=COALESCE(excluded.price_min, excluded.price, pc_parts.price),
-                            price_min=COALESCE(excluded.price_min, excluded.price, pc_parts.price_min),
-                            price_max=COALESCE(excluded.price_max, excluded.price, pc_parts.price_max),
-                            price_avg=COALESCE(excluded.price_avg, excluded.price, pc_parts.price_avg),
+                            price=COALESCE(excluded.price, pc_parts.price),
                             year=COALESCE(excluded.year, pc_parts.year),
                             seller=COALESCE(excluded.seller, pc_parts.seller),
-                            sellers=COALESCE(excluded.sellers, pc_parts.sellers),
                             rating=COALESCE(excluded.rating, pc_parts.rating),
                             rating_count=COALESCE(excluded.rating_count, pc_parts.rating_count),
-                            base_attributes=COALESCE(excluded.base_attributes, pc_parts.base_attributes),
                             updated_at=excluded.updated_at,
-                            raw_name=COALESCE(excluded.raw_name, pc_parts.raw_name)
+                            raw_name=COALESCE(excluded.raw_name, pc_parts.raw_name),
+                            socket=COALESCE(excluded.socket, pc_parts.socket),
+                            architecture=COALESCE(excluded.architecture, pc_parts.architecture),
+                            pcie_version=COALESCE(excluded.pcie_version, pc_parts.pcie_version),
+                            ram_standard=COALESCE(excluded.ram_standard, pc_parts.ram_standard),
+                            tdp=COALESCE(excluded.tdp, pc_parts.tdp),
+                            vram=COALESCE(excluded.vram, pc_parts.vram),
+                            memory_type=COALESCE(excluded.memory_type, pc_parts.memory_type),
+                            cooler_type=COALESCE(excluded.cooler_type, pc_parts.cooler_type),
+                            variant=COALESCE(excluded.variant, pc_parts.variant),
+                            is_oc=COALESCE(excluded.is_oc, pc_parts.is_oc),
+                            revision=COALESCE(excluded.revision, pc_parts.revision),
+                            interface=COALESCE(excluded.interface, pc_parts.interface),
+                            power_connector=COALESCE(excluded.power_connector, pc_parts.power_connector),
+                            chipset=COALESCE(excluded.chipset, pc_parts.chipset),
+                            form_factor=COALESCE(excluded.form_factor, pc_parts.form_factor),
+                            wattage=COALESCE(excluded.wattage, pc_parts.wattage),
+                            certification=COALESCE(excluded.certification, pc_parts.certification),
+                            modularity=COALESCE(excluded.modularity, pc_parts.modularity),
+                            atx_version=COALESCE(excluded.atx_version, pc_parts.atx_version),
+                            noise=COALESCE(excluded.noise, pc_parts.noise),
+                            supports_pcie5_power=COALESCE(excluded.supports_pcie5_power, pc_parts.supports_pcie5_power),
+                            storage=COALESCE(excluded.storage, pc_parts.storage),
+                            capacity=COALESCE(excluded.capacity, pc_parts.capacity),
+                            storage_type=COALESCE(excluded.storage_type, pc_parts.storage_type),
+                            cooling_type=COALESCE(excluded.cooling_type, pc_parts.cooling_type),
+                            tdp_support=COALESCE(excluded.tdp_support, pc_parts.tdp_support)
                         """,
                         row,
                     )
@@ -2095,12 +2544,24 @@ class PCPartsDatasetBuilder:
                                         """
                                         INSERT INTO pc_parts (
                                             product_id, slug, product_type, series, model, brand,
-                                            size, color, price, price_min, price_max, price_avg, year, seller, sellers, rating, rating_count,
-                                            base_attributes, created_at, updated_at, raw_name
+                                            size, color, price, year, seller, rating, rating_count,
+                                            created_at, updated_at, raw_name,
+                                            socket, architecture, pcie_version, ram_standard, tdp,
+                                            vram, memory_type, cooler_type, variant, is_oc, revision, interface, power_connector,
+                                            chipset, form_factor,
+                                            wattage, certification, modularity, atx_version, noise, supports_pcie5_power,
+                                            storage, capacity, storage_type,
+                                            cooling_type, tdp_support
                                         ) VALUES (
                                             :product_id, :slug, :product_type, :series, :model, :brand,
-                                            :size, :color, :price, :price_min, :price_max, :price_avg, :year, :seller, :sellers, :rating, :rating_count,
-                                            :base_attributes, :created_at, :updated_at, :raw_name
+                                            :size, :color, :price, :year, :seller, :rating, :rating_count,
+                                            :created_at, :updated_at, :raw_name,
+                                            :socket, :architecture, :pcie_version, :ram_standard, :tdp,
+                                            :vram, :memory_type, :cooler_type, :variant, :is_oc, :revision, :interface, :power_connector,
+                                            :chipset, :form_factor,
+                                            :wattage, :certification, :modularity, :atx_version, :noise, :supports_pcie5_power,
+                                            :storage, :capacity, :storage_type,
+                                            :cooling_type, :tdp_support
                                         )
                                         """,
                                         row,
@@ -2115,12 +2576,24 @@ class PCPartsDatasetBuilder:
                                     """
                                     INSERT INTO pc_parts (
                                         product_id, slug, product_type, series, model, brand,
-                                        size, color, price, price_min, price_max, price_avg, year, seller, sellers, rating, rating_count,
-                                        base_attributes, created_at, updated_at, raw_name
+                                        size, color, price, year, seller, rating, rating_count,
+                                        created_at, updated_at, raw_name,
+                                        socket, architecture, pcie_version, ram_standard, tdp,
+                                        vram, memory_type, cooler_type, variant, is_oc, revision, interface, power_connector,
+                                        chipset, form_factor,
+                                        wattage, certification, modularity, atx_version, noise, supports_pcie5_power,
+                                        storage, capacity, storage_type,
+                                        cooling_type, tdp_support
                                     ) VALUES (
                                         :product_id, :slug, :product_type, :series, :model, :brand,
-                                        :size, :color, :price, :price_min, :price_max, :price_avg, :year, :seller, :sellers, :rating, :rating_count,
-                                        :base_attributes, :created_at, :updated_at, :raw_name
+                                        :size, :color, :price, :year, :seller, :rating, :rating_count,
+                                        :created_at, :updated_at, :raw_name,
+                                        :socket, :architecture, :pcie_version, :ram_standard, :tdp,
+                                        :vram, :memory_type, :cooler_type, :variant, :is_oc, :revision, :interface, :power_connector,
+                                        :chipset, :form_factor,
+                                        :wattage, :certification, :modularity, :atx_version, :noise, :supports_pcie5_power,
+                                        :storage, :capacity, :storage_type,
+                                        :cooling_type, :tdp_support
                                     )
                                     """,
                                     row,
@@ -2211,22 +2684,43 @@ def main() -> None:
         default=None,
         help="Import from CSV file instead of fetching. Provide path to CSV file.",
     )
+    parser.add_argument(
+        "--update-images",
+        action="store_true",
+        help="Update image URLs for existing products in the database by querying RapidAPI.",
+    )
+    parser.add_argument(
+        "--image-limit",
+        type=int,
+        default=None,
+        help="Maximum number of RapidAPI results to process per category when updating images (default: unlimited).",
+    )
 
     args = parser.parse_args()
 
-    builder = PCPartsDatasetBuilder(
-        db_path=args.db_path,
-        limit_per_source=args.limit,
-        unparseable_csv_path=args.unparseable_csv,
-    )
-    
-    if args.import_csv:
-        # Import from CSV
-        imported = builder.import_from_csv(args.import_csv)
-        print(f"Imported {imported} records from {args.import_csv}")
+    if args.update_images:
+        # Update image URLs
+        updater = ImageURLUpdater(db_path=args.db_path)
+        results = updater.update_image_urls(limit_per_category=args.image_limit)
+        print(f"Image URL update complete:")
+        for category, count in results.items():
+            print(f"  {category}: {count} products updated")
+        total = sum(results.values())
+        print(f"Total: {total} products updated with image URLs")
     else:
-        # Normal build process
-        builder.build()
+        builder = PCPartsDatasetBuilder(
+            db_path=args.db_path,
+            limit_per_source=args.limit,
+            unparseable_csv_path=args.unparseable_csv,
+        )
+        
+        if args.import_csv:
+            # Import from CSV
+            imported = builder.import_from_csv(args.import_csv)
+            print(f"Imported {imported} records from {args.import_csv}")
+        else:
+            # Normal build process
+            builder.build()
 
 
 if __name__ == "__main__":

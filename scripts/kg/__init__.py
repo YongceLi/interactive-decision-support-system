@@ -1,18 +1,13 @@
 """
-Knowledge Graph module for PC component compatibility.
+Knowledge Graph and Database Augmentation Utilities.
 
-This module contains tools for building and maintaining a Neo4j knowledge graph
-of PC component compatibility relationships.
+This package provides utilities for augmenting PC parts databases with
+compatibility attributes extracted via web scraping and LLM extraction.
 """
 
-from .scrape_compatibility_data import CompatibilityScraper, ProductAttribute, CompatibilityFact
-from .normalize_attributes import normalize_attribute_value, normalize_all_attributes
+from .llm_extractor import LLMExtractor, convert_to_product_attributes
 
 __all__ = [
-    "CompatibilityScraper",
-    "ProductAttribute",
-    "CompatibilityFact",
-    "normalize_attribute_value",
-    "normalize_all_attributes",
+    "LLMExtractor",
+    "convert_to_product_attributes",
 ]
-

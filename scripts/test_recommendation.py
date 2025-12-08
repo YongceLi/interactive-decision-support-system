@@ -46,8 +46,8 @@ class LogCapture(logging.Handler):
             "logger": record.name
         })
 
-        # Capture RapidAPI search payloads for debugging
-        if "RapidAPI product search params" in msg:
+        # Capture database search payloads for debugging
+        if "Electronics search SQL" in msg or "Local database search" in msg:
             self.search_payload = msg
 
 
@@ -69,7 +69,7 @@ def test_recommendation_pipeline(user_query: str) -> dict:
     log_capture.setFormatter(formatter)
 
     # Add handler to relevant loggers
-    for logger_name in ['idss_agent.tools.electronics_api',
+    for logger_name in ['idss_agent.tools.local_electronics_store',
                         'idss_agent.processing.recommendation',
                         'idss_agent.processing.semantic_parser']:
         logger = logging.getLogger(logger_name)
@@ -130,7 +130,7 @@ def test_recommendation_pipeline(user_query: str) -> dict:
 
     finally:
         # Clean up log handlers
-        for logger_name in ['idss_agent.tools.electronics_api',
+        for logger_name in ['idss_agent.tools.local_electronics_store',
                             'idss_agent.processing.recommendation',
                             'idss_agent.processing.semantic_parser']:
             logger = logging.getLogger(logger_name)

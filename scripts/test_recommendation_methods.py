@@ -51,7 +51,7 @@ class LogCapture(logging.Handler):
 
 def test_method1_pipeline(user_query: str) -> dict:
     """
-    Test Method 1 (RapidAPI search + Vector ranking + MMR diversification) with a user query.
+    Test Method 1 (Local database search + Vector ranking + MMR diversification) with a user query.
 
     Args:
         user_query: Natural language query from user
@@ -68,7 +68,7 @@ def test_method1_pipeline(user_query: str) -> dict:
 
     # Add handler to relevant loggers
     for logger_name in ['processing.method1', 'processing.diversification',
-                        'processing.vector_ranker', 'tools.electronics_api',
+                        'processing.vector_ranker', 'tools.local_electronics_store',
                         'idss_agent.processing.semantic_parser']:
         logger = logging.getLogger(logger_name)
         logger.addHandler(log_capture)
@@ -76,7 +76,7 @@ def test_method1_pipeline(user_query: str) -> dict:
 
     # Initialize result dictionary
     result = {
-        "method": "Method 1: RapidAPI search + Vector ranking + MMR diversification",
+        "method": "Method 1: Local database search + Vector ranking + MMR diversification",
         "user_query": user_query,
         "extracted_filters": None,
         "implicit_preferences": None,
@@ -179,7 +179,7 @@ def test_method1_pipeline(user_query: str) -> dict:
     finally:
         # Clean up log handlers
         for logger_name in ['processing.method1', 'processing.diversification',
-                            'processing.vector_ranker', 'tools.electronics_api',
+                            'processing.vector_ranker', 'tools.local_electronics_store',
                             'idss_agent.processing.semantic_parser']:
             logger = logging.getLogger(logger_name)
             logger.removeHandler(log_capture)
@@ -189,7 +189,7 @@ def test_method1_pipeline(user_query: str) -> dict:
 
 def test_method2_pipeline(user_query: str) -> dict:
     """
-    Test Method 2 (Web Search + Parallel RapidAPI queries) with a user query.
+    Test Method 2 (Web Search + Parallel local database queries) with a user query.
 
     Args:
         user_query: Natural language query from user
@@ -206,7 +206,7 @@ def test_method2_pipeline(user_query: str) -> dict:
 
     # Add handler to relevant loggers
     for logger_name in ['processing.method2', 'processing.vector_ranker',
-                        'tools.electronics_api',
+                        'tools.local_electronics_store',
                         'idss_agent.processing.semantic_parser']:
         logger = logging.getLogger(logger_name)
         logger.addHandler(log_capture)
@@ -214,7 +214,7 @@ def test_method2_pipeline(user_query: str) -> dict:
 
     # Initialize result dictionary
     result = {
-        "method": "Method 2: Web Search + Parallel RapidAPI queries",
+        "method": "Method 2: Web Search + Parallel local database queries",
         "user_query": user_query,
         "extracted_filters": None,
         "implicit_preferences": None,
@@ -321,7 +321,7 @@ def test_method2_pipeline(user_query: str) -> dict:
     finally:
         # Clean up log handlers
         for logger_name in ['processing.method2', 'processing.vector_ranker',
-                            'tools.electronics_api',
+                            'tools.local_electronics_store',
                             'idss_agent.processing.semantic_parser']:
             logger = logging.getLogger(logger_name)
             logger.removeHandler(log_capture)
@@ -404,11 +404,11 @@ def main():
 
     # Run the test
     if method == "2":
-        print("Running Method 2: Web Search + Parallel RapidAPI queries", file=sys.stderr)
+        print("Running Method 2: Web Search + Parallel local database queries", file=sys.stderr)
         result = test_method2_pipeline(user_query)
     else:
         # Default to Method 1
-        print("Running Method 1: RapidAPI search + Vector ranking + MMR diversification", file=sys.stderr)
+        print("Running Method 1: Local database search + Vector ranking + MMR diversification", file=sys.stderr)
         result = test_method1_pipeline(user_query)
 
     # Output the result as JSON

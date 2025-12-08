@@ -59,8 +59,8 @@ class ExtractionResult(BaseModel):
         description=(
             "Topics covered during the interview conversation. "
             "Include topics that were asked about OR volunteered by the user. "
-            "Possible topics: budget, location, usage, priorities, mileage, "
-            "vehicle_type, features, timeline, new_vs_used, etc."
+            "Possible topics: budget, usage, priorities, product_type, features, "
+            "compatibility, timeline, brand_preference, etc."
         )
     )
 

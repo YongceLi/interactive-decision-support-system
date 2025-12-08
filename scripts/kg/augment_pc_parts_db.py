@@ -27,12 +27,16 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 
 # Import existing scraping utilities
 import sys
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+# Load environment variables from .env file
+load_dotenv(PROJECT_ROOT / ".env")
 
 try:
     from scripts.kg.llm_extractor import LLMExtractor, convert_to_product_attributes
@@ -100,12 +104,13 @@ SOURCE_PRIORITY = {
     "manufacturer": 100,
     "manufacturer_official": 100,
     "manufacturer_official_llm": 95,
-    "wikipedia": 80,
-    "wikipedia_llm": 75,
-    "newegg": 60,
-    "newegg_llm": 55,
-    "amazon": 50,
-    "amazon_llm": 45,
+    "newegg": 75,  # Higher than Wikipedia - direct product listings, detailed specs
+    "newegg_llm": 70,
+    "amazon": 70,  # Higher than Wikipedia - product listings, though quality varies
+    "amazon_llm": 65,
+    "wikipedia": 60,  # Good for general specs but may lack specific model details
+    "wikipedia_llm": 55,
+    "rapidapi_base": 50,  # Original source, may be incomplete
 }
 
 # Minimum sources required for validation
@@ -307,8 +312,20 @@ class AttributeScraper:
     
     def __init__(self, use_llm: bool = True):
         self.session = requests.Session()
+        # More complete browser headers to avoid anti-scraping detection
         self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept-Encoding": "gzip, deflate, br",
+            "DNT": "1",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0"
         })
         self.use_llm = use_llm and LLM_AVAILABLE
         self.llm_extractor = None
@@ -328,7 +345,14 @@ class AttributeScraper:
         
         try:
             LOGGER.debug("Scraping Newegg: %s", search_url)
-            response = self.session.get(search_url, timeout=10)
+            response = self.session.get(search_url, timeout=10, allow_redirects=True)
+            # Handle common anti-scraping responses gracefully
+            if response.status_code == 403:
+                LOGGER.warning("Newegg returned 403 Forbidden (anti-scraping protection). Skipping.")
+                return extractions
+            if response.status_code == 503:
+                LOGGER.warning("Newegg returned 503 Service Unavailable. Skipping.")
+                return extractions
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -350,12 +374,12 @@ class AttributeScraper:
                     
                     for attr in llm_attrs:
                         extractions.append(AttributeExtraction(
-                            attribute_name=attr.attribute_type,
-                            attribute_value=attr.attribute_value,
+                            attribute_name=attr["attribute_type"],
+                            attribute_value=attr["attribute_value"],
                             source="newegg_llm",
                             source_url=search_url,
                             timestamp=datetime.now(timezone.utc).isoformat(),
-                            confidence=attr.confidence,
+                            confidence=attr["confidence"],
                             is_manufacturer=False
                         ))
                 except Exception as e:
@@ -385,8 +409,14 @@ class AttributeScraper:
                             ))
             
             time.sleep(1)  # Rate limiting
+        except requests.exceptions.HTTPError as e:
+            # HTTP errors (403, 503, etc.) are expected due to anti-scraping
+            if e.response.status_code in (403, 503, 429):
+                LOGGER.debug("Newegg blocked request (status %d): %s", e.response.status_code, e)
+            else:
+                LOGGER.warning("Newegg HTTP error (status %d): %s", e.response.status_code, e)
         except Exception as e:
-            LOGGER.error("Error scraping Newegg: %s", e)
+            LOGGER.warning("Error scraping Newegg: %s", e)
         
         return extractions
     
@@ -399,7 +429,14 @@ class AttributeScraper:
             LOGGER.debug("Scraping Amazon: %s", search_url)
             # Note: Amazon has strict anti-scraping measures
             # In production, use Amazon Product Advertising API
-            response = self.session.get(search_url, timeout=10)
+            response = self.session.get(search_url, timeout=10, allow_redirects=True)
+            # Handle common anti-scraping responses gracefully
+            if response.status_code == 403:
+                LOGGER.warning("Amazon returned 403 Forbidden (anti-scraping protection). Skipping.")
+                return extractions
+            if response.status_code == 503:
+                LOGGER.warning("Amazon returned 503 Service Unavailable. Skipping.")
+                return extractions
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -421,29 +458,43 @@ class AttributeScraper:
                     
                     for attr in llm_attrs:
                         extractions.append(AttributeExtraction(
-                            attribute_name=attr.attribute_type,
-                            attribute_value=attr.attribute_value,
+                            attribute_name=attr["attribute_type"],
+                            attribute_value=attr["attribute_value"],
                             source="amazon_llm",
                             source_url=search_url,
                             timestamp=datetime.now(timezone.utc).isoformat(),
-                            confidence=attr.confidence,
+                            confidence=attr["confidence"],
                             is_manufacturer=False
                         ))
                 except Exception as e:
                     LOGGER.warning("LLM extraction from Amazon failed: %s", e)
             
             time.sleep(2)  # Rate limiting for Amazon
+        except requests.exceptions.HTTPError as e:
+            # HTTP errors (403, 503, etc.) are expected due to anti-scraping
+            if e.response.status_code in (403, 503, 429):
+                LOGGER.debug("Amazon blocked request (status %d): %s", e.response.status_code, e)
+            else:
+                LOGGER.warning("Amazon HTTP error (status %d): %s", e.response.status_code, e)
         except Exception as e:
-            LOGGER.error("Error scraping Amazon: %s", e)
+            LOGGER.warning("Error scraping Amazon: %s", e)
         
         return extractions
     
     def scrape_wikipedia(self, product_name: str, brand: Optional[str]) -> List[AttributeExtraction]:
-        """Scrape Wikipedia for product attributes."""
+        """Scrape Wikipedia for product attributes.
+        
+        Note: Wikipedia is searched using SERIES NAME, not individual model names.
+        This is because Wikipedia typically has pages for product series (e.g., "RTX 4090", 
+        "Ryzen 9 5950X") rather than specific SKUs/models (e.g., "ASUS ROG Strix RTX 4090 OC").
+        Series-level information is still valuable for compatibility attributes like socket,
+        PCIe version, RAM standard, etc.
+        """
         extractions = []
         
-        # Extract series name for Wikipedia lookup
+        # Extract series name for Wikipedia lookup (not individual model)
         series_name = self._extract_series_name(product_name)
+        LOGGER.debug("Wikipedia search: extracted series '%s' from product '%s'", series_name, product_name)
         search_url = f"https://en.wikipedia.org/wiki/{series_name.replace(' ', '_')}"
         
         try:
@@ -484,12 +535,12 @@ class AttributeScraper:
                     
                     for attr in llm_attrs:
                         extractions.append(AttributeExtraction(
-                            attribute_name=attr.attribute_type,
-                            attribute_value=attr.attribute_value,
+                            attribute_name=attr["attribute_type"],
+                            attribute_value=attr["attribute_value"],
                             source="wikipedia_llm",
                             source_url=search_url,
                             timestamp=datetime.now(timezone.utc).isoformat(),
-                            confidence=attr.confidence,
+                            confidence=attr["confidence"],
                             is_manufacturer=False
                         ))
                 except Exception as e:
@@ -567,12 +618,12 @@ class AttributeScraper:
                     
                     for attr in llm_attrs:
                         extractions.append(AttributeExtraction(
-                            attribute_name=attr.attribute_type,
-                            attribute_value=attr.attribute_value,
+                            attribute_name=attr["attribute_type"],
+                            attribute_value=attr["attribute_value"],
                             source=f"{brand}_official_llm",
                             source_url=product_url,
                             timestamp=datetime.now(timezone.utc).isoformat(),
-                            confidence=attr.confidence,
+                            confidence=attr["confidence"],
                             is_manufacturer=True
                         ))
                 except Exception as e:
@@ -610,15 +661,28 @@ class AttributeScraper:
         return extractions
     
     def _extract_series_name(self, product_name: str) -> str:
-        """Extract series name from product name for Wikipedia lookup."""
+        """Extract series name from product name for Wikipedia lookup.
+        
+        Wikipedia typically has pages for product series (e.g., "GeForce RTX 4090", 
+        "Ryzen 9 5950X") rather than specific SKUs. This method extracts the series
+        name by removing brand/model prefixes and extracting the core series identifier.
+        
+        Examples:
+        - "ASUS ROG Strix RTX 4090 OC" -> "RTX 4090"
+        - "AMD Ryzen 9 5950X" -> "Ryzen 9 5950X"
+        - "Intel Core i9-13900K" -> "Core i9-13900K"
+        """
         import re
         
-        # GPU patterns
+        # GPU patterns - extract series (RTX 4090, GTX 1660, RX 7900 XTX, etc.)
         gpu_patterns = [
-            r'(RTX\s+\d+\s*(?:Ti|Super)?)',
-            r'(GTX\s+\d+\s*(?:Ti|Super)?)',
-            r'(RX\s+\d+\s*(?:XT|XTX)?)',
-            r'(Arc\s+A\d+)',
+            r'(GeForce\s+RTX\s+\d+\s*(?:Ti|Super)?)',  # "GeForce RTX 4090"
+            r'(RTX\s+\d+\s*(?:Ti|Super)?)',              # "RTX 4090"
+            r'(GeForce\s+GTX\s+\d+\s*(?:Ti|Super)?)',   # "GeForce GTX 1660"
+            r'(GTX\s+\d+\s*(?:Ti|Super)?)',             # "GTX 1660"
+            r'(Radeon\s+RX\s+\d+\s*(?:XT|XTX)?)',       # "Radeon RX 7900 XTX"
+            r'(RX\s+\d+\s*(?:XT|XTX)?)',                # "RX 7900 XTX"
+            r'(Arc\s+A\d+)',                            # "Arc A770"
         ]
         
         for pattern in gpu_patterns:
@@ -626,11 +690,18 @@ class AttributeScraper:
             if match:
                 return match.group(1).strip()
         
-        # CPU patterns
+        # CPU patterns - extract series (Core i9-13900K, Ryzen 9 5950X, etc.)
         cpu_patterns = [
-            r'(Core\s+i\d+\s*-\s*\d+\w*)',
-            r'(Ryzen\s+\d+\s*\d+\w*)',
-            r'(Threadripper\s+\d+\w*)',
+            r'(Intel\s+Core\s+i\d+\s*-\s*\d+\w*)',      # "Intel Core i9-13900K"
+            r'(Core\s+i\d+\s*-\s*\d+\w*)',              # "Core i9-13900K"
+            r'(AMD\s+Ryzen\s+\d+\s+\d+\w*)',            # "AMD Ryzen 9 5950X"
+            r'(Ryzen\s+\d+\s+\d+\w*)',                  # "Ryzen 9 5950X"
+            r'(AMD\s+Threadripper\s+\d+\w*)',          # "AMD Threadripper 3990X"
+            r'(Threadripper\s+\d+\w*)',                 # "Threadripper 3990X"
+            r'(AMD\s+EPYC\s+\d+\w*)',                   # "AMD EPYC 7551P"
+            r'(EPYC\s+\d+\w*)',                         # "EPYC 7551P"
+            r'(Intel\s+Xeon\s+\w+)',                    # "Intel Xeon W-2295"
+            r'(Xeon\s+\w+)',                            # "Xeon W-2295"
         ]
         
         for pattern in cpu_patterns:
@@ -638,8 +709,29 @@ class AttributeScraper:
             if match:
                 return match.group(1).strip()
         
-        # Fallback: clean product name
-        cleaned = re.sub(r'^(Asus|MSI|Gigabyte|EVGA|Sapphire|PowerColor|XFX|ASRock)\s+', '', product_name, flags=re.IGNORECASE)
+        # Motherboard patterns - extract chipset/series
+        motherboard_patterns = [
+            r'([ABXZ]\d{3,4}[A-Z]?\s*(?:E|M)?)',       # "Z790", "B650E", "X570"
+            r'(TRX40|WRX90)',                           # "TRX40", "WRX90"
+        ]
+        
+        for pattern in motherboard_patterns:
+            match = re.search(pattern, product_name, re.IGNORECASE)
+            if match:
+                chipset = match.group(1).strip()
+                # Try to construct a series name (e.g., "Intel Z790" or "AMD B650")
+                if 'intel' in product_name.lower() or 'core' in product_name.lower():
+                    return f"Intel {chipset}"
+                elif 'amd' in product_name.lower() or 'ryzen' in product_name.lower():
+                    return f"AMD {chipset}"
+                return chipset
+        
+        # Fallback: remove common brand/model prefixes and use first meaningful part
+        # Remove GPU/CPU brand prefixes
+        cleaned = re.sub(r'^(Asus|MSI|Gigabyte|EVGA|Sapphire|PowerColor|XFX|ASRock|NVIDIA|AMD|Intel)\s+', '', product_name, flags=re.IGNORECASE)
+        # Remove common model prefixes
+        cleaned = re.sub(r'^(ROG\s+Strix|TUF|Gaming|Dual|OC|AORUS|Gaming\s+X)\s+', '', cleaned, flags=re.IGNORECASE)
+        # Take first 50 chars (Wikipedia page names shouldn't be too long)
         return cleaned[:50].strip()
     
     def _map_key_to_attribute(self, key: str) -> Optional[str]:
@@ -779,12 +871,27 @@ class DatabaseAugmenter:
         self.manufacturer_map = ManufacturerMap()
         self._init_target_database()
     
+    def _ensure_column_exists(self, conn: sqlite3.Connection, table: str, column: str, column_type: str = "TEXT"):
+        """Dynamically add a column if it doesn't exist."""
+        cursor = conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table})")
+        existing_columns = [row[1] for row in cursor.fetchall()]
+        
+        if column not in existing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
+                conn.commit()
+                LOGGER.debug("Added column %s to table %s", column, table)
+            except sqlite3.OperationalError as e:
+                LOGGER.warning("Failed to add column %s to table %s: %s", column, table, e)
+    
     def _init_target_database(self):
-        """Initialize the augmented database schema."""
+        """Initialize the augmented database schema with dynamic attribute columns."""
         conn = sqlite3.connect(self.target_db_path)
         cursor = conn.cursor()
         
-        # Create main products table (copy of source schema with additional fields)
+        # Create main products table - matching source schema with dynamic attribute columns
+        # Start with base columns, attributes will be added dynamically
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS pc_parts_augmented (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -805,13 +912,32 @@ class DatabaseAugmenter:
                 sellers TEXT,
                 rating REAL,
                 rating_count INTEGER,
-                base_attributes TEXT,
                 raw_name TEXT,
+                imageurl TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT,
                 needs_manual_review BOOLEAN DEFAULT 0
             )
         """)
+        
+        # Add all known attribute columns from the attributes config
+        # This ensures all expected attributes have columns from the start
+        part_types = ATTRIBUTES_CONFIG.get("part_types", {})
+        all_attributes = set()
+        for part_type_config in part_types.values():
+            all_attributes.update(part_type_config.get("required", []))
+            all_attributes.update(part_type_config.get("optional", []))
+        
+        # Add common attributes that might be shared
+        all_attributes.update(["year", "color", "size"])
+        
+        # Add all attribute columns dynamically
+        for attr_name in all_attributes:
+            if attr_name not in PROTECTED_FIELDS:
+                self._ensure_column_exists(conn, "pc_parts_augmented", attr_name, "TEXT")
+        
+        # Ensure imageurl column exists
+        self._ensure_column_exists(conn, "pc_parts_augmented", "imageurl", "TEXT")
         
         # Create attributes table with source tracking
         cursor.execute("""
@@ -858,32 +984,187 @@ class DatabaseAugmenter:
         conn.close()
     
     def copy_base_data(self):
-        """Copy base product data from source database."""
+        """Copy base product data from source database and parse base_attributes."""
         source_conn = sqlite3.connect(self.source_db_path)
         target_conn = sqlite3.connect(self.target_db_path)
         
         source_cursor = source_conn.cursor()
         target_cursor = target_conn.cursor()
         
-        # Read all products from source
+        # Read all products from source - select all columns that exist
+        # Note: The actual schema has attributes as individual columns, not in base_attributes JSON
         source_cursor.execute("""
             SELECT product_id, slug, product_type, series, model, brand, size, color,
-                   price, price_min, price_max, price_avg, year, seller, sellers,
-                   rating, rating_count, base_attributes, raw_name, created_at, updated_at
+                   price, year, seller, rating, rating_count, raw_name, imageurl, created_at, updated_at,
+                   socket, architecture, pcie_version, ram_standard, tdp,
+                   vram, memory_type, cooler_type, variant, is_oc, revision, interface, power_connector,
+                   chipset, form_factor,
+                   wattage, certification, modularity, atx_version, noise, supports_pcie5_power,
+                   storage, capacity, storage_type,
+                   cooling_type, tdp_support
             FROM pc_parts
         """)
         rows = source_cursor.fetchall()
         
-        # Insert into target with explicit column mapping
+        # Insert into target with explicit column mapping and build base_attributes from individual columns
+        parsed_count = 0
         for row in rows:
             try:
+                # Unpack row
+                (product_id, slug, product_type, series, model, brand, size, color,
+                 price, year, seller, rating, rating_count, raw_name, imageurl, created_at, updated_at,
+                 socket, architecture, pcie_version, ram_standard, tdp,
+                 vram, memory_type, cooler_type, variant, is_oc, revision, interface, power_connector,
+                 chipset, form_factor,
+                 wattage, certification, modularity, atx_version, noise, supports_pcie5_power,
+                 storage, capacity, storage_type,
+                 cooling_type, tdp_support) = row
+                
+                # Build base_attributes JSON from individual attribute columns
+                base_attrs = {}
+                attribute_columns = {
+                    'socket': socket, 'architecture': architecture, 'pcie_version': pcie_version,
+                    'ram_standard': ram_standard, 'tdp': tdp,
+                    'vram': vram, 'memory_type': memory_type, 'cooler_type': cooler_type,
+                    'variant': variant, 'is_oc': is_oc, 'revision': revision,
+                    'interface': interface, 'power_connector': power_connector,
+                    'chipset': chipset, 'form_factor': form_factor,
+                    'wattage': wattage, 'certification': certification, 'modularity': modularity,
+                    'atx_version': atx_version, 'noise': noise, 'supports_pcie5_power': supports_pcie5_power,
+                    'storage': storage, 'capacity': capacity, 'storage_type': storage_type,
+                    'cooling_type': cooling_type, 'tdp_support': tdp_support
+                }
+                
+                for attr_name, attr_value in attribute_columns.items():
+                    if attr_value is not None and str(attr_value).strip():
+                        base_attrs[attr_name] = attr_value
+                
+                base_attributes_json = json.dumps(base_attrs) if base_attrs else None
+                
+                # Set price_min, price_max, price_avg to price (or NULL if price is NULL)
+                price_min = price_max = price_avg = price
+                sellers = seller  # Use seller as sellers
+                
+                # Insert product
                 target_cursor.execute("""
                     INSERT OR IGNORE INTO pc_parts_augmented
                     (product_id, slug, product_type, series, model, brand, size, color,
                      price, price_min, price_max, price_avg, year, seller, sellers,
-                     rating, rating_count, base_attributes, raw_name, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, row)
+                     rating, rating_count, base_attributes, raw_name, imageurl, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (product_id, slug, product_type, series, model, brand, size, color,
+                      price, price_min, price_max, price_avg, year, seller, sellers,
+                      rating, rating_count, base_attributes_json, raw_name, imageurl, created_at, updated_at))
+                
+                # Parse base_attributes JSON and extract individual attributes
+                if base_attributes_json:
+                    try:
+                        base_attrs = json.loads(base_attributes_json)
+                        if isinstance(base_attrs, dict):
+                            timestamp = datetime.now(timezone.utc).isoformat()
+                            
+                            # Get valid attributes for this product type
+                            required_attrs, optional_attrs = get_valid_attributes_for_product_type(product_type)
+                            valid_attributes = set(required_attrs + optional_attrs)
+                            
+                            for attr_name, attr_value in base_attrs.items():
+                                # Skip protected fields
+                                if attr_name in PROTECTED_FIELDS:
+                                    continue
+                                
+                                # Normalize attribute name to snake_case
+                                attr_name_normalized = attr_name.lower().replace(" ", "_").replace("-", "_")
+                                
+                                # Check if it's a valid attribute for this product type
+                                if valid_attributes and attr_name_normalized not in valid_attributes:
+                                    # Try to find a match (e.g., "pcie_version" vs "pcie-version")
+                                    matched = False
+                                    for valid_attr in valid_attributes:
+                                        if valid_attr.replace("_", "-") == attr_name_normalized.replace("_", "-"):
+                                            attr_name_normalized = valid_attr
+                                            matched = True
+                                            break
+                                    if not matched:
+                                        LOGGER.debug("Skipping base attribute '%s' (not valid for %s)", 
+                                                   attr_name_normalized, product_type)
+                                        continue
+                                
+                                # Convert value to string
+                                attr_value_str = str(attr_value)
+                                
+                                # Save as extraction with "rapidapi_base" source
+                                target_cursor.execute("""
+                                    INSERT INTO product_attributes_augmented
+                                    (product_id, attribute_name, attribute_value, source, source_url, timestamp, confidence, is_manufacturer)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    product_id,
+                                    attr_name_normalized,
+                                    attr_value_str,
+                                    "rapidapi_base",
+                                    None,
+                                    timestamp,
+                                    0.9,  # High confidence for base attributes from RapidAPI
+                                    0  # Not from manufacturer
+                                ))
+                                
+                                # Also save as validated attribute (base attributes are pre-validated)
+                                sources_json = json.dumps([{
+                                    "source": "rapidapi_base",
+                                    "source_url": None,
+                                    "timestamp": timestamp,
+                                    "confidence": 0.9
+                                }])
+                                
+                                target_cursor.execute("""
+                                    INSERT OR IGNORE INTO validated_attributes
+                                    (product_id, attribute_name, attribute_value, final_confidence, has_manufacturer_source, needs_manual_review, sources_json)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                """, (
+                                    product_id,
+                                    attr_name_normalized,
+                                    attr_value_str,
+                                    0.9,
+                                    0,  # Not from manufacturer
+                                    0,  # No manual review needed for base attributes
+                                    sources_json
+                                ))
+                                
+                                # Note: We don't add attributes as columns to avoid sparse tables
+                                # Attributes are stored in validated_attributes table and will be
+                                # parsed from base_attributes JSON at knowledge graph creation time
+                                # Only update common fields that exist in schema (year, color, size)
+                                if attr_name_normalized == "year":
+                                    try:
+                                        import re
+                                        numbers = re.findall(r'\d+', attr_value_str)
+                                        if numbers:
+                                            target_cursor.execute("""
+                                                UPDATE pc_parts_augmented
+                                                SET year = ?
+                                                WHERE product_id = ?
+                                            """, (int(numbers[0]), product_id))
+                                    except (ValueError, TypeError):
+                                        pass
+                                elif attr_name_normalized == "color":
+                                    target_cursor.execute("""
+                                        UPDATE pc_parts_augmented
+                                        SET color = ?
+                                        WHERE product_id = ?
+                                    """, (attr_value_str, product_id))
+                                elif attr_name_normalized == "size":
+                                    target_cursor.execute("""
+                                        UPDATE pc_parts_augmented
+                                        SET size = ?
+                                        WHERE product_id = ?
+                                    """, (attr_value_str, product_id))
+                                
+                                parsed_count += 1
+                    except json.JSONDecodeError as e:
+                        LOGGER.warning("Failed to parse base_attributes JSON for product %s: %s", product_id, e)
+                    except Exception as e:
+                        LOGGER.warning("Error processing base_attributes for product %s: %s", product_id, e)
+                        
             except sqlite3.IntegrityError:
                 # Product already exists, skip
                 pass
@@ -892,7 +1173,7 @@ class DatabaseAugmenter:
         source_conn.close()
         target_conn.close()
         
-        LOGGER.info("Copied %d products from source database", len(rows))
+        LOGGER.info("Copied %d products from source database, parsed %d base attributes", len(rows), parsed_count)
     
     def augment_product(self, product_id: str, product_name: str, product_type: str, 
                        brand: Optional[str], limit_sources: Optional[List[str]] = None) -> bool:
@@ -991,48 +1272,49 @@ class DatabaseAugmenter:
                 sources_json
             ))
         
-        # Update product needs_manual_review flag and add validated attributes to main table
-        # Build update statement for validated attributes
-        update_fields = ["needs_manual_review = ?", "updated_at = ?"]
-        update_values = [
-            1 if needs_review else 0,
-            datetime.now(timezone.utc).isoformat()
-        ]
+        # Update product needs_manual_review flag
+        # Note: Attributes are stored in validated_attributes table, not as columns
+        # This avoids sparse tables since different product types have different attributes
+        # Attributes will be parsed from base_attributes JSON and validated_attributes at KG creation time
         
-        # Add validated attributes as columns (only for non-protected fields)
+        # Only update common fields that exist in schema (year, color, size)
         for val in validated:
             if val.attribute_name not in PROTECTED_FIELDS:
-                # Check if column exists, if not we'll need to add it dynamically
-                # For now, update common fields that exist in schema
-                if val.attribute_name in ["year", "color", "size"]:
-                    update_fields.append(f"{val.attribute_name} = ?")
-                    # Convert value appropriately
-                    if val.attribute_name == "year":
-                        try:
-                            update_values.append(int(val.attribute_value))
-                        except (ValueError, TypeError):
-                            pass
-                    else:
-                        update_values.append(val.attribute_value)
+                if val.attribute_name == "year":
+                    try:
+                        import re
+                        numbers = re.findall(r'\d+', val.attribute_value)
+                        if numbers:
+                            cursor.execute("""
+                                UPDATE pc_parts_augmented
+                                SET year = ?
+                                WHERE product_id = ?
+                            """, (int(numbers[0]), product_id))
+                    except (ValueError, TypeError):
+                        pass
+                elif val.attribute_name == "color":
+                    cursor.execute("""
+                        UPDATE pc_parts_augmented
+                        SET color = ?
+                        WHERE product_id = ?
+                    """, (val.attribute_value, product_id))
+                elif val.attribute_name == "size":
+                    cursor.execute("""
+                        UPDATE pc_parts_augmented
+                        SET size = ?
+                        WHERE product_id = ?
+                    """, (val.attribute_value, product_id))
         
-        if len(update_fields) > 2:  # More than just needs_manual_review and updated_at
-            update_sql = f"""
-                UPDATE pc_parts_augmented
-                SET {', '.join(update_fields)}
-                WHERE product_id = ?
-            """
-            update_values.append(product_id)
-            cursor.execute(update_sql, update_values)
-        else:
-            cursor.execute("""
-                UPDATE pc_parts_augmented
-                SET needs_manual_review = ?, updated_at = ?
-                WHERE product_id = ?
-            """, (
-                1 if needs_review else 0,
-                datetime.now(timezone.utc).isoformat(),
-                product_id
-            ))
+        # Update needs_manual_review and updated_at
+        cursor.execute("""
+            UPDATE pc_parts_augmented
+            SET needs_manual_review = ?, updated_at = ?
+            WHERE product_id = ?
+        """, (
+            1 if needs_review else 0,
+            datetime.now(timezone.utc).isoformat(),
+            product_id
+        ))
         
         conn.commit()
         conn.close()
@@ -1042,7 +1324,7 @@ class DatabaseAugmenter:
         
         return len(validated) > 0
     
-    def augment_all(self, limit: Optional[int] = None, delay: float = 2.0):
+    def augment_all(self, limit: Optional[int] = None, delay: float = 2.0, limit_sources: Optional[List[str]] = None):
         """Augment all products in the database."""
         conn = sqlite3.connect(self.source_db_path)
         cursor = conn.cursor()
@@ -1064,7 +1346,7 @@ class DatabaseAugmenter:
             LOGGER.info("[%d/%d] Processing %s (%s)", idx, len(products), raw_name, product_type)
             
             try:
-                success = self.augment_product(product_id, raw_name, product_type, brand)
+                success = self.augment_product(product_id, raw_name, product_type, brand, limit_sources=limit_sources)
                 if success:
                     success_count += 1
                 else:
@@ -1087,6 +1369,8 @@ def main():
     parser.add_argument("--limit", type=int, help="Limit number of products to process")
     parser.add_argument("--delay", type=float, default=2.0, help="Delay between products (seconds)")
     parser.add_argument("--copy-only", action="store_true", help="Only copy base data, don't augment")
+    parser.add_argument("--skip-sources", nargs="+", choices=["newegg", "amazon", "wikipedia", "manufacturer"],
+                        help="Skip specific sources (useful if they're blocking requests)")
     parser.add_argument("--log-level", default="INFO", help="Logging level")
     
     args = parser.parse_args()
@@ -1102,8 +1386,16 @@ def main():
     augmenter.copy_base_data()
     
     if not args.copy_only:
+        # Determine which sources to use
+        default_sources = ["newegg", "amazon", "wikipedia", "manufacturer"]
+        if args.skip_sources:
+            sources_to_use = [s for s in default_sources if s not in args.skip_sources]
+            LOGGER.info("Skipping sources: %s. Using: %s", args.skip_sources, sources_to_use)
+        else:
+            sources_to_use = default_sources
+        
         # Augment products
-        augmenter.augment_all(limit=args.limit, delay=args.delay)
+        augmenter.augment_all(limit=args.limit, delay=args.delay, limit_sources=sources_to_use)
     
     LOGGER.info("Database augmentation complete: %s", args.target_db)
 

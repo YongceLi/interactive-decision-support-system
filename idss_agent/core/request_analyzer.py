@@ -2,9 +2,9 @@
 Request analyzer - analyzes user requests to detect multiple intents and needs.
 
 This module handles compound requests like:
-- "I want a black one, what's the maintenance cost?" (filter update + analytical question)
-- "Show me Honda Accords and compare top 3" (search + comparison)
-- "What's the safety rating?" (pure analytical, no search)
+- "I want a 2TB SSD, what's the read speed?" (filter update + analytical question)
+- "Show me RTX 4070 GPUs and compare top 3" (search + comparison)
+- "What's the power consumption?" (pure analytical, no search)
 """
 from typing import List, Dict, Any, Optional
 import json
@@ -32,8 +32,8 @@ class RequestAnalysis(BaseModel):
 
     needs_search: bool = Field(
         description=(
-            "True if user wants to see vehicle listings or has provided/updated filters. "
-            "Examples: 'show me vehicles', 'I want a black one', 'under $30k'"
+            "True if user wants to see product listings or has provided/updated filters. "
+            "Examples: 'show me GPUs', 'I want a 2TB SSD', 'under $300'"
         )
     )
 
@@ -54,7 +54,7 @@ class RequestAnalysis(BaseModel):
 
     has_filter_update: bool = Field(
         description=(
-            "True if user mentioned new vehicle criteria or change some of the existing filters (make, model, color, price, etc.)"
+            "True if user mentioned new product criteria or change some of the existing filters (brand, category, price, features, etc.)"
         )
     )
 
@@ -127,7 +127,7 @@ Analyze the user's request and detect what they need:
    - Include compatibility questions like "what GPUs are compatible with [PSU]"
 
 6. **has_filter_update**: User mentioned product criteria
-   - Brand, model, specs, price, retailer, features, etc.
+   - Brand, category, part type, specs, price, retailer, features, etc.
 
 7. **is_general_conversation**: Just chatting, not searching
    - Greetings, thank you, What can you do?, etc.

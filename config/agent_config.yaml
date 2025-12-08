@@ -86,12 +86,14 @@ features:
   enable_suggested_followups: false  # Enable suggested followup questions
   use_local_vehicle_store: false      # Disable vehicle-specific local dataset
 
-# API Configuration (RapidAPI - Newegg data)
+# API Configuration (DEPRECATED - now using local database)
+# The system now uses LocalElectronicsStore for all product searches
+# This configuration is kept for backward compatibility only
 api:
-  provider: "rapidapi"
-  base_url: "https://product-search-api.p.rapidapi.com/"
+  provider: "local_db"  # Changed from "rapidapi" to "local_db"
+  base_url: null  # Not used with local database
   endpoints:
-    search: "/shopping"
+    search: null  # Not used with local database
   default_params:
     page: 1
     keyword: ""

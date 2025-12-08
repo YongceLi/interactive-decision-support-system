@@ -46,6 +46,13 @@ python scripts/kg/augment_pc_parts_db.py --copy-only
 
 Same as `pc_parts` table plus:
 - `needs_manual_review`: Boolean flag indicating if product needs manual review
+- `base_attributes`: JSON string containing base attributes from RapidAPI (parsed at KG creation time)
+
+**Note**: Attributes are NOT stored as individual columns to avoid sparse tables. Instead:
+- `base_attributes` JSON is preserved from source database
+- Attributes are parsed and stored in `validated_attributes` table
+- Attributes will be parsed from both `base_attributes` JSON and `validated_attributes` table at knowledge graph creation time
+- The `pc_parts_attributes.json` config defines which attributes each product type should have
 
 ### Attribute Tracking: `product_attributes_augmented`
 
@@ -147,11 +154,33 @@ JOIN pc_parts_augmented pa ON va.product_id = pa.product_id
 WHERE va.has_manufacturer_source = 1;
 ```
 
+## Attribute Storage Strategy
+
+Attributes are stored in two places:
+
+1. **`base_attributes` JSON field**: Original attributes from RapidAPI, preserved as JSON
+2. **`validated_attributes` table**: All validated attributes (from base + scraped sources) with source tracking
+
+**Why not individual columns?**
+- Different product types have different attributes (CPU has socket, GPU has vram, etc.)
+- Creating columns for all attributes would create a very sparse table
+- The `pc_parts_attributes.json` config defines what attributes each product type should have
+- Attributes are parsed at knowledge graph creation time (Step 2) using the config
+
+**At KG creation time:**
+- Parse `base_attributes` JSON for each product
+- Merge with `validated_attributes` table entries
+- Use `pc_parts_attributes.json` to determine which attributes should exist for each product type
+- Create knowledge graph nodes with appropriate attributes based on product type
+
 ## Next Steps
 
 After augmentation is complete:
 1. Review products tagged for manual review
 2. Use validated attributes to build knowledge graph (Step 2)
+   - Parse `base_attributes` JSON
+   - Merge with `validated_attributes` table
+   - Use `pc_parts_attributes.json` to determine expected attributes per product type
 3. Export validated attributes to knowledge graph format
 
 ## Notes
