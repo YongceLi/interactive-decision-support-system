@@ -219,7 +219,6 @@ Preferred vehicle type: {preferred_vehicle_type}
 Preferred fuel type: {preferred_fuel_type}
 Openness to alternatives (1-10): {openness_to_alternatives}
 Other priorities: {misc_notes}
-Upper price limit (USD): {upper_price_limit}
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 Do NOT assume the modernity of the vehicle beyond the year provided (The closer the year to 2025, the newer and more modern the vehicle).
@@ -247,8 +246,7 @@ body_type: (whether the body type satisfies the users' preference in the query o
 all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury. 
 . Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
-that attribute to null. Make price decisions using the provided upper price
-limit and the vehicle's price.
+that attribute to null. Use the provided price judgement included with each vehicle entry instead of recalculating price fit.
 Confidence should be a number between 0 and 1 indicating how confident you are in the overall satisfaction judgement.
 If there are a lot of conflicts between attributes and the final satisfaction judgement, the confidence score should be lower.
 Vice versa, if there are a lot of attributes that align with the final satisfaction judgement, the confidence score should be higher.
@@ -434,7 +432,19 @@ def _assess_vehicles(
     likes_text = _affinities_to_text(persona.liked)
     dislikes_text = _affinities_to_text(persona.disliked)
 
-    vehicle_entries = [_format_vehicle_entry(vehicle, idx + 1) for idx, vehicle in enumerate(vehicles)]
+    vehicle_entries = []
+    price_judgements: Dict[int, AttributeJudgement] = {}
+    for idx, vehicle in enumerate(vehicles):
+        entry = _format_vehicle_entry(vehicle, idx + 1)
+        price_judgement = _determine_price_judgement(
+            persona_turn.upper_price_limit, entry.get("price")
+        )
+        entry["price_judgement"] = {
+            "satisfied": price_judgement.satisfied,
+            "rationale": price_judgement.rationale,
+        }
+        vehicle_entries.append(entry)
+        price_judgements[entry["index"]] = price_judgement
     prompt = ASSESSMENT_PROMPT.format_prompt(
         goal_summary=persona_turn.goal_summary,
         writing_style=persona_turn.writing_style,
@@ -453,7 +463,6 @@ def _assess_vehicles(
         preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
         openness_to_alternatives=persona.alternative_openness or "unknown",
         misc_notes=persona.misc_notes or "None stated",
-        upper_price_limit=persona_turn.upper_price_limit or "unspecified",
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())
@@ -488,8 +497,8 @@ def _assess_vehicles(
         attribute_results = {
             key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
         }
-        attribute_results["price"] = _determine_price_judgement(
-            persona_turn.upper_price_limit, entry.get("price")
+        attribute_results["price"] = price_judgements.get(
+            entry["index"], AttributeJudgement(satisfied=None, rationale=None)
         )
         results.append(
             VehicleJudgement(
