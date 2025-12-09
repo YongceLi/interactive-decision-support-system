@@ -13,7 +13,7 @@ from langgraph.prebuilt import create_react_agent
 from idss_agent.utils.config import get_config
 from idss_agent.utils.prompts import render_prompt
 from idss_agent.state.schema import ProductSearchState, AgentResponse, ComparisonTable
-from idss_agent.tools.electronics_api import search_products, get_product_details
+from idss_agent.tools.local_electronics_store import LocalElectronicsStore
 from idss_agent.utils.logger import get_logger
 from idss_agent.processing.compatibility import (
     check_compatibility_binary,
@@ -21,6 +21,7 @@ from idss_agent.processing.compatibility import (
     format_compatibility_recommendations_table
 )
 from idss_agent.tools.kg_compatibility import get_compatibility_tool, is_pc_part
+from idss_agent.tools.pc_build import get_pc_build_tool
 
 logger = get_logger("components.analytical_tool")
 
@@ -220,14 +221,14 @@ Your role is to answer specific, data-driven questions about products by leverag
 - Use when: the user references products already shown (e.g., '#1', 'option 1', 'option 20', 'top 3') or when you need cached attributes before new API calls.
 
 **Product Catalog Search (`search_products`)**
-- Input: keyword query and optional filters.
-- Returns: JSON array of products with pricing, seller, rating, and metadata.
+- Input: keyword query and optional filters (part_type, brand, price range, seller).
+- Returns: JSON array of products with pricing, seller, rating, and metadata from local database.
 - Use when: you need more options, to confirm availability, or to retrieve identifiers for follow-up questions.
 
 **Product Detail Lookup (`get_product_details`)**
 - Input: product_id from cached results or catalog search.
-- Returns: Detailed specifications, descriptions, seller info, photos (RapidAPI `/products/{id}` endpoint).
-- Use when: you need rich specs (clock speeds, memory timings, ports, warranty, etc.) for recommendations or comparisons.
+- Returns: Detailed specifications, attributes, seller info from local database.
+- Use when: you need rich specs (socket, VRAM, capacity, wattage, form factor, chipset, etc.) for recommendations or comparisons.
 
 **Compatibility Check (`check_parts_compatibility`)**
 - Input: Two product slugs or names to check compatibility.
@@ -240,6 +241,30 @@ Your role is to answer specific, data-driven questions about products by leverag
 - Returns: List of compatible products.
 - Use when: user asks "What [part type] is compatible with [product]?" for PC parts.
 - IMPORTANT: Only use for PC parts. For other electronics, inform user that compatibility checking is only available for PC components.
+
+**Search PC Parts by Type (`search_pc_parts_by_type`)**
+- Input: part_type (e.g., "cpu", "gpu", "ram", "motherboard", "psu", "storage", "case", "cooler"), optional max_price, optional min_price, optional limit (default 20).
+- Returns: List of products of that type with prices and attributes from the knowledge graph.
+- Use when: Starting a PC build or searching for parts of a specific type. This queries the knowledge graph directly.
+
+**Build PC Configuration - ITERATIVE APPROACH (MANDATORY)**
+When the user asks for a complete PC build (e.g., "Best PC build for $1000", "Best gaming PC under $1500", "Best budget build under $600", "Best 1440p gaming build"), you MUST build it iteratively through the knowledge graph:
+
+1. **Start with CPU**: Use `search_pc_parts_by_type("cpu", max_price=<budget_allocation>)` to find CPUs within budget. Consider the use case (gaming → prioritize high clock speeds, workstation → prioritize cores/threads).
+
+2. **Find Compatible Motherboard**: Use `find_compatible_parts(source_product_name=<selected_cpu_name>, target_part_type="motherboard")` to find motherboards compatible with your selected CPU.
+
+3. **Find Compatible RAM**: Use `find_compatible_parts(source_product_name=<selected_motherboard_name>, target_part_type="ram")` to find RAM compatible with your motherboard.
+
+4. **Continue Iteratively**: For each remaining part type (storage, PSU, GPU, case, cooler), use `find_compatible_parts` with already-selected parts to ensure compatibility.
+
+5. **Track Budget**: Keep track of remaining budget as you select parts. Use `search_pc_parts_by_type` with `max_price` filters to stay within budget.
+
+6. **Required Parts**: CPU, motherboard, RAM, storage, PSU, case (all required). GPU and cooler are optional but recommended for gaming builds.
+
+7. **Present Results**: List each selected part with its price, show total cost, remaining budget, and mention alternatives are available.
+
+DO NOT use any hardcoded build logic. Query the knowledge graph iteratively to build configurations based on actual compatibility relationships and prices.
 
 **Web Search (`web_search`)**
 - Input: natural language query.
@@ -266,22 +291,43 @@ Your role is to answer specific, data-driven questions about products by leverag
 - Prefer product IDs alongside titles/brands when invoking tools.
 - Ask for clarification if identifiers are ambiguous.
 
+**PC Build queries (SPECIAL HANDLING - MANDATORY ITERATIVE APPROACH)**
+When the user asks for a complete PC build (e.g., "Best PC build for $X", "Best gaming PC under $X"), you MUST build it iteratively:
+1. Use `search_pc_parts_by_type` to find initial parts (start with CPU)
+2. Use `find_compatible_parts` iteratively to find compatible parts for each component
+3. Track budget and ensure all required parts (CPU, motherboard, RAM, storage, PSU, case) are selected
+4. Present the complete configuration with prices
+
+DO NOT use hardcoded build logic. Query the knowledge graph iteratively to ensure compatibility and accurate pricing.
+
 **Compatibility queries (SPECIAL HANDLING - MANDATORY TOOL USE)**
 When the user asks about compatibility for PC parts, you MUST use the compatibility tools. Do NOT answer compatibility questions from general knowledge.
 
-1. **Binary compatibility check** ("Is X compatible with Y?"):
+**How to detect compatibility queries:**
+- User asks "Is X compatible with Y?" → Binary compatibility check
+- User asks "What [part type] is compatible with [product]?" → Compatibility recommendations
+- User asks "Will X work with Y?" → Binary compatibility check
+- User asks "Can I use X with Y?" → Binary compatibility check
+- User mentions two specific products and asks about compatibility → Binary compatibility check
+- User asks for alternatives/replacements for a specific part → Compatibility recommendations
+
+**IMPORTANT**: Do NOT create comparison tables for binary compatibility checks. Only use comparison tables when showing multiple compatible parts (compatibility recommendations).
+
+1. **Binary compatibility check** ("Is X compatible with Y?", "Will X work with Y?"):
    - ALWAYS use `check_parts_compatibility` tool with both product slugs/names.
    - Return a clear yes/no answer with explanation from the tool.
+   - DO NOT create a comparison table - just provide a direct answer.
    - Suggest follow-ups like "Show me compatible [part type]".
 
-2. **Compatibility recommendations** ("What GPUs are compatible with my PSU?", "what gpus are compatible with name: [product]", "what gpus are compatible with option 20"):
-   - ALWAYS use `find_compatible_parts` tool with source product name/slug and target part type.
+2. **Compatibility recommendations** ("What GPUs are compatible with my PSU?", "which GPUs work with my PSU?", "what gpus are compatible with name: [product]", "what gpus are compatible with option 20"):
+   - **MANDATORY**: ALWAYS use `find_compatible_parts` tool FIRST - this is NOT a comparison query, it requires knowledge graph lookup
    - If user references a product by index (e.g., "option 20", "#20"), FIRST call `cached_recommendation_lookup` to get the product details, THEN use the product name/title with `find_compatible_parts`.
    - Extract the product name from the query or from cached lookup results (e.g., "MSI 850W Homebrew PC Power Supply Unit MAG A850GL PCIe5", "DVR PSU 180W Max Switching Power Supply")
    - Extract the target part type (e.g., "gpu", "cpu", "ram", "psu", "motherboard")
-   - Format top 3 results as comparison table (see format below).
-   - Include key compatibility attributes (socket, PCIe version, wattage, etc.).
-   - NEVER generate compatibility recommendations without calling the tool first.
+   - The tool will return compatible parts from the knowledge graph - use these results directly
+   - Format the results clearly, showing compatible parts with their key attributes (socket, PCIe version, wattage, etc.)
+   - NEVER generate compatibility recommendations without calling `find_compatible_parts` tool first
+   - NEVER treat "find compatible parts" queries as comparison queries - they require KG lookups
    
    **Example:**
    - User: "what gpus are compatible with option 20"
@@ -355,8 +401,8 @@ def analytical_agent(
     Agent that answers specific questions about electronics products using available data sources.
 
     This creates a ReAct agent with access to:
-    - RapidAPI product catalog search
-    - RapidAPI product detail lookup
+    - Local database product catalog search
+    - Local database product detail lookup
     - Web search for up-to-date reviews and benchmarks
 
     Uses system + user message format for optimal prompt caching:
@@ -398,6 +444,188 @@ def analytical_agent(
     # Get available tools
     cached_products = state.get("recommended_products", [])
 
+    # Initialize local electronics store for database queries
+    store = LocalElectronicsStore()
+    
+    @tool("search_products")
+    def search_products_tool(
+        query: str,
+        part_type: Optional[str] = None,
+        brand: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        seller: Optional[str] = None,
+        limit: int = 20,
+    ) -> str:
+        """
+        Search electronics products from the knowledge graph (for PC parts) or local database.
+        
+        Args:
+            query: Search keywords (searches product name, model, series, brand).
+            part_type: Component category filter (e.g., "CPU", "GPU", "Motherboard").
+            brand: Brand filter (comma-separated for multiple).
+            min_price: Minimum price filter.
+            max_price: Maximum price filter.
+            seller: Seller/retailer filter.
+            limit: Maximum number of results (default 20).
+        
+        Returns:
+            JSON string with array of products.
+        """
+        try:
+            # Normalize part_type
+            part_type_normalized = None
+            if part_type:
+                part_type_normalized = part_type.lower().strip()
+            
+            # Determine if this is a PC part query - use Neo4j if so
+            is_pc_part_query = part_type_normalized and is_pc_part(part_type_normalized)
+            results = []
+            
+            if is_pc_part_query:
+                # Use Neo4j knowledge graph for PC parts
+                kg_tool = get_compatibility_tool()
+                if kg_tool.is_available():
+                    try:
+                        kg_products = kg_tool.search_products(
+                            part_type=part_type_normalized,
+                            brand=brand,
+                            min_price=min_price,
+                            max_price=max_price,
+                            query=query if query else None,
+                            seller=seller,
+                            limit=limit,
+                        )
+                        
+                        # Convert KG products to format expected by analytical agent
+                        for kg_product in kg_products:
+                            price = kg_product.get("price_avg") or kg_product.get("price") or kg_product.get("price_min")
+                            results.append({
+                                "id": kg_product.get("product_id") or kg_product.get("slug"),
+                                "product_id": kg_product.get("product_id") or kg_product.get("slug"),
+                                "title": kg_product.get("name") or kg_product.get("raw_name"),
+                                "name": kg_product.get("name") or kg_product.get("raw_name"),
+                                "brand": kg_product.get("brand"),
+                                "price": price,
+                                "price_text": f"${price:,.2f}" if price else None,
+                                "price_value": float(price) if price else None,
+                                "currency": "USD",
+                                "rating": kg_product.get("rating"),
+                                "rating_count": kg_product.get("rating_count"),
+                                "source": kg_product.get("seller"),
+                                "seller": kg_product.get("seller"),
+                                "category": kg_product.get("product_type"),
+                                "part_type": kg_product.get("product_type"),
+                                "attributes": {k: v for k, v in kg_product.items() 
+                                             if k not in ["product_id", "slug", "name", "raw_name", 
+                                                          "brand", "price", "price_avg", "price_min", 
+                                                          "price_max", "seller", "rating", "rating_count", 
+                                                          "product_type", "model", "series", "namespace"]},
+                                "specs": {k: v for k, v in kg_product.items() 
+                                         if k not in ["product_id", "slug", "name", "raw_name", 
+                                                     "brand", "price", "price_avg", "price_min", 
+                                                     "price_max", "seller", "rating", "rating_count", 
+                                                     "product_type", "model", "series", "namespace"]},
+                            })
+                    except Exception as exc:
+                        logger.warning(f"Neo4j search failed: {exc}, falling back to local database")
+                        is_pc_part_query = False
+            
+            if not is_pc_part_query or not products:
+                # Use local database for non-PC parts or as fallback
+                db_products = store.search_products(
+                    query=query if query else None,
+                    part_type=part_type,
+                    brand=brand,
+                    min_price=min_price,
+                    max_price=max_price,
+                    seller=seller,
+                    limit=limit,
+                )
+                
+                # Format products for compatibility with existing code
+                for product in db_products:
+                    results.append({
+                        "id": product.get("id"),
+                        "product_id": product.get("product_id"),
+                        "title": product.get("title"),
+                        "name": product.get("title"),
+                        "brand": product.get("brand"),
+                        "price": product.get("price"),
+                        "price_text": f"${product.get('price', 0):,.2f}" if product.get("price") else None,
+                        "price_value": product.get("price"),
+                        "currency": "USD",
+                        "rating": product.get("rating"),
+                        "rating_count": product.get("rating_count"),
+                        "source": product.get("seller"),
+                        "seller": product.get("seller"),
+                        "category": product.get("category"),
+                        "part_type": product.get("part_type"),
+                        "attributes": product.get("attributes", {}),
+                        "specs": product.get("attributes", {}),
+                    })
+            
+            return json.dumps({"items": results, "total": len(results)})
+        except Exception as exc:
+            logger.error(f"Product search failed: {exc}")
+            return json.dumps({"error": f"Search failed: {str(exc)}", "items": []})
+    
+    @tool("get_product_details")
+    def get_product_details_tool(
+        product_id: str,
+        country: Optional[str] = None,
+        language: Optional[str] = None,
+    ) -> str:
+        """
+        Get detailed information for a single product by product_id from the local database.
+        
+        Args:
+            product_id: Product identifier to look up.
+            country: Ignored (kept for compatibility).
+            language: Ignored (kept for compatibility).
+        
+        Returns:
+            JSON string with detailed product information.
+        """
+        try:
+            product = store.get_product_by_id(product_id)
+            if not product:
+                return json.dumps({"error": f"Product {product_id} not found"})
+            
+            # Format product details
+            details = {
+                "id": product.get("id"),
+                "product_id": product.get("product_id"),
+                "title": product.get("title"),
+                "name": product.get("title"),
+                "brand": product.get("brand"),
+                "model": product.get("model"),
+                "series": product.get("series"),
+                "category": product.get("category"),
+                "part_type": product.get("part_type"),
+                "price": product.get("price"),
+                "price_text": f"${product.get('price', 0):,.2f}" if product.get("price") else None,
+                "price_value": product.get("price"),
+                "currency": "USD",
+                "rating": product.get("rating"),
+                "rating_count": product.get("rating_count"),
+                "source": product.get("seller"),
+                "seller": product.get("seller"),
+                "year": product.get("year"),
+                "attributes": product.get("attributes", {}),
+                "specs": product.get("attributes", {}),
+            }
+            
+            # Add all technical attributes to top level
+            for key, value in (product.get("attributes", {}) or {}).items():
+                if value is not None and key not in details:
+                    details[key] = value
+            
+            return json.dumps(details)
+        except Exception as exc:
+            logger.error(f"Product detail lookup failed for {product_id}: {exc}")
+            return json.dumps({"error": f"Failed to fetch product details: {str(exc)}"})
+    
     @tool("cached_recommendation_lookup")
     def cached_recommendation_lookup(selector: str) -> str:
         """
@@ -646,12 +874,80 @@ def analytical_agent(
             "compatible_parts": results
         })
 
-    tools = [
+    @tool("search_pc_parts_by_type")
+    def search_pc_parts_by_type(part_type: str, max_price: Optional[float] = None, min_price: Optional[float] = None, limit: int = 20) -> str:
+        """
+        Search for PC parts of a specific type from the knowledge graph and store.
+        
+        Use this to find initial parts when building a PC configuration. Then use
+        find_compatible_parts to find compatible parts iteratively.
+
+        Args:
+            part_type: Part type (e.g., "cpu", "gpu", "ram", "motherboard", "psu", "storage", "case", "cooler")
+            max_price: Optional maximum price filter
+            min_price: Optional minimum price filter
+            limit: Maximum number of results (default 20)
+
+        Returns:
+            JSON string with list of products, each containing:
+            - name: Product name
+            - slug: Product slug (use for compatibility queries)
+            - brand: Brand name
+            - price_avg: Average price
+            - price_min: Minimum price
+            - price_max: Maximum price
+            - product_type: Part type
+            - Other product attributes (socket, wattage, form_factor, etc.)
+        """
+        build_tool = get_pc_build_tool()
+        
+        try:
+            products = build_tool.search_products_by_type(
+                part_type=part_type.lower(),
+                max_price=float(max_price) if max_price else None,
+                min_price=float(min_price) if min_price else None,
+                limit=limit
+            )
+            
+            # Format for JSON
+            formatted = []
+            for product in products:
+                formatted.append({
+                    "name": product.get("name") or product.get("title", "Unknown"),
+                    "slug": product.get("slug"),
+                    "brand": product.get("brand"),
+                    "price_avg": product.get("price_avg"),
+                    "price_min": product.get("price_min"),
+                    "price_max": product.get("price_max"),
+                    "price": product.get("price") or product.get("price_avg") or product.get("price_min"),
+                    "product_type": product.get("product_type", part_type),
+                    "socket": product.get("socket"),
+                    "wattage": product.get("wattage") or product.get("tdp_watts"),
+                    "form_factor": product.get("form_factor"),
+                    "ram_standard": product.get("ram_standard"),
+                    "pcie_version": product.get("pcie_version"),
+                })
+            
+            return json.dumps({
+                "part_type": part_type,
+                "products": formatted,
+                "count": len(formatted)
+            })
+        except Exception as e:
+            logger.error(f"Error searching PC parts: {e}")
+            return json.dumps({
+                "error": "Search failed",
+                "message": f"Failed to search {part_type}: {str(e)}",
+                "products": []
+            })
+
+    tools_list = [
         cached_recommendation_lookup,
-        search_products,
-        get_product_details,
+        search_products_tool,
+        get_product_details_tool,
         check_parts_compatibility,
         find_compatible_parts,
+        search_pc_parts_by_type,
         web_search,
     ]
 
@@ -742,7 +1038,7 @@ def analytical_agent(
     messages.extend(recent_history)
 
     # Create analytical agent
-    agent = create_react_agent(llm, tools)
+    agent = create_react_agent(llm, tools_list)
 
     # Emit progress: Starting analysis
     if progress_callback:
@@ -772,8 +1068,9 @@ def analytical_agent(
             state["ai_response"] = "I couldn't generate a response. Please try rephrasing your question."
             return state
 
-        # Check for compatibility tool results
+        # Check for compatibility tool results and build_pc_configuration results
         compatibility_result = None
+        build_pc_result = None
         tool_calls_found = []
         for message in messages:
             if isinstance(message, ToolMessage):
@@ -785,12 +1082,27 @@ def analytical_agent(
                     # Try to match tool_call_id to tool name (if available in context)
                     tool_name = "unknown"
                 
-                # Detect compatibility tool by content structure
+                # Detect tool by content structure
                 try:
                     tool_result = json.loads(message.content) if isinstance(message.content, str) else message.content
                     if isinstance(tool_result, dict):
+                        # Detect search_pc_parts_by_type tool by result structure
+                        if "products" in tool_result and "part_type" in tool_result:
+                            tool_name = tool_name or "search_pc_parts_by_type"
+                            logger.info(f"[Analytical Agent] search_pc_parts_by_type called - part_type: {tool_result.get('part_type')}, found {tool_result.get('count', 0)} products")
+                        # Detect build_pc_configuration tool by result structure (deprecated, but still log if used)
+                        elif "parts" in tool_result and "total_price" in tool_result:
+                            tool_name = tool_name or "build_pc_configuration"
+                            build_pc_result = tool_result
+                            logger.warning(f"[Analytical Agent] DEPRECATED build_pc_configuration tool called - budget: ${tool_result.get('budget', 'unknown')}, total_price: ${tool_result.get('total_price', 0)}, parts_count: {len(tool_result.get('parts', {}))}")
+                            logger.warning(f"[Analytical Agent] Agent should use search_pc_parts_by_type and find_compatible_parts iteratively instead")
+                            # Log price details for debugging
+                            parts = tool_result.get('parts', {})
+                            for part_type, part_data in parts.items():
+                                price = part_data.get('price') or part_data.get('price_avg') or part_data.get('price_min') or 'N/A'
+                                logger.info(f"[Analytical Agent]   - {part_type}: {part_data.get('name', 'Unknown')} - Price: ${price}")
                         # Detect compatibility tool by result structure
-                        if "compatible" in tool_result or "compatible_parts" in tool_result:
+                        elif "compatible" in tool_result or "compatible_parts" in tool_result:
                             tool_name = tool_name or "compatibility_tool"
                         elif "error" in tool_result and "compatibility" in str(tool_result.get("message", "")).lower():
                             tool_name = tool_name or "compatibility_tool"
@@ -859,11 +1171,30 @@ def analytical_agent(
             logger.info(f"[Analytical Agent] Tool calls made: {', '.join(tool_calls_found)}")
             if 'find_compatible_parts' in tool_calls_found or 'check_parts_compatibility' in tool_calls_found:
                 logger.info(f"[Analytical Agent] Compatibility tool was called, compatibility_result set: {compatibility_result is not None}")
+            if 'search_pc_parts_by_type' in tool_calls_found:
+                logger.info(f"[Analytical Agent] Agent is using iterative PC build approach with search_pc_parts_by_type")
+            if 'build_pc_configuration' in tool_calls_found:
+                logger.warning(f"[Analytical Agent] DEPRECATED build_pc_configuration tool was called - agent should use iterative approach instead")
+                logger.info(f"[Analytical Agent] build_pc_configuration tool was called, result stored: {build_pc_result is not None}")
+                if build_pc_result:
+                    logger.info(f"[Analytical Agent] Build result - total_price: ${build_pc_result.get('total_price', 0)}, complete: {build_pc_result.get('complete', False)}")
+                else:
+                    logger.warning(f"[Analytical Agent] build_pc_configuration was called but no result found in messages!")
+        else:
+            logger.info(f"[Analytical Agent] No tool calls detected in this turn")
 
         # Get the last AI message
         final_message = messages[-1]
         response_content = final_message.content
 
+        # Check if this was a binary compatibility check (should NOT create comparison table)
+        is_binary_compatibility = (
+            compatibility_result and 
+            "part1_name" in compatibility_result and 
+            "part2_name" in compatibility_result and
+            "compatible_parts_count" not in compatibility_result
+        )
+        
         # Validate response
         if not response_content or len(response_content.strip()) == 0:
             logger.warning("Analytical agent: Empty response from agent")
@@ -874,9 +1205,20 @@ def analytical_agent(
         else:
             logger.info(f"Analytical agent: Response generated ({len(response_content)} chars)")
 
-            # Check if this is a comparison response (contains JSON)
-            comparison_result = parse_comparison_response(response_content)
+            # For binary compatibility checks, skip comparison table parsing
+            # Only parse comparison if this was NOT a binary compatibility check
+            comparison_result = None
+            if not is_binary_compatibility:
+                # Check if this is a comparison response (contains JSON)
+                comparison_result = parse_comparison_response(response_content)
 
+            # Store build_pc_configuration result if found
+            if build_pc_result:
+                state["build_pc_result"] = build_pc_result
+                logger.info(f"[Analytical Agent] Stored build_pc_result in state with {len(build_pc_result.get('parts', {}))} parts")
+            else:
+                state["build_pc_result"] = None
+            
             if comparison_result:
                 # It's a comparison - use summary as response, store table separately
                 state["ai_response"] = comparison_result['summary']
@@ -884,6 +1226,14 @@ def analytical_agent(
                 logger.info(f"Comparison detected: {len(comparison_result['comparison_table'].headers)} products compared")
 
                 # Set compatibility result if found (even with comparison)
+                if compatibility_result:
+                    state["compatibility_result"] = compatibility_result
+                else:
+                    state["compatibility_result"] = None
+            elif is_binary_compatibility:
+                # Binary compatibility check - use agent response, ensure no comparison table
+                state["ai_response"] = response_content
+                state["comparison_table"] = None
                 if compatibility_result:
                     state["compatibility_result"] = compatibility_result
                 else:
@@ -956,8 +1306,17 @@ def analytical_agent(
                     response_content = state["ai_response"]
             else:
                 # No comparison_result - try fallback comparison or normal response
+                # But skip fallback comparison if this was a compatibility query (binary or find compatible parts)
+                # Compatibility queries should use KG tools, not comparison fallback
+                is_compatibility_query = (
+                    is_binary_compatibility or
+                    (compatibility_result and "compatible_parts_count" in compatibility_result) or
+                    _should_attempt_compatibility(user_input)
+                )
+                
                 fallback_comparison = None
-                if _should_attempt_comparison(user_input):
+                # Only attempt comparison if this is NOT a compatibility query
+                if not is_compatibility_query and _should_attempt_comparison(user_input):
                     fallback_comparison = _build_comparison_from_cached_products(
                         user_input,
                         products,
@@ -990,9 +1349,12 @@ def analytical_agent(
                 else:
                     # Normal response - no comparison
                     state["ai_response"] = response_content
-                    # Only clear comparison_table if it wasn't already set (e.g., by compatibility tool)
-                    # If comparison_table was already set, preserve it (don't overwrite)
-                    if state.get("comparison_table") is None:
+                    # For binary compatibility checks, ensure comparison_table is None
+                    # For "find compatible parts" queries, comparison_table may be set above
+                    if is_binary_compatibility:
+                        state["comparison_table"] = None
+                    # Otherwise, only clear if not already set
+                    elif state.get("comparison_table") is None:
                         state["comparison_table"] = None
                     
                     # Set compatibility result if found, otherwise clear it
@@ -1102,10 +1464,35 @@ def _build_comparison_from_cached_products(
 
 
 def _should_attempt_comparison(user_input: str) -> bool:
+    """
+    Check if user input suggests a comparison query.
+    
+    IMPORTANT: This should return False for compatibility queries.
+    Compatibility queries should be detected separately and handled by KG tools.
+    """
     if not user_input:
         return False
+    
+    # First check if it's a compatibility query - if so, NOT a comparison
+    if _should_attempt_compatibility(user_input):
+        return False
+    
     lowered = user_input.lower()
-    return any(keyword in lowered for keyword in ("compare", "vs", "versus", "#", "top", "which"))
+    # Check for comparison keywords, but exclude "which" if it's part of a compatibility query
+    comparison_keywords = ("compare", "vs", "versus", "#", "top")
+    if any(keyword in lowered for keyword in comparison_keywords):
+        return True
+    
+    # "which" can be used in both comparison and compatibility queries
+    # Only treat as comparison if it's clearly a comparison (e.g., "which is better")
+    if "which" in lowered:
+        # If it contains compatibility keywords, it's a compatibility query, not comparison
+        if not any(comp_kw in lowered for comp_kw in ["compatible", "works with", "fits", "work with"]):
+            # Check if it's asking "which [product] is better/best" vs "which [parts] are compatible"
+            if any(comp_word in lowered for comp_word in ["better", "best", "recommend"]):
+                return True
+    
+    return False
 
 
 def _should_attempt_compatibility(user_input: str) -> bool:
@@ -1233,7 +1620,12 @@ def _fetch_product_detail(
         payload["language"] = language
 
     try:
-        response = get_product_details.invoke(payload)
+        # Use local database lookup instead of RapidAPI
+        product = store.get_product_by_id(product_id)
+        if product:
+            response = json.dumps(product)
+        else:
+            response = json.dumps({"error": f"Product {product_id} not found"})
         if isinstance(response, str):
             return json.loads(response)
         if isinstance(response, dict):

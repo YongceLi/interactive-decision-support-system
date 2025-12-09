@@ -1,4 +1,4 @@
-"""Local database-backed electronics recommendation pipeline."""
+"""Knowledge graph and local database-backed electronics recommendation pipeline."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from idss_agent.state.schema import ProductSearchState
 from idss_agent.tools.local_electronics_store import LocalElectronicsStore
+from idss_agent.tools.kg_compatibility import get_compatibility_tool, is_pc_part, PC_PART_TYPES
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
@@ -19,7 +20,7 @@ DEFAULT_COUNTRY = "us"
 
 
 def _build_search_query(filters: Dict[str, Any], implicit: Dict[str, Any]) -> str:
-    """Create a keyword query for RapidAPI search from filters and preferences."""
+    """Create a keyword query for database search from filters and preferences."""
 
     keywords: List[str] = []
 
@@ -95,7 +96,7 @@ def _extract_price_bounds(filters: Dict[str, Any]) -> Dict[str, Optional[float]]
 def _build_search_payload(
     filters: Dict[str, Any], implicit: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Prepare parameters for the RapidAPI search tool."""
+    """Prepare parameters for the local database search (legacy function, kept for compatibility)."""
 
     price_bounds = _extract_price_bounds(filters)
 
@@ -114,17 +115,17 @@ def _build_search_payload(
 
 
 def _parse_product_list(response_text: str) -> List[Dict[str, Any]]:
-    """Parse RapidAPI response text into a list of product dictionaries."""
+    """Parse product response text into a list of product dictionaries (legacy function, kept for compatibility)."""
 
     try:
         payload = json.loads(response_text)
     except json.JSONDecodeError:
-        logger.error("RapidAPI returned non-JSON response: %s", response_text[:200])
+        logger.error("Invalid JSON response: %s", response_text[:200])
         return []
 
     if isinstance(payload, dict):
         if payload.get("error"):
-            logger.error("RapidAPI error: %s", payload["error"])
+            logger.error("Product search error: %s", payload["error"])
             return []
 
         for key in ("items", "products", "data", "results"):
@@ -270,6 +271,173 @@ def _normalize_product(product: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     return normalized
 
 
+def _normalize_kg_product(product: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Convert Neo4j product node to normalized format expected by downstream code."""
+    
+    # Extract basic fields
+    product_id = product.get("product_id") or product.get("slug")
+    title = product.get("name") or product.get("raw_name") or product.get("slug")
+    
+    if not title:
+        return None
+    
+    brand = product.get("brand")
+    price = product.get("price_avg") or product.get("price") or product.get("price_min")
+    seller = product.get("seller")
+    
+    # Extract image URL from KG product (can be imageurl or image_url)
+    image_url = product.get("imageurl") or product.get("image_url") or product.get("imageUrl")
+    
+    # Build attributes dict from all product properties
+    attributes = {}
+    for key, value in product.items():
+        if key not in ["product_id", "slug", "name", "raw_name", "brand", "price", 
+                      "price_avg", "price_min", "price_max", "seller", "rating", 
+                      "rating_count", "product_type", "model", "series", "namespace",
+                      "imageurl", "image_url", "imageUrl"]:
+            if value is not None:
+                attributes[key] = value
+    
+    normalized = {
+        "id": str(product_id or product.get("slug") or title),
+        "product_id": product_id or product.get("slug"),
+        "title": title,
+        "brand": brand,
+        "source": seller,
+        "price_text": f"${price:,.2f}" if price else None,
+        "price_value": float(price) if price else None,
+        "price_currency": "USD",
+        "link": None,  # KG products don't have URLs
+        "image_url": image_url,
+        "rating": product.get("rating"),
+        "rating_count": product.get("rating_count"),
+        "product": {
+            "id": product_id or product.get("slug"),
+            "title": title,
+            "brand": brand,
+            "category": product.get("product_type"),
+            "attributes": attributes,
+        },
+        "offer": {
+            "price": price,
+            "currency": "USD",
+            "seller": seller,
+            "url": None,
+            "availability": None,
+        },
+        "reviewCount": product.get("rating_count"),
+        "photos": {"retail": [{"url": image_url}]} if image_url else None,
+        "_source": "neo4j_kg",
+        "_raw": product,
+    }
+    
+    # Set standard electronics product fields
+    product_brand = brand or "Unknown"
+    product_name = title
+    
+    normalized.setdefault("brand", product_brand)
+    normalized.setdefault("product_brand", product_brand)
+    normalized.setdefault("product_name", product_name)
+    
+    if price and "price" not in normalized:
+        normalized["price"] = float(price)
+    
+    # Ensure photos are set if image_url exists
+    if image_url and not normalized.get("photos"):
+        normalized["photos"] = {"retail": [{"url": image_url}]}
+    
+    return normalized
+
+
+def _is_professional_product(product: Dict[str, Any]) -> bool:
+    """
+    Identify professional/workstation/commercial products that should be filtered out
+    for personal/consumer use cases.
+    
+    Returns True if the product is professional/commercial (should be filtered out).
+    """
+    title = (product.get("title") or product.get("name") or product.get("raw_name") or "").upper()
+    brand = (product.get("brand") or "").upper()
+    series = (product.get("series") or product.get("product", {}).get("attributes", {}).get("series") or "").upper()
+    
+    # Professional GPU patterns (workstation/professional GPUs)
+    professional_gpu_patterns = [
+        "RTX 6000", "RTX 5000", "RTX 4000", "RTX 3000",  # Professional RTX series
+        "QUADRO", "TESLA", "A100", "A6000", "A5000", "A4000", "A3000", "A2000",  # NVIDIA professional
+        "PRO V620", "PRO V520", "PRO V340",  # AMD professional
+        "ADA", "L40", "L20",  # Professional Ada architecture
+        "WORKSTATION", "PROFESSIONAL", "ENTERPRISE",
+        "SERVER", "DATACENTER",
+    ]
+    
+    # Professional CPU patterns
+    professional_cpu_patterns = [
+        "XEON", "EPYC", "THREADRIPPER PRO", "WORKSTATION",
+        "SERVER", "DATACENTER", "ENTERPRISE",
+    ]
+    
+    # Professional storage patterns
+    professional_storage_patterns = [
+        "ENTERPRISE", "DATACENTER", "SERVER", "PROFESSIONAL",
+        "G-RAID", "PRO-G",  # Professional storage arrays
+    ]
+    
+    # Check GPU patterns
+    if any(pattern in title or pattern in series for pattern in professional_gpu_patterns):
+        return True
+    
+    # Check CPU patterns
+    if any(pattern in title or pattern in series for pattern in professional_cpu_patterns):
+        return True
+    
+    # Check storage patterns
+    if any(pattern in title or pattern in series for pattern in professional_storage_patterns):
+        return True
+    
+    # Check for professional product names containing "PRO" in specific contexts
+    if " PRO " in title and any(keyword in title for keyword in ["GPU", "GRAPHICS", "VIDEO", "WORKSTATION"]):
+        return True
+    
+    return False
+
+
+def _rank_products_for_consumer_use(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Rank products to prioritize consumer/personal use options.
+    Filters out professional products and ranks remaining by price (ascending).
+    """
+    # Filter out professional products
+    consumer_products = [p for p in products if not _is_professional_product(p)]
+    
+    # If we filtered out all products, keep some professional ones as fallback
+    # but prefer consumer products
+    if not consumer_products and products:
+        logger.warning("All products filtered as professional, keeping some as fallback")
+        consumer_products = products[:10]  # Keep top 10 as fallback
+    
+    # Sort by price (ascending) - prefer affordable consumer options
+    def get_price(product: Dict[str, Any]) -> float:
+        price = product.get("price_value") or product.get("price")
+        if price is None:
+            # Try to extract from price_text
+            price_text = product.get("price_text", "")
+            if price_text:
+                match = re.search(r'[\d,]+\.?\d*', price_text.replace(',', ''))
+                if match:
+                    try:
+                        return float(match.group())
+                    except ValueError:
+                        pass
+        try:
+            return float(price) if price is not None else float('inf')
+        except (TypeError, ValueError):
+            return float('inf')
+    
+    consumer_products.sort(key=get_price)
+    
+    return consumer_products
+
+
 def _deduplicate_products(products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Remove duplicate products based on product id or URL."""
 
@@ -309,7 +477,7 @@ def update_recommendation_list(
     state: ProductSearchState,
     progress_callback: Optional[Callable[[dict], None]] = None,
 ) -> ProductSearchState:
-    """Populate recommendation slots in state with local database electronics products."""
+    """Populate recommendation slots in state with products from knowledge graph (for PC parts) or local database."""
 
     if progress_callback:
         progress_callback(
@@ -323,12 +491,14 @@ def update_recommendation_list(
     filters = state["explicit_filters"].copy()
     implicit = state["implicit_preferences"].copy()
 
-    # Build search parameters for local database
+    # Build search parameters
     search_query = _build_search_query(filters, implicit)
     price_bounds = _extract_price_bounds(filters)
     
     # Extract part_type from category if available
     part_type = filters.get("category") or filters.get("part_type") or filters.get("type")
+    if part_type:
+        part_type = part_type.lower().strip()
     
     # Extract brand from filters
     brand = filters.get("brand")
@@ -337,40 +507,108 @@ def update_recommendation_list(
     if search_query == "electronics":
         search_query = None
 
-    logger.info("Local database search params: query=%s, part_type=%s, brand=%s, price_range=%s-%s",
-                search_query, part_type, brand, price_bounds["min_price"], price_bounds["max_price"])
+    # Determine if this is a PC part query - use Neo4j if so
+    is_pc_part_query = part_type and is_pc_part(part_type)
+    
+    products = []
+    
+    if is_pc_part_query:
+        # Use Neo4j knowledge graph for PC parts
+        logger.info("Using Neo4j knowledge graph for PC parts search: part_type=%s, brand=%s, price_range=%s-%s",
+                    part_type, brand, price_bounds["min_price"], price_bounds["max_price"])
+        
+        try:
+            kg_tool = get_compatibility_tool()
+            if kg_tool.is_available():
+                kg_products = kg_tool.search_products(
+                    part_type=part_type,
+                    brand=brand,
+                    min_price=price_bounds["min_price"],
+                    max_price=price_bounds["max_price"],
+                    query=search_query,
+                    socket=filters.get("socket"),
+                    vram=filters.get("vram"),
+                    capacity=filters.get("capacity"),
+                    wattage=filters.get("wattage"),
+                    form_factor=filters.get("form_factor"),
+                    chipset=filters.get("chipset"),
+                    ram_standard=filters.get("ram_standard"),
+                    storage_type=filters.get("storage_type"),
+                    cooling_type=filters.get("cooling_type"),
+                    certification=filters.get("certification"),
+                    pcie_version=filters.get("pcie_version"),
+                    tdp=filters.get("tdp"),
+                    year=filters.get("year"),
+                    series=filters.get("series"),
+                    seller=filters.get("seller") or filters.get("retailer"),
+                    limit=100,
+                )
+                
+                # Convert KG products to normalized format
+                for kg_product in kg_products:
+                    normalized = _normalize_kg_product(kg_product)
+                    if normalized:
+                        products.append(normalized)
+                
+                logger.info("Neo4j search returned %d products", len(products))
+            else:
+                logger.warning("Neo4j not available, falling back to local database")
+                is_pc_part_query = False  # Fall through to SQLite
+        except Exception as exc:
+            logger.error("Neo4j search failed: %s, falling back to local database", exc)
+            is_pc_part_query = False  # Fall through to SQLite
+    
+    if not is_pc_part_query or not products:
+        # Use local database for non-PC parts or as fallback
+        logger.info("Using local database search: query=%s, part_type=%s, brand=%s, price_range=%s-%s",
+                    search_query, part_type, brand, price_bounds["min_price"], price_bounds["max_price"])
 
-    try:
-        store = LocalElectronicsStore()
-        products = store.search_products(
-            query=search_query,
-            part_type=part_type,
-            brand=brand,
-            min_price=price_bounds["min_price"],
-            max_price=price_bounds["max_price"],
-            seller=filters.get("seller") or filters.get("retailer"),
-            limit=100,  # Get more candidates for ranking
-        )
-    except Exception as exc:
-        logger.error("Local database search failed: %s", exc)
-        state["recommended_products"] = []
-        state["search_error"] = str(exc)
-        return state
+        try:
+            store = LocalElectronicsStore()
+            db_products = store.search_products(
+                query=search_query,
+                part_type=part_type,
+                brand=brand,
+                min_price=price_bounds["min_price"],
+                max_price=price_bounds["max_price"],
+                seller=filters.get("seller") or filters.get("retailer"),
+                # Pass all technical specification filters
+                socket=filters.get("socket"),
+                vram=filters.get("vram"),
+                capacity=filters.get("capacity"),
+                wattage=filters.get("wattage"),
+                form_factor=filters.get("form_factor"),
+                chipset=filters.get("chipset"),
+                ram_standard=filters.get("ram_standard"),
+                storage_type=filters.get("storage_type"),
+                cooling_type=filters.get("cooling_type"),
+                certification=filters.get("certification"),
+                pcie_version=filters.get("pcie_version"),
+                tdp=filters.get("tdp"),
+                year=filters.get("year"),
+                series=filters.get("series"),
+                limit=100,  # Get more candidates for ranking
+            )
+            
+            # Normalize products (they're already in the right format from LocalElectronicsStore)
+            for product in db_products:
+                normalized = _normalize_product(product)
+                if normalized:
+                    products.append(normalized)
+        except Exception as exc:
+            logger.error("Local database search failed: %s", exc)
+            state["recommended_products"] = []
+            state["search_error"] = str(exc)
+            return state
 
     if not products:
-        logger.warning("Local database search returned no products for filters: %s", filters)
+        logger.warning("Search returned no products for filters: %s", filters)
 
-    # Normalize products (they're already in the right format from LocalElectronicsStore)
-    normalized_products = []
-    for product in products:
-        normalized = _normalize_product(product)
-        if normalized:
-            normalized_products.append(normalized)
-
-    if not normalized_products:
-        logger.warning("Local database search returned no normalized products")
-
-    deduped_products = _deduplicate_products(normalized_products)
+    # Filter and rank products for consumer/personal use
+    consumer_ranked_products = _rank_products_for_consumer_use(products)
+    
+    # Deduplicate after filtering
+    deduped_products = _deduplicate_products(consumer_ranked_products)
     config = get_config()
     max_items = config.limits.get("max_recommended_items", 20)
 

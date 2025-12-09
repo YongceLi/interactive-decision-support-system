@@ -58,8 +58,7 @@ def generate_favorite_response(
     # Format product details (keep it concise)
     product_details = {
         "title": product.get('title', product.get('name', 'Unknown')),
-        "brand": product.get('brand', product.get('make', 'Unknown')),
-        "model": product.get('model', 'Unknown'),
+        "brand": product.get('brand', product.get('make', 'Unknown')),  # 'make' kept for backward compatibility with old data
         "price": product.get('price', product.get('price_value', 'N/A')),
         "rating": product.get('rating', 'N/A'),
         "source": product.get('source', 'N/A')
@@ -92,7 +91,7 @@ Generate the proactive response now.
     try:
         # Generate response
         response: ProactiveResponse = structured_llm.invoke([HumanMessage(content=prompt)])
-        product_name = product.get('title') or product.get('name') or f"{product.get('brand', '')} {product.get('model', 'this product')}".strip()
+        product_name = product.get('title') or product.get('name') or product.get('product_name') or f"{product.get('brand', '')} product".strip()
         logger.info(f"Generated proactive response for {product_name}")
         return response
 
@@ -100,7 +99,7 @@ Generate the proactive response now.
         logger.error(f"Failed to generate proactive response: {e}")
 
         # Fallback: simple default response
-        product_name = product.get('title') or product.get('name') or f"{product.get('brand', '')} {product.get('model', 'this product')}".strip()
+        product_name = product.get('title') or product.get('name') or product.get('product_name') or f"{product.get('brand', '')} product".strip()
         return ProactiveResponse(
             ai_response=f"I see you're interested in {product_name}! What would you like to know more about?",
             quick_replies=["View details", "Check compatibility", "Full specs", "Compare similar"]

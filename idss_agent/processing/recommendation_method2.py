@@ -1,5 +1,5 @@
 """
-Method 2: Web search guidance → Parallel local database queries → Vector ranking.
+Method 2: Web search guidance → Parallel knowledge graph (for PC parts) or local database queries → Vector ranking.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from idss_agent.processing import recommendation as base_recommendation
 from idss_agent.processing.vector_ranker import rank_products_by_similarity
 from idss_agent.tools.local_electronics_store import LocalElectronicsStore
+from idss_agent.tools.kg_compatibility import get_compatibility_tool, is_pc_part
 from idss_agent.utils.config import get_config
 from idss_agent.utils.logger import get_logger
 
@@ -100,14 +101,19 @@ def recommend_method2(
         for future in as_completed(future_to_brand):
             brand = future_to_brand[future]
             try:
-                brand_results[brand] = future.result()
+                brand_products = future.result()
+                # Filter and rank products for consumer/personal use
+                consumer_ranked = base_recommendation._rank_products_for_consumer_use(brand_products)
+                brand_results[brand] = consumer_ranked
+                logger.info("Brand %s: filtered to %d consumer products (from %d total)", 
+                           brand, len(consumer_ranked), len(brand_products))
             except Exception as exc:  # pragma: no cover
                 logger.error("Brand query failed for %s: %s", brand, exc)
                 brand_results[brand] = []
 
     total_candidates = sum(len(products) for products in brand_results.values())
     logger.info(
-        "Step 2 complete: Retrieved %d candidate products across %d brands",
+        "Step 2 complete: Retrieved %d candidate products across %d brands (consumer-focused)",
         total_candidates,
         len(brands_to_query),
     )
@@ -293,13 +299,13 @@ def query_products_for_brand(
     limit: int,
 ) -> List[Dict[str, Any]]:
     """
-    Query local database for a specific brand with user filters.
+    Query knowledge graph (for PC parts) or local database for a specific brand with user filters.
     """
     try:
-        store = LocalElectronicsStore()
-        
         price_bounds = base_recommendation._extract_price_bounds(explicit_filters)
         part_type = explicit_filters.get("category") or explicit_filters.get("part_type")
+        if part_type:
+            part_type = part_type.lower().strip()
         
         # Build query from product terms
         product_terms = [
@@ -310,7 +316,59 @@ def query_products_for_brand(
         query_parts = [term for term in product_terms if term]
         query = " ".join(query_parts) if query_parts else None
         
-        products = store.search_products(
+        # Determine if this is a PC part query - use Neo4j if so
+        is_pc_part_query = part_type and is_pc_part(part_type)
+        products = []
+        
+        if is_pc_part_query:
+            # Use Neo4j knowledge graph for PC parts
+            try:
+                kg_tool = get_compatibility_tool()
+                if kg_tool.is_available():
+                    kg_products = kg_tool.search_products(
+                        part_type=part_type,
+                        brand=brand,
+                        min_price=price_bounds["min_price"],
+                        max_price=price_bounds["max_price"],
+                        query=query,
+                        socket=explicit_filters.get("socket"),
+                        vram=explicit_filters.get("vram"),
+                        capacity=explicit_filters.get("capacity"),
+                        wattage=explicit_filters.get("wattage"),
+                        form_factor=explicit_filters.get("form_factor"),
+                        chipset=explicit_filters.get("chipset"),
+                        ram_standard=explicit_filters.get("ram_standard"),
+                        storage_type=explicit_filters.get("storage_type"),
+                        cooling_type=explicit_filters.get("cooling_type"),
+                        certification=explicit_filters.get("certification"),
+                        pcie_version=explicit_filters.get("pcie_version"),
+                        tdp=explicit_filters.get("tdp"),
+                        year=explicit_filters.get("year"),
+                        series=explicit_filters.get("series"),
+                        seller=explicit_filters.get("seller"),
+                        limit=limit,
+                    )
+                    
+                    # Convert KG products to normalized format
+                    for kg_product in kg_products:
+                        normalized = base_recommendation._normalize_kg_product(kg_product)
+                        if normalized:
+                            products.append(normalized)
+                    
+                    # Filter and rank products for consumer/personal use
+                    consumer_ranked = base_recommendation._rank_products_for_consumer_use(products)
+                    logger.info("Brand %s: gathered %d products from Neo4j KG (filtered to %d consumer products)", 
+                               brand, len(products), len(consumer_ranked))
+                    products = base_recommendation._deduplicate_products(consumer_ranked)
+                    return products[:limit]
+                else:
+                    logger.warning("Neo4j not available, falling back to local database")
+            except Exception as exc:
+                logger.error("Neo4j search failed for brand %s: %s, falling back to local database", brand, exc)
+        
+        # Use local database for non-PC parts or as fallback
+        store = LocalElectronicsStore()
+        db_products = store.search_products(
             query=query,
             part_type=part_type,
             brand=brand,
@@ -322,17 +380,20 @@ def query_products_for_brand(
         
         # Normalize products
         normalized: List[Dict[str, Any]] = []
-        for product in products:
+        for product in db_products:
             normalized_product = base_recommendation._normalize_product(product)
             if normalized_product:
                 normalized.append(normalized_product)
         
-        products = base_recommendation._deduplicate_products(normalized)
-        logger.info("Brand %s: gathered %d products", brand, len(products))
+        # Filter and rank products for consumer/personal use
+        consumer_ranked = base_recommendation._rank_products_for_consumer_use(normalized)
+        products = base_recommendation._deduplicate_products(consumer_ranked)
+        logger.info("Brand %s: gathered %d products from local database (filtered to %d consumer products)", 
+                   brand, len(normalized), len(products))
         return products[:limit]
         
     except Exception as exc:
-        logger.error("Local database query failed for brand %s: %s", brand, exc)
+        logger.error("Product query failed for brand %s: %s", brand, exc)
         return []
 
 

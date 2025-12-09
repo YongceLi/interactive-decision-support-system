@@ -135,7 +135,7 @@ class Neo4jCompatibilityTool:
                 if product_type:
                     params["product_type"] = product_type
 
-                result = session.run(query, **params)
+                result = session.run(query, parameters=params)
                 records = list(result)
                 if records:
                     # Return the first match (could be improved with better ranking)
@@ -361,6 +361,213 @@ class Neo4jCompatibilityTool:
         except Exception as e:
             logger.error(f"Error getting product info: {e}")
             return None
+
+    def search_products(
+        self,
+        part_type: Optional[str] = None,
+        brand: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        query: Optional[str] = None,
+        socket: Optional[str] = None,
+        vram: Optional[str] = None,
+        capacity: Optional[str] = None,
+        wattage: Optional[str] = None,
+        form_factor: Optional[str] = None,
+        chipset: Optional[str] = None,
+        ram_standard: Optional[str] = None,
+        storage_type: Optional[str] = None,
+        cooling_type: Optional[str] = None,
+        certification: Optional[str] = None,
+        pcie_version: Optional[str] = None,
+        tdp: Optional[str] = None,
+        year: Optional[str] = None,
+        series: Optional[str] = None,
+        seller: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+        namespace: str = "pc_parts"
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for products in the knowledge graph with various filters.
+
+        Args:
+            part_type: Product type filter (e.g., "cpu", "gpu", "motherboard")
+            brand: Brand filter (comma-separated for multiple)
+            min_price: Minimum price filter
+            max_price: Maximum price filter
+            query: Text search in product name/slug
+            socket: Socket filter (for CPU/motherboard)
+            vram: VRAM filter (for GPU)
+            capacity: Capacity filter (for storage/RAM)
+            wattage: Wattage filter (for PSU)
+            form_factor: Form factor filter (for motherboard/case)
+            chipset: Chipset filter (for motherboard)
+            ram_standard: RAM standard filter (DDR4, DDR5)
+            storage_type: Storage type filter (NVMe, SSD, HDD)
+            cooling_type: Cooling type filter
+            certification: PSU certification filter
+            pcie_version: PCIe version filter
+            tdp: TDP filter
+            year: Year filter (can be range like "2022-2024")
+            series: Series filter
+            seller: Seller filter
+            limit: Maximum number of results
+            offset: Offset for pagination
+            namespace: Namespace for nodes (default: "pc_parts")
+
+        Returns:
+            List of product dictionaries
+        """
+        if not self.is_available():
+            return []
+
+        try:
+            with self.driver.session() as session:
+                # Build dynamic query with filters
+                query_parts = ["MATCH (p:PCProduct {namespace: $namespace})"]
+                where_conditions = []
+                params = {"namespace": namespace, "limit": limit, "offset": offset}
+
+                # Product type filter
+                if part_type:
+                    # Normalize part type
+                    part_type_normalized = part_type.lower().strip()
+                    if part_type_normalized == "internal_storage":
+                        part_type_normalized = "storage"
+                    where_conditions.append("p.product_type = $part_type")
+                    params["part_type"] = part_type_normalized
+
+                # Brand filter (supports comma-separated)
+                if brand:
+                    brands = [b.strip() for b in brand.split(",")]
+                    if len(brands) == 1:
+                        where_conditions.append("toLower(p.brand) = toLower($brand)")
+                        params["brand"] = brands[0]
+                    else:
+                        brand_conditions = []
+                        for i, b in enumerate(brands):
+                            param_name = f"brand_{i}"
+                            brand_conditions.append(f"toLower(p.brand) = toLower(${param_name})")
+                            params[param_name] = b.strip()
+                        where_conditions.append(f"({' OR '.join(brand_conditions)})")
+
+                # Price filters
+                if min_price is not None:
+                    where_conditions.append(
+                        "(p.price_avg IS NOT NULL AND p.price_avg >= $min_price) OR "
+                        "(p.price_avg IS NULL AND p.price_min IS NOT NULL AND p.price_min >= $min_price)"
+                    )
+                    params["min_price"] = min_price
+                if max_price is not None:
+                    where_conditions.append(
+                        "(p.price_avg IS NOT NULL AND p.price_avg <= $max_price) OR "
+                        "(p.price_avg IS NULL AND p.price_max IS NOT NULL AND p.price_max <= $max_price)"
+                    )
+                    params["max_price"] = max_price
+
+                # Text search in name/slug
+                if query:
+                    where_conditions.append(
+                        "(toLower(p.name) CONTAINS toLower($query) OR "
+                        "toLower(p.slug) CONTAINS toLower($query) OR "
+                        "toLower(p.raw_name) CONTAINS toLower($query))"
+                    )
+                    params["query"] = query
+
+                # Attribute filters
+                if socket:
+                    where_conditions.append("toLower(p.socket) = toLower($socket)")
+                    params["socket"] = socket
+                if vram:
+                    where_conditions.append("p.vram = $vram")
+                    params["vram"] = vram
+                if capacity:
+                    where_conditions.append("p.capacity = $capacity")
+                    params["capacity"] = capacity
+                if wattage:
+                    where_conditions.append("p.wattage = $wattage")
+                    params["wattage"] = wattage
+                if form_factor:
+                    where_conditions.append("toLower(p.form_factor) = toLower($form_factor)")
+                    params["form_factor"] = form_factor
+                if chipset:
+                    where_conditions.append("toLower(p.chipset) = toLower($chipset)")
+                    params["chipset"] = chipset
+                if ram_standard:
+                    where_conditions.append("toUpper(p.ram_standard) = toUpper($ram_standard)")
+                    params["ram_standard"] = ram_standard
+                if storage_type:
+                    where_conditions.append("toLower(p.storage_type) = toLower($storage_type)")
+                    params["storage_type"] = storage_type
+                if cooling_type:
+                    where_conditions.append("toLower(p.cooling_type) = toLower($cooling_type)")
+                    params["cooling_type"] = cooling_type
+                if certification:
+                    where_conditions.append("toLower(p.certification) CONTAINS toLower($certification)")
+                    params["certification"] = certification
+                if pcie_version:
+                    where_conditions.append("p.pcie_version = $pcie_version")
+                    params["pcie_version"] = pcie_version
+                if tdp:
+                    where_conditions.append("p.tdp = $tdp")
+                    params["tdp"] = tdp
+                if year:
+                    # Handle year ranges like "2022-2024"
+                    if "-" in str(year):
+                        try:
+                            year_parts = str(year).split("-")
+                            year_min = int(year_parts[0].strip())
+                            year_max = int(year_parts[1].strip()) if len(year_parts) > 1 else year_min
+                            where_conditions.append("p.year >= $year_min AND p.year <= $year_max")
+                            params["year_min"] = year_min
+                            params["year_max"] = year_max
+                        except ValueError:
+                            pass
+                    else:
+                        try:
+                            year_val = int(year)
+                            where_conditions.append("p.year = $year")
+                            params["year"] = year_val
+                        except ValueError:
+                            pass
+                if series:
+                    where_conditions.append("toLower(p.series) CONTAINS toLower($series)")
+                    params["series"] = series
+                if seller:
+                    where_conditions.append("toLower(p.seller) CONTAINS toLower($seller)")
+                    params["seller"] = seller
+
+                # Build WHERE clause
+                if where_conditions:
+                    query_parts.append("WHERE " + " AND ".join(where_conditions))
+
+                # Return and ordering
+                # Note: Professional/workstation products are filtered out in Python
+                # (see _rank_products_for_consumer_use in recommendation.py)
+                # to prioritize consumer/personal use products
+                query_parts.append("RETURN p")
+                query_parts.append(
+                    "ORDER BY COALESCE(p.price_avg, p.price_min, 999999) ASC"
+                )
+                query_parts.append("SKIP $offset LIMIT $limit")
+
+                cypher_query = "\n".join(query_parts)
+                logger.debug(f"[KG Search] Query: {cypher_query}")
+                logger.debug(f"[KG Search] Params: {params}")
+
+                result = session.run(cypher_query, parameters=params)
+                products = []
+                for record in result:
+                    product_data = dict(record["p"])
+                    products.append(product_data)
+
+                logger.info(f"[KG Search] Found {len(products)} products matching filters")
+                return products
+
+        except Exception as e:
+            logger.error(f"Error searching products in KG: {e}")
+            return []
 
     def close(self):
         """Close Neo4j connection."""

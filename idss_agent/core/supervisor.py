@@ -609,6 +609,7 @@ class SupervisorOrchestrator:
                 if result.metadata.get('suggestion_reasoning'):
                     state['suggestion_reasoning'] = result.metadata['suggestion_reasoning']
 
+
             # Update from interview workflow
             if result.mode == AgentMode.INTERVIEW and result.updated_state:
                 # Merge interview state updates (interview manages its own state completely)

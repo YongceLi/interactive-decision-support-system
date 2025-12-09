@@ -9,9 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+#### Knowledge Graph Integration for PC Parts Recommendations
+- **Neo4j Knowledge Graph**: PC parts recommendations now query Neo4j knowledge graph instead of SQLite for PC components
+- **Automatic Routing**: System automatically detects PC parts queries and routes to Neo4j; other electronics use SQLite
+- **Compatibility Checking**: Added compatibility checking using knowledge graph relationships (socket, PCIe, RAM, power, form factor, thermal)
+- **Updated Files**:
+  - `idss_agent/processing/recommendation.py`: Added Neo4j routing and product normalization
+  - `idss_agent/processing/recommendation_method1.py`: Integrated Neo4j queries for PC parts
+  - `idss_agent/processing/recommendation_method2.py`: Integrated Neo4j queries for PC parts
+  - `idss_agent/agents/analytical.py`: Updated product search to use Neo4j for PC parts
+  - `idss_agent/tools/kg_compatibility.py`: Added `search_products` method for flexible KG queries
+- **Consumer Product Filtering**: Added filtering to prioritize consumer products over professional/workstation products
+- **Fallback Strategy**: Gracefully falls back to SQLite if Neo4j is unavailable
+
+#### Knowledge Graph Building Script
+- **Created**: `scripts/kg/build_kg_from_augmented.py` - Builds Neo4j knowledge graph from augmented database
+- **Features**:
+  - Loads products from `pc_parts_augmented.db`
+  - Creates `PCProduct` nodes with type-specific labels
+  - Creates compatibility relationships based on attribute matching
+  - Replaces entire graph (purges existing nodes first)
+  - Creates indexes for performance
+
+#### Database Augmentation System
+- **Created**: `scripts/kg/augment_pc_parts_db.py` - Augments base database with validated attributes
+- **Features**:
+  - Scrapes attributes from multiple sources (Newegg, Amazon, Wikipedia, Manufacturer)
+  - Cross-source validation (requires at least 2 sources to agree)
+  - Stores validated attributes with source tracking and confidence scores
+  - Tags products for manual review if no manufacturer source found
+
 ### Changed
 
-#### Recommendation System: RapidAPI → Local Database
+#### Recommendation System: RapidAPI → Local Database + Neo4j Knowledge Graph
 - **Migration**: Switched from RapidAPI product search API to local SQLite database (`pc_parts.db`)
 - **New Module**: Created `idss_agent/tools/local_electronics_store.py` for querying local electronics database
 - **Updated Files**:
@@ -35,8 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
-- **Updated**: `docs/ELECTRONICS_DOMAIN.md` to reflect local database usage instead of RapidAPI
-- **Updated**: `CHANGELOG.md` with new changes
+- **Consolidated**: All documentation merged into unified `README.md` in root directory
+- **Moved**: API documentation to `api/README.md` (updated for PC parts domain)
+- **Moved**: UI documentation to `web/README.md` (updated for current architecture)
+- **Moved**: `.env.example` from `docs/` to root directory
+- **Updated**: `CHANGELOG.md` with all missing changes
+- **Deleted**: Removed `docs/ELECTRONICS_DOMAIN.md`, `docs/KNOWLEDGE_GRAPH.md`, `DEV_SETUP.md` (content merged into README)
+- **Updated**: API documentation reflects PC parts domain and Neo4j integration
+- **Updated**: UI documentation reflects current frontend architecture
+
+### Fixed
+
+#### Environment Variable Requirements
+- **Changed**: `AUTODEV_API_KEY` no longer required (made optional, only used for legacy vehicle image support)
+- **Updated**: `api/server.py` to only require `OPENAI_API_KEY`
 
 ---
 

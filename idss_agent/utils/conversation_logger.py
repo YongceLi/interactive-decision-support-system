@@ -72,6 +72,7 @@ def save_conversation_log(
             "latency_stats": state.get("_latency_stats"),
             "comparison_table": state.get("comparison_table"),
             "compatibility_result": state.get("compatibility_result"),
+            "build_pc_result": state.get("build_pc_result"),
             "last_updated": timestamp,
         }
 

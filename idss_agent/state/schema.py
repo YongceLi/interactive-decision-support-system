@@ -11,35 +11,52 @@ from datetime import datetime
 class ProductFilters(TypedDict, total=False):
     """
     Explicit product search filters extracted from user input.
-    Types match AutoDev API tool parameters.
+    For electronics products (PC components, laptops, monitors, etc.).
     """
     # Product specification filters
-    make: Optional[str]  # e.g., "Toyota" or "Ford,Chevrolet" (comma-separated for multiple)
-    model: Optional[str]  # e.g., "Camry" or "F-150,Silverado"
-    year: Optional[str]  # e.g., "2018" or "2018-2020" (range format)
-    trim: Optional[str]  # e.g., "XLT" or "XLT,Lariat"
-    body_style: Optional[str]  # e.g., "sedan" or "suv,truck"
-    engine: Optional[str]  # e.g., "2.0L" or "2.0L,3.5L"
-    transmission: Optional[str]  # e.g., "automatic" or "automatic,manual"
-    drivetrain: Optional[str]  # e.g., "AWD" or "AWD,4WD" (comma-separated for multiple)
-    fuel_type: Optional[str]  # e.g., "Gasoline" or "Electric,Hybrid" (comma-separated for multiple)
-
-    # Color filters
-    exterior_color: Optional[str]  # e.g., "white" or "white,black,silver"
-    interior_color: Optional[str]  # e.g., "black" or "black,beige,gray"
-
-    # Physical attributes
-    doors: Optional[int]  # e.g., 2, 4
-    seating_capacity: Optional[int]  # e.g., 5, 7, 8
-
+    brand: Optional[str]  # e.g., "AMD" or "Intel,ASUS" (comma-separated for multiple)
+    year: Optional[str]  # e.g., "2022" or "2022-2024" (range format for release year)
+    category: Optional[str]  # e.g., "CPU" or "GPU,Laptop" (product category/type)
+    part_type: Optional[str]  # e.g., "CPU", "GPU", "Motherboard" (specific part type)
+    series: Optional[str]  # e.g., "Ryzen 7" or "Core i7" (product series)
+    
+    # Product attributes
+    features: Optional[List[str]]  # e.g., ["Wi-Fi 6E", "PCIe Gen4", "RGB lighting"]
+    
+    # Common features (frequently searched)
+    rgb_lighting: Optional[bool]  # RGB/RGB lighting support
+    wifi: Optional[bool]  # Wi-Fi/Wireless support
+    bluetooth: Optional[bool]  # Bluetooth support
+    modular: Optional[bool]  # Modular design (PSU, cables)
+    fanless: Optional[bool]  # Fanless/passive cooling
+    overclockable: Optional[bool]  # Overclocking support
+    backlit: Optional[bool]  # Backlit/LED keys (keyboards)
+    silent: Optional[bool]  # Silent/quiet operation
+    low_profile: Optional[bool]  # Low profile design
+    wireless: Optional[bool]  # Wireless connectivity
+    
+    # Common technical specifications (for PC components)
+    socket: Optional[str]  # e.g., "AM5", "LGA 1700" (CPU/motherboard socket)
+    vram: Optional[str]  # e.g., "12", "16" (GPU video RAM in GB)
+    capacity: Optional[str]  # e.g., "1TB", "32GB" (storage/RAM capacity)
+    wattage: Optional[str]  # e.g., "850", "1000" (PSU wattage)
+    form_factor: Optional[str]  # e.g., "ATX", "Micro-ATX", "Mini-ITX" (motherboard/case)
+    chipset: Optional[str]  # e.g., "Z790", "B650", "X570" (motherboard chipset)
+    ram_standard: Optional[str]  # e.g., "DDR5", "DDR4" (RAM standard)
+    storage_type: Optional[str]  # e.g., "NVMe", "SSD", "HDD" (storage type)
+    cooling_type: Optional[str]  # e.g., "air", "liquid", "AIO" (cooling type)
+    certification: Optional[str]  # e.g., "80+ Gold", "80+ Platinum" (PSU efficiency)
+    pcie_version: Optional[str]  # e.g., "5.0", "4.0" (PCIe version)
+    tdp: Optional[str]  # e.g., "125", "250" (thermal design power in watts)
+    
     # Retail listing filters
-    price: Optional[str]  # e.g., "10000-30000" (range format)
-    state: Optional[str]  # e.g., "CA", "NY"
-    mileage: Optional[str]  # Product mileage/usage, e.g., "0-50000" (range format)
-
-    # Location filters
-    zip: Optional[str]  # 5-digit ZIP code (only as fallback if browser location denied; gets converted to lat/long)
-    search_radius: Optional[int]  # Max distance in miles to travel to dealer location
+    price: Optional[str]  # e.g., "100-500" (range format)
+    seller: Optional[str]  # e.g., "Best Buy" or "Amazon,Newegg" (preferred retailers)
+    
+    # Search query
+    query: Optional[str]  # Free-form search query
+    keywords: Optional[str]  # Search keywords
+    product_name: Optional[str]  # Specific product name
 
 
 class ImplicitPreferences(TypedDict, total=False):
@@ -58,32 +75,49 @@ class ImplicitPreferences(TypedDict, total=False):
 class ProductFiltersPydantic(BaseModel):
     """Pydantic version of ProductFilters for LLM structured output."""
     # Product specification filters
-    make: Optional[str] = Field(None, description="e.g., 'Toyota' or 'Ford,Chevrolet' (comma-separated)")
-    model: Optional[str] = Field(None, description="e.g., 'Camry' or 'F-150,Silverado'")
-    year: Optional[str] = Field(None, description="e.g., '2018' or '2018-2020' (range format)")
-    trim: Optional[str] = Field(None, description="e.g., 'XLT' or 'XLT,Lariat'")
-    body_style: Optional[str] = Field(None, description="e.g., 'sedan' or 'suv,truck'")
-    engine: Optional[str] = Field(None, description="e.g., '2.0L' or '2.0L,3.5L'")
-    transmission: Optional[str] = Field(None, description="e.g., 'automatic' or 'automatic,manual'")
-    drivetrain: Optional[str] = Field(None, description="e.g., 'AWD' or 'AWD,4WD' (comma-separated)")
-    fuel_type: Optional[str] = Field(None, description="e.g., 'Gasoline' or 'Electric,Hybrid' (comma-separated)")
-
-    # Color filters
-    exterior_color: Optional[str] = Field(None, description="e.g., 'white' or 'white,black,silver'")
-    interior_color: Optional[str] = Field(None, description="e.g., 'black' or 'black,beige,gray'")
-
-    # Physical attributes
-    doors: Optional[int] = Field(None, description="e.g., 2, 4")
-    seating_capacity: Optional[int] = Field(None, description="e.g., 5, 7, 8")
-
+    brand: Optional[str] = Field(None, description="e.g., 'AMD' or 'Intel,ASUS' (comma-separated for multiple brands)")
+    year: Optional[str] = Field(None, description="e.g., '2022' or '2022-2024' (range format for release year)")
+    category: Optional[str] = Field(None, description="e.g., 'CPU' or 'GPU,Laptop' (product category/type)")
+    part_type: Optional[str] = Field(None, description="e.g., 'CPU', 'GPU', 'Motherboard' (specific part type)")
+    series: Optional[str] = Field(None, description="e.g., 'Ryzen 7' or 'Core i7' (product series)")
+    
+    # Product attributes
+    features: Optional[List[str]] = Field(None, description="e.g., ['Wi-Fi 6E', 'PCIe Gen4', 'RGB lighting']")
+    
+    # Common features (frequently searched)
+    rgb_lighting: Optional[bool] = Field(None, description="RGB/RGB lighting support")
+    wifi: Optional[bool] = Field(None, description="Wi-Fi/Wireless support")
+    bluetooth: Optional[bool] = Field(None, description="Bluetooth support")
+    modular: Optional[bool] = Field(None, description="Modular design (PSU, cables)")
+    fanless: Optional[bool] = Field(None, description="Fanless/passive cooling")
+    overclockable: Optional[bool] = Field(None, description="Overclocking support")
+    backlit: Optional[bool] = Field(None, description="Backlit/LED keys (keyboards)")
+    silent: Optional[bool] = Field(None, description="Silent/quiet operation")
+    low_profile: Optional[bool] = Field(None, description="Low profile design")
+    wireless: Optional[bool] = Field(None, description="Wireless connectivity")
+    
+    # Common technical specifications (for PC components)
+    socket: Optional[str] = Field(None, description="e.g., 'AM5', 'LGA 1700' (CPU/motherboard socket)")
+    vram: Optional[str] = Field(None, description="e.g., '12', '16' (GPU video RAM in GB)")
+    capacity: Optional[str] = Field(None, description="e.g., '1TB', '32GB' (storage/RAM capacity)")
+    wattage: Optional[str] = Field(None, description="e.g., '850', '1000' (PSU wattage)")
+    form_factor: Optional[str] = Field(None, description="e.g., 'ATX', 'Micro-ATX', 'Mini-ITX' (motherboard/case)")
+    chipset: Optional[str] = Field(None, description="e.g., 'Z790', 'B650', 'X570' (motherboard chipset)")
+    ram_standard: Optional[str] = Field(None, description="e.g., 'DDR5', 'DDR4' (RAM standard)")
+    storage_type: Optional[str] = Field(None, description="e.g., 'NVMe', 'SSD', 'HDD' (storage type)")
+    cooling_type: Optional[str] = Field(None, description="e.g., 'air', 'liquid', 'AIO' (cooling type)")
+    certification: Optional[str] = Field(None, description="e.g., '80+ Gold', '80+ Platinum' (PSU efficiency)")
+    pcie_version: Optional[str] = Field(None, description="e.g., '5.0', '4.0' (PCIe version)")
+    tdp: Optional[str] = Field(None, description="e.g., '125', '250' (thermal design power in watts)")
+    
     # Retail listing filters
-    price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
-    state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
-    mileage: Optional[str] = Field(None, description="Product mileage/usage (e.g., '0-50000' for range format)")
-
-    # Location filters
-    zip: Optional[str] = Field(None, description="5-digit US ZIP code (optional location filter)")
-    search_radius: Optional[int] = Field(None, description="Maximum distance in miles (optional location filter)")
+    price: Optional[str] = Field(None, description="e.g., '100-500' (range format)")
+    seller: Optional[str] = Field(None, description="e.g., 'Best Buy' or 'Amazon,Newegg' (preferred retailers)")
+    
+    # Search query
+    query: Optional[str] = Field(None, description="Free-form search query")
+    keywords: Optional[str] = Field(None, description="Search keywords")
+    product_name: Optional[str] = Field(None, description="Specific product name")
 
 
 class ImplicitPreferencesPydantic(BaseModel):
@@ -244,6 +278,7 @@ class ProductSearchState(TypedDict):
     suggested_followups: List[str]  # Suggested next queries (short phrases, 3-5 options)
     comparison_table: Optional[Dict[str, Any]]  # Comparison table data when user asks to compare products
     compatibility_result: Optional[Dict[str, Any]]  # Compatibility check result (for binary compatibility queries)
+    build_pc_result: Optional[Dict[str, Any]]  # PC build configuration result (deprecated - agents should build iteratively)
     _latency: Optional[Dict[str, Any]]  # Latency snapshot for the latest turn
     _latency_stats: Optional[Dict[str, Any]]  # Aggregated latency statistics for the session
 
@@ -270,6 +305,7 @@ def create_initial_state() -> ProductSearchState:
         suggested_followups=[],
         comparison_table=None,
         compatibility_result=None,
+        build_pc_result=None,
         _latency=None,
         _latency_stats={
             "turn_count": 0,

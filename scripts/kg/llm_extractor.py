@@ -12,7 +12,14 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 try:
     from langchain_openai import ChatOpenAI
@@ -269,24 +276,22 @@ def convert_to_product_attributes(
     product_slug: str,
     source_url: Optional[str] = None,
     source_seller: Optional[str] = None
-) -> List[Any]:  # List[ProductAttribute] but avoiding circular import
+) -> List[Dict[str, Any]]:
     """
-    Convert ExtractedProductData to list of ProductAttribute dataclass instances.
+    Convert ExtractedProductData to list of attribute dictionaries.
     
-    This bridges the LLM extractor with the scraping module's ProductAttribute dataclass.
+    Returns a list of dictionaries compatible with the new augmentation system.
     """
-    from .scrape_compatibility_data import ProductAttribute
-    
     attributes = []
     for attr in extracted_data.attributes:
-        attributes.append(ProductAttribute(
-            product_slug=product_slug,
-            attribute_type=attr.attribute_type,
-            attribute_value=attr.attribute_value,
-            source_url=source_url,
-            source_seller=source_seller or "llm_extraction",
-            confidence=attr.confidence
-        ))
+        attributes.append({
+            "product_slug": product_slug,
+            "attribute_type": attr.attribute_type,
+            "attribute_value": attr.attribute_value,
+            "source_url": source_url,
+            "source_seller": source_seller or "llm_extraction",
+            "confidence": attr.confidence
+        })
     
     return attributes
 
@@ -296,25 +301,25 @@ def convert_to_compatibility_facts(
     product_slug: str,
     source_url: Optional[str] = None,
     source_seller: Optional[str] = None
-) -> List[Any]:  # List[CompatibilityFact] but avoiding circular import
+) -> List[Dict[str, Any]]:
     """
-    Convert ExtractedProductData to list of CompatibilityFact dataclass instances.
-    """
-    from .scrape_compatibility_data import CompatibilityFact
+    Convert ExtractedProductData to list of compatibility fact dictionaries.
     
+    Returns a list of dictionaries for compatibility relationships.
+    """
     facts = []
     for compat in extracted_data.compatibility_relationships:
         if compat.is_compatible:  # Only include compatibility facts, not incompatibilities
-            facts.append(CompatibilityFact(
-                product_slug=product_slug,
-                compatible_with_slug=compat.compatible_product_name or "unknown",
-                compatibility_type=compat.compatibility_type,
-                constraint_value=compat.constraint_value,
-                source_url=source_url,
-                source_seller=source_seller or "llm_extraction",
-                confidence=0.85,  # High confidence for LLM-extracted relationships
-                metadata={"extracted_by": "llm", "notes": extracted_data.notes}
-            ))
+            facts.append({
+                "product_slug": product_slug,
+                "compatible_with_slug": compat.compatible_product_name or "unknown",
+                "compatibility_type": compat.compatibility_type,
+                "constraint_value": compat.constraint_value,
+                "source_url": source_url,
+                "source_seller": source_seller or "llm_extraction",
+                "confidence": 0.85,  # High confidence for LLM-extracted relationships
+                "metadata": {"extracted_by": "llm", "notes": extracted_data.notes}
+            })
     
     return facts
 

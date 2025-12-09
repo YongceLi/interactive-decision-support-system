@@ -2,9 +2,9 @@
 Request analyzer - analyzes user requests to detect multiple intents and needs.
 
 This module handles compound requests like:
-- "I want a black one, what's the maintenance cost?" (filter update + analytical question)
-- "Show me Honda Accords and compare top 3" (search + comparison)
-- "What's the safety rating?" (pure analytical, no search)
+- "I want a 2TB SSD, what's the read speed?" (filter update + analytical question)
+- "Show me RTX 4070 GPUs and compare top 3" (search + comparison)
+- "What's the power consumption?" (pure analytical, no search)
 """
 from typing import List, Dict, Any, Optional
 import json
@@ -32,8 +32,8 @@ class RequestAnalysis(BaseModel):
 
     needs_search: bool = Field(
         description=(
-            "True if user wants to see vehicle listings or has provided/updated filters. "
-            "Examples: 'show me vehicles', 'I want a black one', 'under $30k'"
+            "True if user wants to see product listings or has provided/updated filters. "
+            "Examples: 'show me GPUs', 'I want a 2TB SSD', 'under $300'"
         )
     )
 
@@ -54,7 +54,7 @@ class RequestAnalysis(BaseModel):
 
     has_filter_update: bool = Field(
         description=(
-            "True if user mentioned new vehicle criteria or change some of the existing filters (make, model, color, price, etc.)"
+            "True if user mentioned new product criteria or change some of the existing filters (brand, category, price, features, etc.)"
         )
     )
 
@@ -64,6 +64,7 @@ class RequestAnalysis(BaseModel):
             "Examples: 'hello', 'how does this work?', 'thank you'"
         )
     )
+
 
     reasoning: str = Field(
         description="Brief explanation of the analysis"
@@ -115,18 +116,20 @@ Analyze the user's request and detect what they need:
 
 3. **needs_analytical**: User asks questions requiring research
    - Examples: "what's the...", "compare", "which is better", "tell me about"
-   - **IMPORTANT**: Compatibility queries are analytical questions
-     - Examples: "what GPUs are compatible with...", "is X compatible with Y", "what CPUs work with my motherboard"
-     - These require using compatibility checking tools
+   - **IMPORTANT**: Compatibility queries AND PC build queries are analytical questions
+     - Compatibility: "what GPUs are compatible with...", "is X compatible with Y", "what CPUs work with my motherboard"
+     - PC Builds: "Best PC build for $1000", "Best gaming PC under $1500", "Best budget build under $600", 
+       "Best workstation build for video editing", "Best 1440p gaming build", "Best PC build for Blender rendering"
+     - These require using compatibility checking tools or PC build tools
 
 4. **analytical_questions**: Extract specific questions
    - List each question separately
    - Include compatibility questions like "what GPUs are compatible with [PSU]"
 
-5. **has_filter_update**: User mentioned product criteria
-   - Brand, model, specs, price, retailer, features, etc.
+6. **has_filter_update**: User mentioned product criteria
+   - Brand, category, part type, specs, price, retailer, features, etc.
 
-6. **is_general_conversation**: Just chatting, not searching
+7. **is_general_conversation**: Just chatting, not searching
    - Greetings, thank you, What can you do?, etc.
 
 **Important**: A request can have MULTIPLE needs simultaneously!
@@ -135,6 +138,13 @@ Example: "I want a 4K monitor under $400 and which one has the best color accura
 - needs_analytical: True (asks about color accuracy)
 - has_filter_update: True (4K resolution, price limit)
 - analytical_questions: ["Which one has the best color accuracy?"]
+
+**PC Build Examples** (handled by analytical agent):
+- "Best PC build for $1000" → needs_analytical: True, analytical_questions: ["Build PC for $1000"]
+- "Best gaming PC under $1500" → needs_analytical: True, analytical_questions: ["Build gaming PC for $1500"]
+- "Best budget build under $600" → needs_analytical: True, analytical_questions: ["Build budget PC for $600"]
+- "Best workstation build for video editing" → needs_analytical: True, analytical_questions: ["Build workstation PC for video editing"]
+- "Show me GPUs" → needs_search: True (NOT analytical, just searching for GPUs)
 """
 
     user_prompt = f"""{context}
