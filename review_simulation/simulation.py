@@ -364,6 +364,31 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     }
 
 
+def _determine_price_judgement(
+    upper_price_limit: Optional[float], vehicle_price: Optional[float]
+) -> AttributeJudgement:
+    """Return a deterministic price satisfaction judgement.
+
+    If either value is missing, no judgement is made. Otherwise satisfied is
+    True when the persona's extracted price ceiling is greater than or equal to
+    the vehicle's price.
+    """
+
+    if upper_price_limit is None or vehicle_price is None:
+        return AttributeJudgement(satisfied=None, rationale=None)
+
+    if upper_price_limit >= vehicle_price:
+        return AttributeJudgement(
+            satisfied=True,
+            rationale=f"Within budget: {vehicle_price} <= {upper_price_limit}",
+        )
+
+    return AttributeJudgement(
+        satisfied=False,
+        rationale=f"Over budget: {vehicle_price} > {upper_price_limit}",
+    )
+
+
 def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn:
     structured_model = model.with_structured_output(PersonaDraft)
     likes_text = _affinities_to_text(persona.liked)
@@ -464,6 +489,9 @@ def _assess_vehicles(
         attribute_results = {
             key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
         }
+        attribute_results["price"] = _determine_price_judgement(
+            persona_turn.upper_price_limit, entry.get("price")
+        )
         results.append(
             VehicleJudgement(
                 index=entry["index"],
