@@ -245,7 +245,8 @@ Do NOT assume fuel efficiency in here, only compare fuel_type.
 For example, if the query wants Gasoline, and the fuel_type returns Gasoline, 
 Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
 body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
-all_misc: (whether all others' preference of the users mentioned in the query satisfies the users' query or not . Examples: driving dynamics, reliability, safety, ...)
+all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury. 
+. Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Make price decisions using the provided upper price
 limit and the vehicle's price.
