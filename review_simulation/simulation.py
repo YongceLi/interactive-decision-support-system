@@ -231,20 +231,19 @@ For each vehicle below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
 mentioned, return null for that criterion. Respond with JSON using this shape:
 {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
-"price": {{"satisfied": <bool|null>, "rationale": <string|null>}}, "condition": {{...}}, "year": {{...}},
+"condition": {{...}}, "year": {{...}},
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
-price: (whether the price satisfies the users' preference in the query or not).
 condition: (whether the condition satisfies the users' preference in the query or not. 
 If the users are fine with both new and used or do not have preferences, return True).
-year: (whether the year satisfies the users' preference in the query or not).
+year: (whether the year satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not. 
 Do NOT assume fuel efficiency in here, only compare fuel_type. 
 For example, if the query wants Gasoline, and the fuel_type returns Gasoline, 
 Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
-body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query).
+body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query. If the users are fine with alternatives, return True.).
 all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury. 
 . Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
@@ -364,6 +363,31 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     }
 
 
+def _determine_price_judgement(
+    upper_price_limit: Optional[float], vehicle_price: Optional[float]
+) -> AttributeJudgement:
+    """Return a deterministic price satisfaction judgement.
+
+    If either value is missing, no judgement is made. Otherwise satisfied is
+    True when the persona's extracted price ceiling is greater than or equal to
+    the vehicle's price.
+    """
+
+    if upper_price_limit is None or vehicle_price is None:
+        return AttributeJudgement(satisfied=None, rationale=None)
+
+    if upper_price_limit >= vehicle_price:
+        return AttributeJudgement(
+            satisfied=True,
+            rationale=f"Within budget: {vehicle_price} <= {upper_price_limit}",
+        )
+
+    return AttributeJudgement(
+        satisfied=False,
+        rationale=f"Over budget: {vehicle_price} > {upper_price_limit}",
+    )
+
+
 def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn:
     structured_model = model.with_structured_output(PersonaDraft)
     likes_text = _affinities_to_text(persona.liked)
@@ -464,6 +488,9 @@ def _assess_vehicles(
         attribute_results = {
             key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
         }
+        attribute_results["price"] = _determine_price_judgement(
+            persona_turn.upper_price_limit, entry.get("price")
+        )
         results.append(
             VehicleJudgement(
                 index=entry["index"],
