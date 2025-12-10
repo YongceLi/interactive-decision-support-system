@@ -223,22 +223,7 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
         (
             "human",
             """
-Persona goal: {goal_summary}
-Writing style cues: {writing_style}
-Interaction style: {interaction_style}
-Family background: {family_background}
-Likes: {likes}
-Dislikes: {dislikes}
 Persona query: {persona_query}
-Mentioned product brands: {mentioned_product_brands}
-Mentioned product names: {mentioned_product_names}
-Mentioned normalized products: {mentioned_normalize_product_names}
-Performance expectation: {performance_tier}
-Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
-Price range: {price_range}
-Openness to alternatives (1-10): {openness_to_alternatives}
-Other priorities: {misc_notes}
-Upper price limit (USD): {upper_price_limit}
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 
@@ -430,25 +415,7 @@ def _assess_vehicles(
         for idx, vehicle in enumerate(vehicles)
     ]
     prompt = ASSESSMENT_PROMPT.format_prompt(
-        goal_summary=persona_turn.goal_summary,
-        writing_style=persona_turn.writing_style,
-        interaction_style=persona_turn.interaction_style,
-        family_background=persona_turn.family_background,
-        likes=likes_text,
-        dislikes=dislikes_text,
         persona_query=persona_turn.message,
-        mentioned_product_brands=_list_to_text(persona.mentioned_product_brands),
-        mentioned_product_names=_list_to_text(persona.mentioned_product_names),
-        mentioned_normalize_product_names=_list_to_text(
-            persona.mentioned_normalize_product_names
-        ),
-        performance_tier=persona.performance_tier or "unspecified",
-        newness_preference_score=persona.newness_preference_score or "unknown",
-        newness_preference_notes=persona.newness_preference_notes or "",
-        price_range=persona.price_range or "unspecified",
-        openness_to_alternatives=persona.alternative_openness or "unknown",
-        misc_notes=persona.misc_notes or "None stated",
-        upper_price_limit=persona_turn.upper_price_limit or "unspecified",
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())

@@ -29,7 +29,6 @@ from idss_agent.state.schema import create_initial_state
 from idss_agent.processing.semantic_parser import semantic_parser_node
 from idss_agent.processing.recommendation_method1 import recommend_method1
 from idss_agent.processing.recommendation_method2 import recommend_method2
-from idss_agent.tools.zipcode_lookup import get_location_from_zip_or_coords
 from langchain_core.messages import HumanMessage
 
 
@@ -104,23 +103,15 @@ def test_method1_pipeline(user_query: str) -> dict:
 
         # Step 3: Extract location data if present
         filters = state["explicit_filters"]
-        user_lat, user_lon = None, None
-        if filters.get("zip") or state.get("user_latitude"):
-            coords = get_location_from_zip_or_coords(
-                zipcode=filters.get("zip"),
-                latitude=state.get("user_latitude"),
-                longitude=state.get("user_longitude")
-            )
-            if coords:
-                user_lat, user_lon = coords
+        user_lat, user_lon, coords = None, None, None
 
-            result["location_data"] = {
-                "zip_code": filters.get("zip"),
-                "coordinates": [user_lat, user_lon] if coords else None,
-                "search_radius": filters.get("search_radius"),
-                "user_latitude": state.get("user_latitude"),
-                "user_longitude": state.get("user_longitude")
-            }
+        result["location_data"] = {
+            "zip_code": filters.get("zip"),
+            "coordinates": [user_lat, user_lon] if coords else None,
+            "search_radius": filters.get("search_radius"),
+            "user_latitude": state.get("user_latitude"),
+            "user_longitude": state.get("user_longitude")
+        }
 
         # Step 4: Run Method 1
         try:
@@ -244,23 +235,14 @@ def test_method2_pipeline(user_query: str) -> dict:
 
         # Step 3: Extract location data if present
         filters = state["explicit_filters"]
-        user_lat, user_lon = None, None
-        if filters.get("zip") or state.get("user_latitude"):
-            coords = get_location_from_zip_or_coords(
-                zipcode=filters.get("zip"),
-                latitude=state.get("user_latitude"),
-                longitude=state.get("user_longitude")
-            )
-            if coords:
-                user_lat, user_lon = coords
-
-            result["location_data"] = {
-                "zip_code": filters.get("zip"),
-                "coordinates": [user_lat, user_lon] if coords else None,
-                "search_radius": filters.get("search_radius"),
-                "user_latitude": state.get("user_latitude"),
-                "user_longitude": state.get("user_longitude")
-            }
+        user_lat, user_lon, coords = None, None, None
+        result["location_data"] = {
+            "zip_code": filters.get("zip"),
+            "coordinates": [user_lat, user_lon] if coords else None,
+            "search_radius": filters.get("search_radius"),
+            "user_latitude": state.get("user_latitude"),
+            "user_longitude": state.get("user_longitude")
+        }
 
         # Step 4: Run Method 2
         try:
