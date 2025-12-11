@@ -132,6 +132,50 @@ class VehicleAssessmentList(BaseModel):
     assessments: List[VehicleAssessment]
 
 
+class QueryPreferences(BaseModel):
+    year_mentioned: Optional[int] = Field(
+        None, description="The exact year mentioned in the query, or null if absent"
+    )
+    year_sentiment: str = Field(
+        "around",
+        description="One of older, newer, around, exact describing how the mentioned year should be treated",
+    )
+    year_alternative: bool = Field(
+        False,
+        description="Whether the user is open to years outside the expressed constraint",
+    )
+    make_like: List[str] = Field(
+        default_factory=list, description="List of makes the user prefers"
+    )
+    make_dislike: List[str] = Field(
+        default_factory=list, description="List of makes the user wants to avoid"
+    )
+    make_alternative: bool = Field(
+        False, description="Whether alternative makes are acceptable"
+    )
+    model_like: List[str] = Field(
+        default_factory=list, description="List of models the user prefers"
+    )
+    model_dislike: List[str] = Field(
+        default_factory=list, description="List of models the user wants to avoid"
+    )
+    model_alternative: bool = Field(
+        False, description="Whether alternative models are acceptable"
+    )
+    fuel_type_preference: List[str] = Field(
+        default_factory=list, description="Preferred fuel types explicitly mentioned"
+    )
+    fuel_type_alternative: bool = Field(
+        False, description="Whether fuel types outside the preference are acceptable"
+    )
+    body_type_preference: List[str] = Field(
+        default_factory=list, description="Preferred body types explicitly mentioned"
+    )
+    body_type_alternative: bool = Field(
+        False, description="Whether body types outside the preference are acceptable"
+    )
+
+
 class SummaryResponse(BaseModel):
     satisfied_summary: str = Field(
         ..., description="One-sentence reason the persona would be satisfied with the list"
@@ -190,6 +234,40 @@ under 120 words and avoid lists/bullets. In details:
 )
 
 
+QUERY_PREFERENCE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "Extract structured vehicle preferences from a shopper's single-turn persona query.",
+            "Return only the requested JSON fields and make conservative assumptions when information is missing.",
+        ),
+        (
+            "human",
+            """
+Persona query: {persona_query}
+
+Identify explicit preferences and respond with JSON containing:
+- year_mentioned: The exact year as an integer if stated, otherwise null.
+- year_sentiment: One of [older, newer, around, exact]. Default to around when no direction is given.
+- year_alternative: True if the query allows years outside the stated intent; false otherwise.
+- make_like: List the preferred makes (empty if none).
+- make_dislike: List the makes to avoid (empty if none).
+- make_alternative: True if alternatives outside make_like are acceptable; false otherwise.
+- model_like: List the preferred models (empty if none).
+- model_dislike: List the models to avoid (empty if none).
+- model_alternative: True if alternatives outside model_like are acceptable; false otherwise.
+- fuel_type_preference: List the preferred fuel types exactly as stated (empty if none).
+- fuel_type_alternative: True if other fuel types are acceptable; false otherwise.
+- body_type_preference: List the preferred body types exactly as stated (empty if none).
+- body_type_alternative: True if other body types are acceptable; false otherwise.
+
+When the query is silent about flexibility, set the corresponding alternative flag to false.
+""",
+        ),
+    ]
+)
+
+
 ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -203,28 +281,27 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
         (
             "human",
             """
-Persona goal: {goal_summary}
-Writing style cues: {writing_style}
-Interaction style: {interaction_style}
-Family background: {family_background}
-Likes: {likes}
-Dislikes: {dislikes}
 Persona query: {persona_query}
-Mentioned makes: {mentioned_makes}
-Mentioned models: {mentioned_models}
-Mentioned years: {mentioned_years}
-Preferred condition: {preferred_condition}
-Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
-Preferred vehicle type: {preferred_vehicle_type}
-Preferred fuel type: {preferred_fuel_type}
-Openness to alternatives (1-10): {openness_to_alternatives}
-Other priorities: {misc_notes}
+
+Extracted preferences from the persona query:
+- Year mentioned: {year_mentioned}
+- Year sentiment: {year_sentiment}
+- Open to other years: {year_alternative}
+- Preferred makes: {make_like}
+- Avoided makes: {make_dislike}
+- Open to other makes: {make_alternative}
+- Preferred models: {model_like}
+- Avoided models: {model_dislike}
+- Open to other models: {model_alternative}
+- Preferred fuel types: {fuel_type_preference}
+- Open to other fuel types: {fuel_type_alternative}
+- Preferred body types: {body_type_preference}
+- Open to other body types: {body_type_alternative}
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 Do NOT assume the modernity of the vehicle beyond the year provided (The closer the year to 2025, the newer and more modern the vehicle).
 Do NOT make assumptions about the make or model beyond what is explicitly given.
 Only consider the information given in the Persona Query and the vehicle details provided to evaluate satisfaction.
-Use the rest of the information only as a guideline, as they might not reflect the actual preferences expressed in the Persona Query.
 
 For each vehicle below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
@@ -233,17 +310,17 @@ mentioned, return null for that criterion. Respond with JSON using this shape:
 "condition": {{...}}, "year": {{...}},
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
-condition: (whether the condition satisfies the users' preference in the query or not. 
+condition: (whether the condition satisfies the users' preference in the query or not.
 If the users are fine with both new and used or do not have preferences, return True).
 year: (whether the year satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not. 
-Do NOT assume fuel efficiency in here, only compare fuel_type. 
-For example, if the query wants Gasoline, and the fuel_type returns Gasoline, 
+fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not.
+Do NOT assume fuel efficiency in here, only compare fuel_type.
+For example, if the query wants Gasoline, and the fuel_type returns Gasoline,
 Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
 body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query. If the users are fine with alternatives, return True.).
-all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury. 
+all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury.
 . Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Use the provided price judgement included with each vehicle entry instead of recalculating price fit.
@@ -253,7 +330,7 @@ Vice versa, if there are a lot of attributes that align with the final satisfact
 The delta of confidence should be proportional to the number of attributes that align with the final satisfaction judgement.
 Vehicles:
 {vehicles}
-""",
+"""
         ),
     ]
 )
@@ -422,6 +499,14 @@ def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn
     )
 
 
+def _derive_query_preferences(
+    persona_turn: PersonaTurn, model: ChatOpenAI
+) -> QueryPreferences:
+    structured_model = model.with_structured_output(QueryPreferences)
+    prompt = QUERY_PREFERENCE_PROMPT.format_prompt(persona_query=persona_turn.message)
+    return structured_model.invoke(prompt.to_messages())
+
+
 def _assess_vehicles(
     persona: ReviewPersona,
     persona_turn: PersonaTurn,
@@ -429,8 +514,7 @@ def _assess_vehicles(
     model: ChatOpenAI,
 ) -> List[VehicleJudgement]:
     structured_model = model.with_structured_output(VehicleAssessmentList)
-    likes_text = _affinities_to_text(persona.liked)
-    dislikes_text = _affinities_to_text(persona.disliked)
+    query_preferences = _derive_query_preferences(persona_turn, model)
 
     vehicle_entries = []
     price_judgements: Dict[int, AttributeJudgement] = {}
@@ -446,23 +530,22 @@ def _assess_vehicles(
         vehicle_entries.append(entry)
         price_judgements[entry["index"]] = price_judgement
     prompt = ASSESSMENT_PROMPT.format_prompt(
-        goal_summary=persona_turn.goal_summary,
-        writing_style=persona_turn.writing_style,
-        interaction_style=persona_turn.interaction_style,
-        family_background=persona_turn.family_background,
-        likes=likes_text,
-        dislikes=dislikes_text,
         persona_query=persona_turn.message,
-        mentioned_makes=_list_to_text(persona.mentioned_makes),
-        mentioned_models=_list_to_text(persona.mentioned_models),
-        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
-        preferred_condition=persona.preferred_condition or "unspecified",
-        newness_preference_score=persona.newness_preference_score or "unknown",
-        newness_preference_notes=persona.newness_preference_notes or "",
-        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
-        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
-        openness_to_alternatives=persona.alternative_openness or "unknown",
-        misc_notes=persona.misc_notes or "None stated",
+        year_mentioned=query_preferences.year_mentioned
+        if query_preferences.year_mentioned is not None
+        else "None",
+        year_sentiment=query_preferences.year_sentiment,
+        year_alternative=str(query_preferences.year_alternative),
+        make_like=_list_to_text(query_preferences.make_like),
+        make_dislike=_list_to_text(query_preferences.make_dislike),
+        make_alternative=str(query_preferences.make_alternative),
+        model_like=_list_to_text(query_preferences.model_like),
+        model_dislike=_list_to_text(query_preferences.model_dislike),
+        model_alternative=str(query_preferences.model_alternative),
+        fuel_type_preference=_list_to_text(query_preferences.fuel_type_preference),
+        fuel_type_alternative=str(query_preferences.fuel_type_alternative),
+        body_type_preference=_list_to_text(query_preferences.body_type_preference),
+        body_type_alternative=str(query_preferences.body_type_alternative),
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())
