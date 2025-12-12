@@ -462,7 +462,7 @@ def update_recommendation_list(
         from idss_agent.processing.recommendation_method1 import recommend_method1
 
         logger.info("Using Method 1 (SQL + Dense Vector + Clustered MMR)")
-        vehicles, sql_query = recommend_method1(
+        vehicles, sql_query, relaxation_state = recommend_method1(
             explicit_filters=filters,
             implicit_preferences=implicit,
             user_latitude=user_lat,
@@ -471,9 +471,24 @@ def update_recommendation_list(
             require_photos=require_photos
         )
 
-        # Store SQL query in state for debugging/logging
+        # Store SQL query and relaxation state in state for debugging/logging
         if sql_query:
             state["_sql_query"] = sql_query
+        if relaxation_state:
+            state["_relaxation_state"] = relaxation_state
+            # Log relaxation state for transparency
+            if relaxation_state.get("all_criteria_met"):
+                logger.info("✓ All user criteria were met - no filter relaxation needed")
+            else:
+                logger.info(f"Filter relaxation applied:")
+                logger.info(f"  Met filters: {relaxation_state.get('met_filters', [])}")
+                logger.info(f"  Relaxed filters: {relaxation_state.get('relaxed_filters', [])}")
+                if relaxation_state.get("relaxed_inferred"):
+                    logger.info(f"    ↳ Inferred (Tier 0): {relaxation_state.get('relaxed_inferred', [])}")
+                if relaxation_state.get("relaxed_regular"):
+                    logger.info(f"    ↳ Regular (Tier 1): {relaxation_state.get('relaxed_regular', [])}")
+                if relaxation_state.get("unmet_must_haves"):
+                    logger.warning(f"    ↳ Must-have (Tier 2): {relaxation_state.get('unmet_must_haves', [])}")
 
         # Skip legacy photo enrichment and vector ranking - Method 1 handles everything
         # Attach photo stubs for vehicles

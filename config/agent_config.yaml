@@ -17,7 +17,7 @@ models:
     max_tokens: 
 
   semantic_parser:
-    name: "gpt-5-mini"
+    name: "gpt-5.1"
     temperature: 0
     max_tokens: 
 
@@ -88,18 +88,20 @@ features:
 
 # Recommendation method configuration
 recommendation:
-  method: "method1"                  # Recommendation method to use: "method1", "method2", "legacy"
+  method: "method3"                  # Recommendation method to use: "method1", "method2", "method3", "legacy"
 
   # Method 1: SQL + Dense Vector + BM25 + Clustered MMR
   method1:
     top_k: 20                        # Total vehicles to return
     strict_threshold: 1000           # Min vehicles before relaxing ALL filters to must_have only
-    min_candidates: 10000            # Minimum candidates for effective ranking (backfill with dense if SQL < this)
+    min_candidates: 1000             # Minimum candidates for effective ranking (backfill with dense if SQL < this)
     vector_limit: 1000               # Max candidates to rank with dense embeddings
+    min_similarity: 0.4              # Minimum dense similarity score (0.0-1.0) to include in results
     lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
     cluster_size: 5                  # Number of similar vehicles per cluster
     use_bm25: false                   # Enable BM25 sparse ranking
-    bm25_beta: 0.3                   # BM25 weight (dense weight = 1 - beta). 0.3 = 30% BM25, 70% dense
+    bm25_beta: 0                     # BM25 weight (dense weight = 1 - beta). 0.3 = 30% BM25, 70% dense
+    final_ranking_method: year_value       # Final ranking method: 'bm25' (keyword match), 'year_value' (year then mileage/price), 'none' (keep MMR order)
 
   # Method 2: Proxy Description → Multi-Filter Sets → Dense Ranking + MMR
   method2:
@@ -107,6 +109,12 @@ recommendation:
     num_filter_sets: 10              # Number of distinct filter sets to generate
     lambda_param: 0.85               # MMR diversity parameter (0.0=pure diversity, 1.0=pure relevance)
     cluster_size: 5                  # Number of similar vehicles per cluster
+
+  # Method 3: SQL + Coverage-Risk Optimization (Phrase-Level Semantic Alignment)
+  method3:
+    top_k: 20                        # Total vehicles to return
+    lambda_risk: 0.5                 # Risk penalty weight in coverage-risk optimization (0.0=no penalty, 1.0=full penalty)
+    min_similarity: 0.5              # Minimum phrase similarity threshold (0.0-1.0) to count alignment scores
 
   # Legacy method (current ReAct agent)
   legacy:
