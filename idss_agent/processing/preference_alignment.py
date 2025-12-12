@@ -853,12 +853,14 @@ def _log_alignment_details(
             satisfied = [sc.name for sc in soft_constraints if sc.satisfies(vehicle)]
             logger.info(f"  Soft constraints satisfied: {satisfied} (bonus={soft_bonus[idx]:.2f})")
 
-        # Get vehicle phrases
-        vehicle_phrases = phrase_store.get_phrases(
-            vehicle["make"],
-            vehicle["model"],
-            vehicle["year"]
-        )
+        # Get vehicle phrases (ensure make/model are strings for Polestar 3 etc.)
+        make = vehicle.get("make")
+        model = vehicle.get("model")
+        year = vehicle.get("year")
+        make = str(make) if make is not None and not isinstance(make, str) else make
+        model = str(model) if model is not None and not isinstance(model, str) else model
+
+        vehicle_phrases = phrase_store.get_phrases(make, model, year)
 
         if vehicle_phrases is None:
             logger.info("  (no review data available)")
