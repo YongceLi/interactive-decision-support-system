@@ -10,9 +10,10 @@ Flow:
 2. Rank candidates using coverage-risk optimization with phrase-level semantic alignment
 3. Return diversified top-k recommendations
 
-Key differences from Method 1:
-- Removes dense vector + MMR diversification
-- Uses phrase-level semantic alignment (Pos/Neg scores)
+Key features:
+- Two aggregation modes: "max" (original) and "sum" (noisy-or with submodular guarantees)
+- Soft constraints: Relaxed hard filters become soft bonus terms with auto-calibrated μ
+- Phrase-level semantic alignment for liked/disliked features
 - Greedy selection maximizes coverage while minimizing risk
 """
 from __future__ import annotations
@@ -36,8 +37,14 @@ def recommend_method3(
     user_longitude: Optional[float] = None,
     top_k: Optional[int] = None,
     lambda_risk: Optional[float] = None,
+    mode: Optional[str] = None,
     db_path: Optional[Path] = None,
     require_photos: bool = True,
+    min_similarity: Optional[float] = None,
+    tau: Optional[float] = None,
+    alpha: Optional[float] = None,
+    mu: Optional[float] = None,
+    rho: Optional[float] = None,
 ) -> Tuple[List[Dict[str, Any]], Optional[str], Dict[str, Any]]:
     """
     Method 3: SQL + Coverage-Risk Optimization.
@@ -50,6 +57,7 @@ def recommend_method3(
     - If ANY vehicles match all user criteria, return them (even if just 1)
     - Only relax filters when 0 results found
     - Tracks which filters were relaxed for user transparency
+    - Relaxed filters become soft constraints with bonus scoring
     - Uses phrase-level semantic alignment for ranking
     - Greedy selection maximizes coverage while minimizing risk
 
@@ -58,10 +66,16 @@ def recommend_method3(
         implicit_preferences: User's implicit preferences (liked_features, disliked_features)
         user_latitude: User's latitude for distance calculation
         user_longitude: User's longitude for distance calculation
-        top_k: Number of vehicles to return (default 20)
-        lambda_risk: Risk penalty weight for coverage-risk optimization (default 0.5)
+        top_k: Number of vehicles to return (default from config)
+        lambda_risk: Risk penalty weight (default from config)
+        mode: Aggregation mode - "max" (original) or "sum" (noisy-or coverage)
         db_path: Optional path to vehicle database
         require_photos: Whether to require photos
+        min_similarity: Minimum similarity threshold (max mode)
+        tau: Similarity threshold φ(t) = max(0, t - τ) at phrase level (default 0.5)
+        alpha: g function steepness for coverage mapping (sum mode)
+        mu: Soft bonus weight (None = auto-calibrate)
+        rho: Scale factor for μ calibration
 
     Returns:
         Tuple of:
@@ -84,13 +98,23 @@ def recommend_method3(
         top_k = method3_config.get('top_k', 20)
     if lambda_risk is None:
         lambda_risk = method3_config.get('lambda_risk', 0.5)
+    if mode is None:
+        mode = method3_config.get('mode', 'max')
+    if min_similarity is None:
+        min_similarity = method3_config.get('min_similarity', 0.5)
+    if tau is None:
+        tau = method3_config.get('tau', 0.5)
+    if alpha is None:
+        alpha = method3_config.get('alpha', 1.0)
+    if rho is None:
+        rho = method3_config.get('rho', 1.0)
 
     logger.info("=" * 60)
     logger.info("METHOD 3: SQL + Coverage-Risk Optimization")
     logger.info("=" * 60)
     logger.info(f"Filters: {explicit_filters}")
     logger.info(f"Preferences: {implicit_preferences}")
-    logger.info(f"Target: {top_k} vehicles, lambda_risk: {lambda_risk}")
+    logger.info(f"Target: {top_k} vehicles, λ={lambda_risk}, mode={mode}")
 
     # Initialize SQL query variable
     sql_query = None
@@ -126,9 +150,13 @@ def recommend_method3(
         logger.warning("No candidates found after progressive relaxation")
         return [], sql_query, relaxation_state
 
+    # Log relaxation info for soft constraint conversion
+    if relaxation_state.get("relaxed_filters"):
+        logger.info(f"Relaxed filters will become soft constraints: {relaxation_state['relaxed_filters']}")
+
     # Step 2: Coverage-risk optimization ranking
     logger.info("Step 2: Ranking by coverage-risk optimization...")
-    logger.info(f"  Ranking {len(candidates)} candidates")
+    logger.info(f"  Ranking {len(candidates)} candidates (mode={mode})")
 
     # Extract vehicle data for ranking (method3_ranker expects list of dicts)
     vehicles_for_ranking = []
@@ -139,6 +167,12 @@ def recommend_method3(
             "model": vehicle_data.get("model"),
             "year": vehicle_data.get("year"),
             "price": vehicle_data.get("price"),
+            "mileage": vehicle_data.get("mileage"),
+            "body_type": vehicle_data.get("body_type"),
+            "fuel_type": vehicle_data.get("fuel_type"),
+            "drivetrain": vehicle_data.get("drivetrain"),
+            "transmission": vehicle_data.get("transmission"),
+            "distance_miles": candidate.get("distance_miles"),
             "vin": vehicle_data.get("vin"),
             "_original": candidate  # Keep reference to original candidate
         })
@@ -149,7 +183,14 @@ def recommend_method3(
         implicit_preferences=implicit_preferences,
         db_path=store.db_path,
         top_k=top_k,
-        lambda_risk=lambda_risk
+        lambda_risk=lambda_risk,
+        mode=mode,
+        relaxation_state=relaxation_state,
+        min_similarity=min_similarity,
+        tau=tau,
+        alpha=alpha,
+        mu=mu,
+        rho=rho
     )
 
     if not ranked_vehicles:
