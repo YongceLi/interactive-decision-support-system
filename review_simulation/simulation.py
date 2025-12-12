@@ -141,6 +141,83 @@ class SummaryResponse(BaseModel):
     )
 
 
+class YearPreferenceExtraction(BaseModel):
+    year_mentioned: Optional[int] = Field(
+        None, description="The exact year mentioned in the query or null"
+    )
+    year_sentiment: str = Field(
+        ..., description="One of older/newer/around/exact describing the direction"
+    )
+    year_alternative: bool = Field(
+        ..., description="Whether the shopper is open to years outside the preference"
+    )
+
+
+class VehiclePreferenceExtraction(BaseModel):
+    make_like: List[str]
+    make_dislike: List[str]
+    make_alternative: bool
+    model_like: List[str]
+    model_dislike: List[str]
+    model_alternative: bool
+    fuel_type_preference: List[str]
+    fuel_type_alternative: bool
+    body_type_preference: List[str]
+    body_type_alternative: bool
+
+
+YEAR_EXTRACTION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You extract year preferences from a shopper's single-turn query.",
+        ),
+        (
+            "human",
+            """
+Persona query: {persona_query}
+
+Identify explicit preferences and respond with JSON containing:
+- year_mentioned: The exact year as an integer if stated, otherwise null.
+- year_sentiment: Return 4 values (older, newer, around, exact). This means that the query shows the year to be older than the year mentioned (example: I want the find vehicles that is older than 2025), newer (example: I want the find vehicles that is newer than 2025), or around  (example: I want the find vehicles that is around than 2025), or exact (example: I want the find a 2025 model vehicles.). If there is no mention, return around. One of [older, newer, around, exact]. Default to around when no direction is given.
+- year_alternative: Whether the user are fine with options that are not aligned with their year requirement or not. True if the query allows years outside the stated intent; false otherwise.
+""",
+        ),
+    ]
+)
+
+
+VEHICLE_PREFERENCE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You extract explicit make/model/fuel/body preferences from a query.",
+        ),
+        (
+            "human",
+            """
+Persona query: {persona_query}
+
+Identify explicit preferences and respond with JSON containing:
+
+- make_like: List the preferred makes (empty if none) that are explicitly mentioned. DO NOT infer preferred makes beyond what is directly stated in the query.
+- make_dislike: List the makes to avoid (empty if none) that are explicitly mentioned. DO NOT infer makes to avoid beyond what is directly stated in the query.
+- make_alternative: Whether the user are fine with options that are not aligned with their make like or not. True if alternatives outside make_like are acceptable; false otherwise.
+- model_like: List the preferred models (empty if none) that are explicitly mentioned. DO NOT infer preferred models beyond what is directly stated in the query.
+- model_dislike: List the models to avoid (empty if none) that are explicitly mentioned. DO NOT infer models to avoid beyond what is directly stated in the query.
+- model_alternative: Whether the user are fine with options that are not aligned with their model like or not. True if alternatives outside model_like are acceptable; false otherwise.
+- fuel_type_preference: List the preferred fuel types exactly as stated (empty if none).
+- fuel_type_alternative: Whether the user are fine with options that are not aligned with their fuel type like or not. True if other fuel types are acceptable; false otherwise.
+- body_type_preference: List the preferred body types exactly as stated (empty if none).
+- body_type_alternative: Whether the user are fine with options that are not aligned with their body type like or not. True if other body types are acceptable; false otherwise.
+
+When the query is silent about flexibility, set the corresponding alternative flag to True.
+""",
+        ),
+    ]
+)
+
+
 PERSONA_PROMPT = ChatPromptTemplate.from_messages(
     [
         (
@@ -203,22 +280,13 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
         (
             "human",
             """
-Persona goal: {goal_summary}
-Writing style cues: {writing_style}
-Interaction style: {interaction_style}
-Family background: {family_background}
-Likes: {likes}
-Dislikes: {dislikes}
 Persona query: {persona_query}
-Mentioned makes: {mentioned_makes}
-Mentioned models: {mentioned_models}
-Mentioned years: {mentioned_years}
-Preferred condition: {preferred_condition}
-Newness preference (1-10): {newness_preference_score} — {newness_preference_notes}
-Preferred vehicle type: {preferred_vehicle_type}
-Preferred fuel type: {preferred_fuel_type}
-Openness to alternatives (1-10): {openness_to_alternatives}
-Other priorities: {misc_notes}
+Year preference extraction:
+{year_preferences}
+
+Vehicle preference extraction:
+{vehicle_preferences}
+
 Current year is 2025 (assume this for the most newness context).
 Do NOT make assumptions beyond the provided information. Only use the data given to make your judgements.
 Do NOT assume the modernity of the vehicle beyond the year provided (The closer the year to 2025, the newer and more modern the vehicle).
@@ -233,20 +301,21 @@ mentioned, return null for that criterion. Respond with JSON using this shape:
 "condition": {{...}}, "year": {{...}},
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
-condition: (whether the condition satisfies the users' preference in the query or not. 
+condition: (whether the condition satisfies the users' preference in the query or not.
 If the users are fine with both new and used or do not have preferences, return True).
 year: (whether the year satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
 model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not. 
-Do NOT assume fuel efficiency in here, only compare fuel_type. 
-For example, if the query wants Gasoline, and the fuel_type returns Gasoline, 
+fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not.
+Do NOT assume fuel efficiency in here, only compare fuel_type.
+For example, if the query wants Gasoline, and the fuel_type returns Gasoline,
 Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
 body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query. If the users are fine with alternatives, return True.).
-all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury. 
+all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury.
 . Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Use the provided price judgement included with each vehicle entry instead of recalculating price fit.
+Use the provided year judgement included with each vehicle entry instead of recalculating year fit.
 Confidence should be a number between 0 and 1 indicating how confident you are in the overall satisfaction judgement.
 If there are a lot of conflicts between attributes and the final satisfaction judgement, the confidence score should be lower.
 Vice versa, if there are a lot of attributes that align with the final satisfaction judgement, the confidence score should be higher.
@@ -386,6 +455,52 @@ def _determine_price_judgement(
     )
 
 
+def _extract_year_preferences(
+    persona_query: str, model: ChatOpenAI
+) -> YearPreferenceExtraction:
+    structured_model = model.with_structured_output(YearPreferenceExtraction)
+    prompt = YEAR_EXTRACTION_PROMPT.format_prompt(persona_query=persona_query)
+    return structured_model.invoke(prompt.to_messages())
+
+
+def _determine_year_judgement(
+    year_preferences: YearPreferenceExtraction, vehicle_year: Optional[int]
+) -> AttributeJudgement:
+    if year_preferences.year_alternative:
+        return AttributeJudgement(
+            satisfied=True, rationale="User open to year alternatives"
+        )
+
+    if year_preferences.year_mentioned is None or vehicle_year is None:
+        return AttributeJudgement(satisfied=None, rationale=None)
+
+    target_year = year_preferences.year_mentioned
+    sentiment = (year_preferences.year_sentiment or "").lower()
+
+    if sentiment == "older":
+        satisfied = vehicle_year < target_year
+        rationale = f"Vehicle year {vehicle_year} is older than {target_year}"
+    elif sentiment == "newer":
+        satisfied = vehicle_year > target_year
+        rationale = f"Vehicle year {vehicle_year} is newer than {target_year}"
+    elif sentiment == "exact":
+        satisfied = vehicle_year == target_year
+        rationale = f"Vehicle year {vehicle_year} matches {target_year}"
+    else:
+        satisfied = target_year - 4 < vehicle_year < target_year + 4
+        rationale = f"Vehicle year {vehicle_year} within ±4 of {target_year}"
+
+    return AttributeJudgement(satisfied=satisfied, rationale=rationale)
+
+
+def _extract_vehicle_preferences(
+    persona_query: str, model: ChatOpenAI
+) -> VehiclePreferenceExtraction:
+    structured_model = model.with_structured_output(VehiclePreferenceExtraction)
+    prompt = VEHICLE_PREFERENCE_PROMPT.format_prompt(persona_query=persona_query)
+    return structured_model.invoke(prompt.to_messages())
+
+
 def build_persona_turn(persona: ReviewPersona, model: ChatOpenAI) -> PersonaTurn:
     structured_model = model.with_structured_output(PersonaDraft)
     likes_text = _affinities_to_text(persona.liked)
@@ -429,40 +544,35 @@ def _assess_vehicles(
     model: ChatOpenAI,
 ) -> List[VehicleJudgement]:
     structured_model = model.with_structured_output(VehicleAssessmentList)
-    likes_text = _affinities_to_text(persona.liked)
-    dislikes_text = _affinities_to_text(persona.disliked)
+    year_preferences = _extract_year_preferences(persona_turn.message, model)
+    vehicle_preferences = _extract_vehicle_preferences(persona_turn.message, model)
 
     vehicle_entries = []
     price_judgements: Dict[int, AttributeJudgement] = {}
+    year_judgements: Dict[int, AttributeJudgement] = {}
     for idx, vehicle in enumerate(vehicles):
         entry = _format_vehicle_entry(vehicle, idx + 1)
         price_judgement = _determine_price_judgement(
             persona_turn.upper_price_limit, entry.get("price")
         )
+        year_judgement = _determine_year_judgement(
+            year_preferences, entry.get("year")
+        )
         entry["price_judgement"] = {
             "satisfied": price_judgement.satisfied,
             "rationale": price_judgement.rationale,
         }
+        entry["year_judgement"] = {
+            "satisfied": year_judgement.satisfied,
+            "rationale": year_judgement.rationale,
+        }
         vehicle_entries.append(entry)
         price_judgements[entry["index"]] = price_judgement
+        year_judgements[entry["index"]] = year_judgement
     prompt = ASSESSMENT_PROMPT.format_prompt(
-        goal_summary=persona_turn.goal_summary,
-        writing_style=persona_turn.writing_style,
-        interaction_style=persona_turn.interaction_style,
-        family_background=persona_turn.family_background,
-        likes=likes_text,
-        dislikes=dislikes_text,
         persona_query=persona_turn.message,
-        mentioned_makes=_list_to_text(persona.mentioned_makes),
-        mentioned_models=_list_to_text(persona.mentioned_models),
-        mentioned_years=_list_to_text([str(year) for year in persona.mentioned_years]),
-        preferred_condition=persona.preferred_condition or "unspecified",
-        newness_preference_score=persona.newness_preference_score or "unknown",
-        newness_preference_notes=persona.newness_preference_notes or "",
-        preferred_vehicle_type=persona.preferred_vehicle_type or "unspecified",
-        preferred_fuel_type=persona.preferred_fuel_type or "unspecified",
-        openness_to_alternatives=persona.alternative_openness or "unknown",
-        misc_notes=persona.misc_notes or "None stated",
+        year_preferences=year_preferences.model_dump_json(indent=2),
+        vehicle_preferences=vehicle_preferences.model_dump_json(indent=2),
         vehicles=json.dumps(vehicle_entries, indent=2),
     )
     response = structured_model.invoke(prompt.to_messages())
@@ -498,6 +608,9 @@ def _assess_vehicles(
             key: _attribute_judgement(getattr(assessment, key)) for key in attribute_keys
         }
         attribute_results["price"] = price_judgements.get(
+            entry["index"], AttributeJudgement(satisfied=None, rationale=None)
+        )
+        attribute_results["year"] = year_judgements.get(
             entry["index"], AttributeJudgement(satisfied=None, rationale=None)
         )
         results.append(
