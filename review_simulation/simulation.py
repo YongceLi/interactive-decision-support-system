@@ -14,7 +14,6 @@ from review_simulation.persona import ReviewPersona, VehicleAffinity
 from scripts.test_recommendation_methods import (
     test_method1_pipeline,
     test_method2_pipeline,
-    test_method3_pipeline,
 )
 
 
@@ -405,9 +404,7 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
         except (TypeError, ValueError):
             year = None
 
-    used_flag = listing.get("used")
-    if used_flag is None:
-        used_flag = vehicle.get("inventory_type") == "used"
+    used_flag = vehicle.get("norm_is_used")
     condition = "used" if used_flag else "new"
 
     city = listing.get("city") or vehicle.get("dealer_city")
@@ -422,8 +419,8 @@ def _format_vehicle_entry(vehicle: dict, index: int) -> Dict[str, Optional[str]]
     except (TypeError, ValueError):
         price = None
     miles = listing.get("miles")
-    fuel_type = car.get("fuel") or build.get("fuel_type")
-    body_type = car.get("bodyStyle") or build.get("body_type")
+    fuel_type = car.get("norm_fuel_type") or build.get("fuel_type")
+    body_type = car.get("norm_body_type") or build.get("body_type")
 
 
     return {
