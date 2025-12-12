@@ -14,6 +14,7 @@ from review_simulation.persona import ReviewPersona, VehicleAffinity
 from scripts.test_recommendation_methods import (
     test_method1_pipeline,
     test_method2_pipeline,
+    test_method3_pipeline,
 )
 
 
@@ -689,9 +690,11 @@ def evaluate_persona(
         response = test_method1_pipeline(persona_turn.message)
     elif recommendation_method == 2:
         response = test_method2_pipeline(persona_turn.message)
+    elif recommendation_method == 3:
+        response = test_method3_pipeline(persona_turn.message)
     else:
         raise ValueError(
-            "recommendation_method must be 1 or 2; received"
+            "recommendation_method must be 1, 2, or 3; received"
             f" {recommendation_method}"
         )
     vehicles = (response.get("recommended_vehicles") or [])[:recommendation_limit]

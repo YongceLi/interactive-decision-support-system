@@ -218,7 +218,8 @@ class LocalVehicleStore:
             year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
             doors, seats, exterior_color, interior_color,
             dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
-            is_used, is_cpo, vdp_url, carfax_url, vin
+            is_used, is_cpo, vdp_url, carfax_url, vin, build_city_mpg, build_highway_mpg,
+            norm_body_type, norm_fuel_type, norm_is_used
             FROM unified_vehicle_listings WHERE vin = ? LIMIT 1"""
 
         try:
@@ -249,7 +250,8 @@ class LocalVehicleStore:
             year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
             doors, seats, exterior_color, interior_color,
             dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
-            is_used, is_cpo, vdp_url, carfax_url, vin
+            is_used, is_cpo, vdp_url, carfax_url, vin, build_city_mpg, build_highway_mpg,
+            norm_body_type, norm_fuel_type, norm_is_used
             FROM unified_vehicle_listings"""
         conditions: List[str] = []
         params: List[Any] = []
@@ -333,6 +335,24 @@ class LocalVehicleStore:
             if upper is not None:
                 add_condition("mileage <= ?", (int(upper),))
 
+        # Highway MPG range (fuel economy)
+        if filters.get("highway_mpg"):
+            mpg_value = str(filters["highway_mpg"])
+            if "-" in mpg_value:
+                # Range specified (e.g., "30-40")
+                lower, upper = _parse_numeric_range(mpg_value)
+                if lower is not None:
+                    add_condition("build_highway_mpg >= ?", (int(lower),))
+                if upper is not None:
+                    add_condition("build_highway_mpg <= ?", (int(upper),))
+            else:
+                # Single value means minimum (e.g., "35" means >= 35)
+                try:
+                    min_mpg = int(mpg_value)
+                    add_condition("build_highway_mpg >= ?", (min_mpg,))
+                except ValueError:
+                    pass  # Invalid value, skip filter
+
         # New vs Used filter
         if filters.get("is_used") is not None:
             is_used_value = 1 if filters["is_used"] else 0
@@ -410,7 +430,8 @@ class LocalVehicleStore:
                     year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
                     doors, seats, exterior_color, interior_color,
                     dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
-                    is_used, is_cpo, vdp_url, carfax_url, vin,
+                    is_used, is_cpo, vdp_url, carfax_url, vin, build_city_mpg, build_highway_mpg,
+                    norm_body_type, norm_fuel_type, norm_is_used,
                     ROW_NUMBER() OVER (
                         PARTITION BY make, model
                         ORDER BY {order_column} {direction}, vin ASC
@@ -421,7 +442,8 @@ class LocalVehicleStore:
                 year, make, model, trim, body_style, drivetrain, engine, fuel_type, transmission,
                 doors, seats, exterior_color, interior_color,
                 dealer_name, dealer_city, dealer_state, dealer_zip, dealer_latitude, dealer_longitude,
-                is_used, is_cpo, vdp_url, carfax_url, vin
+                is_used, is_cpo, vdp_url, carfax_url, vin, build_city_mpg, build_highway_mpg,
+                norm_body_type, norm_fuel_type, norm_is_used
             FROM ranked_vehicles
             WHERE row_num <= ?{order_clause}{limit_clause}
             """
@@ -472,6 +494,11 @@ class LocalVehicleStore:
                 "seats": row["seats"],
                 "exteriorColor": row["exterior_color"],
                 "interiorColor": row["interior_color"],
+                "build_city_mpg": row["build_city_mpg"],
+                "build_highway_mpg": row["build_highway_mpg"],
+                "norm_body_type": row["norm_body_type"],
+                "norm_fuel_type": row["norm_fuel_type"],
+                "norm_is_used": row["norm_is_used"],
             }
 
             # Extract retail listing info
@@ -517,5 +544,12 @@ class LocalVehicleStore:
                 retail_listing["primaryImage"] = row["primary_image_url"]
             if row["photo_count"] is not None and not retail_listing.get("photoCount"):
                 retail_listing["photoCount"] = row["photo_count"]
+
+            # Add MPG data to vehicle section if available
+            vehicle = payload.setdefault("vehicle", {})
+            if row["build_city_mpg"] is not None:
+                vehicle.setdefault("build_city_mpg", row["build_city_mpg"])
+            if row["build_highway_mpg"] is not None:
+                vehicle.setdefault("build_highway_mpg", row["build_highway_mpg"])
 
             return payload

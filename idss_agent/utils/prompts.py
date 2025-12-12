@@ -5,6 +5,7 @@ This module provides functionality to load and render Jinja2 templates
 for agent prompts with configuration variables.
 """
 import os
+from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, Template, TemplateNotFound
@@ -127,6 +128,11 @@ class PromptLoader:
             'followups_min': config.interactive.get('suggested_followups', {}).get('min_options', 3),
             'followups_max': config.interactive.get('suggested_followups', {}).get('max_options', 5),
             'followups_max_words': config.interactive.get('suggested_followups', {}).get('max_words_per_phrase', 8),
+        })
+
+        # Add current year for temporal inference in prompts
+        context.update({
+            'current_year': datetime.now().year,
         })
 
         # Merge extra context (overrides config values if keys conflict)

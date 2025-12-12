@@ -118,7 +118,7 @@ class DenseEmbeddingStore:
 
     def encode_text(self, text: str) -> np.ndarray:
         """
-        Encode text into dense embedding.
+        Encode text into dense embedding (concat method).
 
         Args:
             text: Text to encode
@@ -129,6 +129,37 @@ class DenseEmbeddingStore:
         encoder = self._get_encoder()
         embedding = encoder.encode([text], convert_to_numpy=True)
         return embedding.astype(np.float32)
+
+    def encode_features(self, features: List[str]) -> np.ndarray:
+        """
+        Encode features using sum-of-features method.
+        Each feature is embedded separately, then summed and normalized.
+
+        Args:
+            features: List of feature strings
+
+        Returns:
+            Numpy array of embedding (1 x D)
+        """
+        if not features:
+            # Return zero vector if no features
+            encoder = self._get_encoder()
+            embedding_dim = encoder.get_sentence_embedding_dimension()
+            return np.zeros((1, embedding_dim), dtype=np.float32)
+
+        encoder = self._get_encoder()
+
+        # Embed all features
+        feature_embeddings = encoder.encode(features, convert_to_numpy=True)
+
+        # Sum embeddings
+        summed = np.sum(feature_embeddings, axis=0)
+
+        # L2 normalize
+        normalized = summed / (np.linalg.norm(summed) + 1e-8)
+
+        # Return as (1 x D) array
+        return normalized.reshape(1, -1).astype(np.float32)
 
     def search(
         self,
@@ -170,8 +201,9 @@ class DenseEmbeddingStore:
     def search_by_vins(
         self,
         candidate_vins: List[str],
-        query_text: str,
-        k: Optional[int] = None
+        query_input,  # Can be str (concat) or List[str] (sum)
+        k: Optional[int] = None,
+        method: str = "sum"
     ) -> Tuple[List[str], List[float]]:
         """
         Search within a subset of candidate vehicles.
@@ -179,8 +211,9 @@ class DenseEmbeddingStore:
 
         Args:
             candidate_vins: List of candidate VINs to search within
-            query_text: Natural language query
+            query_input: Natural language query (str for concat, List[str] for sum)
             k: Number of results to return (default: all candidates)
+            method: "sum" (sum-of-features, default) or "concat" (legacy)
 
         Returns:
             Tuple of (list of VINs, list of similarity scores)
@@ -199,8 +232,14 @@ class DenseEmbeddingStore:
         # Get embeddings for candidates
         candidate_indices = [self.vin_to_idx[vin] for vin in valid_vins]
 
-        # Encode query
-        query_embedding = self.encode_text(query_text)
+        # Encode query based on method
+        if method == "sum" and isinstance(query_input, list):
+            query_embedding = self.encode_features(query_input)
+        else:
+            # Fallback to concat method
+            if isinstance(query_input, list):
+                query_input = " ".join(query_input)
+            query_embedding = self.encode_text(query_input)
 
         # Compute similarities manually for subset
         similarities = []

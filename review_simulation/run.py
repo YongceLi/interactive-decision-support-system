@@ -47,9 +47,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--method",
         type=int,
-        choices=[1, 2],
+        choices=[1, 2, 3],
         default=1,
-        help="Recommendation method to evaluate (1 = SQL + Vector + MMR, 2 = Web Search + Parallel SQL)",
+        help="Recommendation method to evaluate (1 = SQL + Vector + MMR, 2 = Web Search + Parallel SQL, 3 = SQL + Coverage-Risk Optimization)",
     )
     parser.add_argument(
         "--max-personas",
@@ -70,6 +70,12 @@ def parse_args() -> argparse.Namespace:
         help="Maximum number of assessment passes to run when confidence is low",
     )
     parser.add_argument(
+        "--indices",
+        type=str,
+        default=None,
+        help="Comma-separated list of specific test indices to run (0-based, e.g., '0,5,10')",
+    )
+    parser.add_argument(
         "--export",
         type=Path,
         default=None,
@@ -81,8 +87,25 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     persona_pairs = _load_personas_and_turns(args.input)
-    if args.max_personas is not None:
+
+    # Apply filtering based on provided arguments
+    total_available = len(persona_pairs)
+
+    if args.indices is not None:
+        # Parse comma-separated indices
+        selected_indices = [int(idx.strip()) for idx in args.indices.split(',')]
+        # Validate indices
+        invalid_indices = [idx for idx in selected_indices if idx < 0 or idx >= total_available]
+        if invalid_indices:
+            print(f"ERROR: Invalid indices {invalid_indices}. Valid range: 0-{total_available - 1}")
+            return
+        persona_pairs = [persona_pairs[i] for i in selected_indices]
+        print(f"Running {len(persona_pairs)} selected tests (indices: {selected_indices})")
+    elif args.max_personas is not None:
         persona_pairs = persona_pairs[: args.max_personas]
+        print(f"Running first {len(persona_pairs)} tests (max-personas limit)")
+    else:
+        print(f"Running all {len(persona_pairs)} tests")
 
     llm = ChatOpenAI(model=args.model, temperature=0.4)
 

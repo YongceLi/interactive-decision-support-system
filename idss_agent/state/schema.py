@@ -36,6 +36,7 @@ class VehicleFilters(TypedDict, total=False):
     price: Optional[str]  # e.g., "10000-30000" (range format)
     state: Optional[str]  # e.g., "CA", "NY"
     mileage: Optional[str]  # Vehicle's odometer reading, e.g., "0-50000" (range format)
+    highway_mpg: Optional[str]  # Highway fuel economy, e.g., "30" or "30-40" (range format)
     is_used: Optional[bool]  # True for used vehicles, False for new vehicles
     is_cpo: Optional[bool]  # True for Certified Pre-Owned vehicles
 
@@ -48,14 +49,16 @@ class VehicleFilters(TypedDict, total=False):
 
 
 class ImplicitPreferences(TypedDict, total=False):
-    """Implicit user preferences inferred from conversation."""
-    priorities: Optional[List[str]]  # e.g., ["fuel_efficiency", "safety", "reliability", "luxury"]
-    lifestyle: Optional[str]  # e.g., "family-oriented", "outdoorsy", "urban commuter", "performance enthusiast"
-    budget_sensitivity: Optional[str]  # e.g., "budget-conscious", "moderate", "luxury-focused"
-    brand_affinity: Optional[List[str]]  # Brands user seems to prefer based on conversation
-    concerns: Optional[List[str]]  # e.g., ["maintenance costs", "resale value", "insurance costs", "reliability"]
-    usage_patterns: Optional[str]  # e.g., "daily commuter", "weekend trips", "family road trips"
-    notes: Optional[str]  # Any other inferred information
+    """
+    Implicit user preferences inferred from conversation.
+
+    Simplified schema optimized for semantic matching with vehicle reviews:
+    - liked_features: Vehicle attributes user wants (matched against pros)
+    - disliked_features: Vehicle attributes user wants to avoid (matched against cons)
+    """
+    liked_features: Optional[List[str]]  # e.g., ["fuel efficiency", "reliability", "spacious interior", "smooth ride"]
+    disliked_features: Optional[List[str]]  # e.g., ["high maintenance costs", "poor visibility", "stiff suspension"]
+    notes: Optional[str]  # Any other contextual information about user preferences
 
 
 # Pydantic versions for LLM structured output (mirror TypedDict structure)
@@ -85,6 +88,7 @@ class VehicleFiltersPydantic(BaseModel):
     price: Optional[str] = Field(None, description="e.g., '10000-30000' (range format)")
     state: Optional[str] = Field(None, description="e.g., 'CA', 'NY'")
     mileage: Optional[str] = Field(None, description="Vehicle's odometer reading in miles (e.g., '0-50000' for cars with under 50k miles on odometer)")
+    highway_mpg: Optional[str] = Field(None, description="Highway fuel economy in miles per gallon (e.g., '30' for at least 30 mpg, '30-40' for 30-40 mpg range). Extract from phrases like 'good gas mileage', 'fuel efficient', '30+ mpg', 'over 35 mpg highway'")
     is_used: Optional[bool] = Field(None, description="True for used/pre-owned vehicles, False for new vehicles. Extract from phrases like 'used car', 'new car', 'pre-owned'")
     is_cpo: Optional[bool] = Field(None, description="True for Certified Pre-Owned (CPO) vehicles. Extract from phrases like 'certified pre-owned', 'CPO', 'certified used'")
 
@@ -95,7 +99,20 @@ class VehicleFiltersPydantic(BaseModel):
     # Filter strictness
     must_have_filters: List[str] = Field(
         default_factory=list,
-        description="List of filter field names that are hard requirements. Only these will be used in SQL WHERE clause. Other filters are preferences for vector ranking. Example: ['body_style', 'price'] means body_style and price are required, but make/model are flexible preferences."
+        description="List of filter field names that are hard requirements (relaxed LAST). Example: ['body_style', 'price'] means body_style and price are strict requirements."
+    )
+
+    # Inferred filters (relaxed FIRST)
+    inferred_filters: List[str] = Field(
+        default_factory=list,
+        description=(
+            "List of filter field names that were INFERRED from context rather than explicitly stated by user. "
+            "These are relaxed FIRST during progressive filter relaxation. "
+            "Examples of inference: "
+            "'newer than 2024 Malibu' → year, make, model filter is inferred; "
+            "'low mileage' → mileage filter is inferred. "
+            "If user explicitly says 'I want a 2024 car', year is NOT inferred (it's explicit)."
+        )
     )
 
     # Negative filters (vehicles to EXCLUDE)
@@ -112,56 +129,38 @@ class VehicleFiltersPydantic(BaseModel):
 
 class ImplicitPreferencesPydantic(BaseModel):
     """Pydantic version of ImplicitPreferences for LLM structured output."""
-    priorities: Optional[List[str]] = Field(
+    liked_features: Optional[List[str]] = Field(
         None,
         description=(
-            "User's top priorities inferred from phrases like 'safe', 'reliable', 'fuel efficient', 'luxurious', 'spacious'. "
-            "Extract from: 'safe car' → ['safety'], 'reliable vehicle' → ['reliability'], 'good on gas' → ['fuel_efficiency']. "
-            "Common values: 'safety', 'reliability', 'fuel_efficiency', 'luxury', 'performance', 'space', 'technology'"
+            "Vehicle attributes and characteristics the user wants or values (matched against vehicle PROS in reviews). "
+            "Extract from phrases indicating positive preferences: "
+            "'fuel efficient' → ['fuel efficiency'], "
+            "'reliable car' → ['reliability'], "
+            "'spacious interior' → ['spacious interior', 'interior space'], "
+            "'smooth ride' → ['comfortable ride', 'smooth handling'], "
+            "'good safety features' → ['safety features', 'crash test ratings'], "
+            "'tech features' → ['technology', 'infotainment system'], "
+            "'affordable maintenance' → ['low maintenance costs', 'affordable repairs']. "
+            "Be specific and capture the essence of what user wants."
         )
     )
-    lifestyle: Optional[str] = Field(
+    disliked_features: Optional[List[str]] = Field(
         None,
         description=(
-            "User's lifestyle inferred from context clues like 'family', 'kids', 'outdoor adventures', 'city driving', 'commute'. "
-            "Extract from: 'have kids' → 'family-oriented', 'weekend camping' → 'outdoorsy', 'drive to work daily' → 'urban commuter'. "
-            "Common values: 'family-oriented', 'outdoorsy', 'urban commuter', 'performance enthusiast', 'business professional'"
-        )
-    )
-    budget_sensitivity: Optional[str] = Field(
-        None,
-        description=(
-            "User's budget consciousness inferred from price mentions and financial language. "
-            "Extract from: 'cheapest option' → 'budget-conscious', 'reasonable price' → 'moderate', 'money is not an issue' → 'luxury-focused'. "
-            "Common values: 'budget-conscious', 'moderate', 'luxury-focused'"
-        )
-    )
-    brand_affinity: Optional[List[str]] = Field(
-        None,
-        description=(
-            "Brands the user shows preference for through positive mentions or repeated references. "
-            "Extract from: 'I love Toyota' → ['Toyota'], 'always driven Honda and Mazda' → ['Honda', 'Mazda']"
-        )
-    )
-    concerns: Optional[List[str]] = Field(
-        None,
-        description=(
-            "User's worries or negative priorities inferred from phrases like 'expensive to maintain', 'high insurance', 'bad resale'. "
-            "Extract from: 'low maintenance' → ['maintenance costs'], 'cheap to fix' → ['repair costs'], 'holds value' → ['resale value']. "
-            "Common values: 'maintenance costs', 'repair costs', 'insurance costs', 'resale value', 'reliability issues', 'fuel costs'"
-        )
-    )
-    usage_patterns: Optional[str] = Field(
-        None,
-        description=(
-            "How the user plans to use the vehicle, inferred from purpose statements. "
-            "Extract from: 'drive to work every day' → 'daily commuter', 'for my teenager' → 'teenage driver', 'road trips with family' → 'family road trips'. "
-            "Common values: 'daily commuter', 'weekend trips', 'family road trips', 'teenage driver', 'work vehicle', 'occasional use'"
+            "Vehicle attributes and characteristics the user wants to avoid (matched against vehicle CONS in reviews). "
+            "Extract from phrases indicating negative preferences or concerns: "
+            "'expensive to maintain' → ['high maintenance costs', 'expensive repairs'], "
+            "'poor visibility' → ['poor visibility', 'blind spots'], "
+            "'stiff suspension' → ['harsh ride', 'uncomfortable suspension'], "
+            "'bad gas mileage' → ['poor fuel economy', 'low mpg'], "
+            "'unreliable' → ['reliability issues', 'frequent breakdowns'], "
+            "'cramped interior' → ['limited interior space', 'small cabin']. "
+            "Be specific and capture what user wants to avoid."
         )
     )
     notes: Optional[str] = Field(
         None,
-        description="Any other contextual information that doesn't fit other fields but seems important for understanding user needs"
+        description="Any other contextual information about user preferences that doesn't fit into liked/disliked features"
     )
 
 

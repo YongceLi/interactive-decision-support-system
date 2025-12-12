@@ -17,6 +17,234 @@ from idss_agent.utils.config import get_config
 
 logger = get_logger("processing.method1")
 
+# Filter importance ranking - filters earlier in list are LESS important (relaxed first)
+# Filters later in list are MORE important (kept longest)
+FILTER_RELAXATION_ORDER = [
+    "search_radius",      # 1 - Willing to travel farther
+    "interior_color",     # 2 - Cosmetic
+    "exterior_color",     # 3 - Cosmetic
+    "is_cpo",             # 4 - Certification is a plus
+    "engine",             # 5 - Performance preference
+    "trim",               # 6 - Specific variant
+    "doors",              # 7 - Practical but flexible
+    "year",               # 8 - Age preference (flexible)
+    "mileage",            # 9 - Condition indicator (flexible)
+    "price",              # 10 - Budget constraint
+    "model",              # 11 - Specific model
+    "make",               # 12 - Brand identity
+    "drivetrain",         # 13 - Climate/terrain needs
+    "seating_capacity",   # 14 - Family size
+    "transmission",       # 15 - Manual vs automatic
+    "fuel_type",          # 16 - Infrastructure/operating cost
+    "is_used",            # 17 - New vs used
+    "body_style",         # 18 - Fundamental vehicle type (MOST IMPORTANT)
+]
+
+
+def progressive_filter_relaxation(
+    store: LocalVehicleStore,
+    explicit_filters: Dict[str, Any],
+    user_latitude: Optional[float] = None,
+    user_longitude: Optional[float] = None,
+) -> Tuple[List[Dict[str, Any]], Optional[str], Dict[str, Any]]:
+    """
+    Progressively relax filters from least to most important until we find ANY results.
+
+    Key behavior:
+    - If ANY vehicles match all criteria, return them (even if just 1)
+    - Only relax filters when 0 results found
+    - Track which filters were relaxed so we can inform the user
+
+    Filter Relaxation Hierarchy (3 tiers):
+    1. INFERRED filters are relaxed FIRST (least certain - derived from context)
+    2. REGULAR filters are relaxed SECOND (explicit but flexible)
+    3. MUST-HAVE filters are relaxed LAST (strict requirements)
+
+    Within each tier, filters are relaxed according to FILTER_RELAXATION_ORDER.
+
+    Args:
+        store: LocalVehicleStore instance
+        explicit_filters: All explicit filters from user
+        user_latitude: User latitude for distance calculation
+        user_longitude: User longitude for distance calculation
+
+    Returns:
+        Tuple of:
+        - List of candidate vehicles
+        - SQL query string (last executed)
+        - Relaxation state dict with:
+            - all_criteria_met: True if no relaxation was needed
+            - met_filters: List of filters that were satisfied
+            - relaxed_filters: List of filters that were removed to find results
+            - relaxed_inferred: List of inferred filters that were relaxed
+            - relaxed_regular: List of regular filters that were relaxed
+            - unmet_must_haves: List of must-have filters that had to be relaxed
+            - original_values: Dict of original values for relaxed filters
+    """
+    # Extract filter categories
+    must_have_filter_names = set(explicit_filters.get("must_have_filters", []))
+    inferred_filter_names = set(explicit_filters.get("inferred_filters", []))
+    avoid_vehicles = explicit_filters.get("avoid_vehicles")
+
+    # Get all actual filter values (exclude metadata fields)
+    metadata_fields = {"must_have_filters", "inferred_filters", "avoid_vehicles"}
+    all_filters = {k: v for k, v in explicit_filters.items() if k not in metadata_fields}
+
+    if not all_filters:
+        logger.warning("No filters to relax - returning empty results")
+        return [], None, {
+            "all_criteria_met": True,
+            "met_filters": [],
+            "relaxed_filters": [],
+            "relaxed_inferred": [],
+            "relaxed_regular": [],
+            "unmet_must_haves": [],
+            "original_values": {}
+        }
+
+    present_filters = set(all_filters.keys())
+
+    # Build priority mapping with 3-tier hierarchy:
+    # Tier 0: Inferred filters (priority 0-17) - relaxed FIRST
+    # Tier 1: Regular filters (priority 18-35) - relaxed SECOND
+    # Tier 2: Must-have filters (priority 36-53) - relaxed LAST
+    TIER_SIZE = len(FILTER_RELAXATION_ORDER)
+
+    filter_priorities = {}
+    for filter_name in present_filters:
+        # Get base priority from FILTER_RELAXATION_ORDER
+        if filter_name in FILTER_RELAXATION_ORDER:
+            base_priority = FILTER_RELAXATION_ORDER.index(filter_name)
+        else:
+            # Unranked filters get priority -1 (relaxed first within tier)
+            base_priority = -1
+
+        # Determine tier and calculate final priority
+        if filter_name in inferred_filter_names:
+            # Tier 0: Inferred filters (relaxed FIRST)
+            tier_boost = 0
+            tier_name = "inferred"
+        elif filter_name in must_have_filter_names:
+            # Tier 2: Must-have filters (relaxed LAST)
+            tier_boost = 2 * TIER_SIZE
+            tier_name = "must-have"
+        else:
+            # Tier 1: Regular filters (relaxed SECOND)
+            tier_boost = 1 * TIER_SIZE
+            tier_name = "regular"
+
+        filter_priorities[filter_name] = base_priority + tier_boost
+
+    # Sort filters by priority (ascending - lower priority relaxed first)
+    ranked_filters = sorted(present_filters, key=lambda f: filter_priorities[f])
+
+    logger.info("=" * 60)
+    logger.info("PROGRESSIVE FILTER RELAXATION (3-Tier Hierarchy)")
+    logger.info("=" * 60)
+    logger.info(f"Starting filters: {list(all_filters.keys())}")
+    logger.info(f"Inferred filters (Tier 0 - relaxed FIRST): {list(inferred_filter_names & present_filters)}")
+    logger.info(f"Regular filters (Tier 1): {list(present_filters - inferred_filter_names - must_have_filter_names)}")
+    logger.info(f"Must-have filters (Tier 2 - relaxed LAST): {list(must_have_filter_names & present_filters)}")
+    logger.info(f"Relaxation order: {ranked_filters}")
+
+    # Track relaxation state
+    current_filters = all_filters.copy()
+    relaxed_filters_list = []  # Track which filters were relaxed, in order
+    original_values = {}  # Store original values of relaxed filters
+    candidates = []
+    sql_query = None
+
+    # Try with all filters first
+    iteration = 0
+    while True:
+        iteration += 1
+
+        # Add avoid_vehicles back if present (never relax this)
+        query_filters = current_filters.copy()
+        if avoid_vehicles:
+            query_filters["avoid_vehicles"] = avoid_vehicles
+
+        logger.info(f"\nIteration {iteration}: Testing with {len(current_filters)} filters: {list(current_filters.keys())}")
+
+        candidates = store.search_listings(
+            query_filters,
+            limit=None,
+            order_by=None,
+            order_dir="ASC",
+            user_latitude=user_latitude,
+            user_longitude=user_longitude
+        )
+
+        sql_query = store.last_sql_query
+
+        logger.info(f"  → {len(candidates)} results")
+
+        # Key change: Stop as soon as we find ANY results
+        if len(candidates) > 0:
+            logger.info(f"✓ Found {len(candidates)} vehicles matching current criteria")
+            break
+
+        # Check if we've run out of filters to relax
+        if not current_filters:
+            logger.info(f"✗ No more filters to relax. No vehicles found.")
+            break
+
+        # Find least important filter still present
+        least_important = None
+        for filter_name in ranked_filters:
+            if filter_name in current_filters:
+                least_important = filter_name
+                break
+
+        if least_important is None:
+            # No more filters to relax
+            logger.info(f"✗ No more relaxable filters. No vehicles found.")
+            break
+
+        # Store the original value before removing
+        original_values[least_important] = all_filters[least_important]
+        relaxed_filters_list.append(least_important)
+
+        # Remove the least important filter
+        logger.info(f"  Relaxing filter: '{least_important}' (was: {all_filters[least_important]})")
+        del current_filters[least_important]
+
+    # Calculate relaxation state
+    met_filters = list(current_filters.keys())
+    all_criteria_met = len(relaxed_filters_list) == 0
+
+    # Categorize relaxed filters by tier
+    relaxed_inferred = [f for f in relaxed_filters_list if f in inferred_filter_names]
+    relaxed_regular = [f for f in relaxed_filters_list
+                       if f not in inferred_filter_names and f not in must_have_filter_names]
+    unmet_must_haves = [f for f in relaxed_filters_list if f in must_have_filter_names]
+
+    logger.info("=" * 60)
+    logger.info(f"Final result: {len(candidates)} vehicles")
+    logger.info(f"All criteria met: {all_criteria_met}")
+    logger.info(f"Met filters: {met_filters}")
+    logger.info(f"Relaxed filters (total): {relaxed_filters_list}")
+    if relaxed_inferred:
+        logger.info(f"  ↳ Relaxed inferred (Tier 0): {relaxed_inferred}")
+    if relaxed_regular:
+        logger.info(f"  ↳ Relaxed regular (Tier 1): {relaxed_regular}")
+    if unmet_must_haves:
+        logger.warning(f"  ↳ Relaxed must-have (Tier 2): {unmet_must_haves}")
+    logger.info("=" * 60)
+
+    # Build relaxation state
+    relaxation_state = {
+        "all_criteria_met": all_criteria_met,
+        "met_filters": met_filters,
+        "relaxed_filters": relaxed_filters_list,
+        "relaxed_inferred": relaxed_inferred,
+        "relaxed_regular": relaxed_regular,
+        "unmet_must_haves": unmet_must_haves,
+        "original_values": original_values
+    }
+
+    return candidates, sql_query, relaxation_state
+
 
 def recommend_method1(
     explicit_filters: Dict[str, Any],
@@ -24,20 +252,25 @@ def recommend_method1(
     user_latitude: Optional[float] = None,
     user_longitude: Optional[float] = None,
     top_k: Optional[int] = None,
-    sql_limit: int = 100,
     lambda_param: Optional[float] = None,
     cluster_size: Optional[int] = None,
     vector_limit: Optional[int] = None,
     db_path: Optional[Path] = None,
     require_photos: bool = True,
-) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+) -> Tuple[List[Dict[str, Any]], Optional[str], Dict[str, Any]]:
     """
     Method 1: SQL + Dense Vector Ranking + Clustered MMR Diversification.
 
     Flow:
-    1. SQL query with strict filters only (returns all matching vehicles)
+    1. Progressive filter relaxation - SQL query until ANY results found
     2. Rank all candidates by dense embedding similarity
     3. Apply clustered MMR to select diverse clusters of similar vehicles
+
+    Key behavior:
+    - If ANY vehicles match all user criteria, return them (even if just 1)
+    - Only relax filters when 0 results found
+    - No vector similarity backfill - results always match SQL filters
+    - Tracks which filters were relaxed for user transparency
 
     Args:
         explicit_filters: User's explicit filters (make, model, price, etc.)
@@ -45,14 +278,23 @@ def recommend_method1(
         user_latitude: User's latitude for distance calculation
         user_longitude: User's longitude for distance calculation
         top_k: Number of vehicles to return (default 20)
-        sql_limit: Number of candidates to retrieve from SQL (default 100) - DEPRECATED
         lambda_param: MMR diversity parameter within clusters (0.6-0.8 recommended)
         cluster_size: Number of similar vehicles per cluster (default 3)
         db_path: Optional path to vehicle database
         require_photos: Whether to require photos
 
     Returns:
-        Tuple of (list of top_k vehicles organized in clusters, SQL query string)
+        Tuple of:
+        - List of top_k vehicles organized in clusters
+        - SQL query string (last executed)
+        - Relaxation state dict with:
+            - all_criteria_met: True if no relaxation was needed
+            - met_filters: List of filters that were satisfied
+            - relaxed_filters: List of all filters that were removed (in order)
+            - relaxed_inferred: List of inferred filters that were relaxed (Tier 0)
+            - relaxed_regular: List of regular filters that were relaxed (Tier 1)
+            - unmet_must_haves: List of must-have filters that had to be relaxed (Tier 2)
+            - original_values: Dict of original values for relaxed filters
     """
     # Load config values if not provided
     config = get_config()
@@ -82,167 +324,32 @@ def recommend_method1(
         store = LocalVehicleStore(db_path=db_path, require_photos=require_photos)
     except FileNotFoundError as e:
         logger.error(f"Local store unavailable: {e}")
-        return [], None
-
-    # Step 1: Build filter sets for two-tier query strategy
-    logger.info("=" * 60)
-    logger.info("BUILDING QUERY FILTERS")
-    logger.info("=" * 60)
-
-    must_have = explicit_filters.get("must_have_filters", [])
-
-    # All filters (strict query) - includes ALL explicit filters
-    all_filters = {k: v for k, v in explicit_filters.items()
-                   if k != "must_have_filters"}
-
-    # Must-have filters (relaxed query) - only strict requirements
-    must_have_filters = {}
-    for key in must_have:
-        if key in explicit_filters and key != "must_have_filters":
-            must_have_filters[key] = explicit_filters[key]
-
-    # ALWAYS include avoid_vehicles in both queries
-    if explicit_filters.get("avoid_vehicles"):
-        if "avoid_vehicles" not in all_filters:
-            all_filters["avoid_vehicles"] = explicit_filters["avoid_vehicles"]
-        if "avoid_vehicles" not in must_have_filters:
-            must_have_filters["avoid_vehicles"] = explicit_filters["avoid_vehicles"]
+        return [], None, {}
 
     # If no filters at all, add default year range
-    if not all_filters:
+    if not explicit_filters or explicit_filters == {"must_have_filters": []}:
         logger.warning("No explicit filters - adding default year range")
-        all_filters['year'] = '2015-2025'
-        must_have_filters['year'] = '2015-2025'
+        explicit_filters['year'] = '2015-2025'
 
-    logger.info(f"All filters (Phase 1): {list(all_filters.keys())}")
-    logger.info(f"Must-have filters (Phase 2): {list(must_have_filters.keys())}")
-
-    # Get thresholds from config
-    STRICT_THRESHOLD = method1_config.get('strict_threshold', 1000)
-    MIN_CANDIDATES = method1_config.get('min_candidates', 10000)
-
-    # PHASE 1: Try strict query with ALL explicit filters
-    logger.info("=" * 60)
-    logger.info("PHASE 1: SQL Query with ALL Explicit Filters")
-    logger.info("=" * 60)
-    logger.info(f"Filters: {all_filters}")
-
-    candidates = store.search_listings(
-        all_filters,
-        limit=None,
-        order_by=None,
-        order_dir="ASC",
+    # Step 1: Progressive Filter Relaxation
+    # Relax filters until ANY results found (not a target count)
+    candidates, sql_query, relaxation_state = progressive_filter_relaxation(
+        store=store,
+        explicit_filters=explicit_filters,
         user_latitude=user_latitude,
         user_longitude=user_longitude
     )
 
-    sql_query = store.last_sql_query
-    logger.info(f"Phase 1 returned {len(candidates)} candidates")
-
+    # Log diversity stats
     if candidates:
         unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
         unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
         logger.info(f"  Diversity: {unique_makes} makes, {unique_models} models")
 
-    # PHASE 2: Relax to must-have filters if needed
-    if len(candidates) < STRICT_THRESHOLD and set(all_filters.keys()) != set(must_have_filters.keys()):
-        logger.info("=" * 60)
-        logger.info(f"PHASE 2: Relaxing to Must-Have Filters (strict query < {STRICT_THRESHOLD})")
-        logger.info("=" * 60)
-        logger.info(f"Filters: {must_have_filters}")
-
-        candidates = store.search_listings(
-            must_have_filters,
-            limit=None,
-            order_by=None,
-            order_dir="ASC",
-            user_latitude=user_latitude,
-            user_longitude=user_longitude
-        )
-
-        sql_query = store.last_sql_query
-        logger.info(f"Phase 2 returned {len(candidates)} candidates")
-
-        if candidates:
-            unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
-            unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
-            logger.info(f"  Diversity: {unique_makes} makes, {unique_models} models")
-    elif len(candidates) >= STRICT_THRESHOLD:
-        logger.info(f"✓ Phase 1 successful ({len(candidates)} >= {STRICT_THRESHOLD}), skipping Phase 2")
-    else:
-        logger.info("✓ All filters are must-have, skipping Phase 2")
-
-    # PHASE 3: Dense backfill if needed
-    if len(candidates) < MIN_CANDIDATES:
-        logger.info("=" * 60)
-        logger.info(f"PHASE 3: Dense Backfill ({len(candidates)} < {MIN_CANDIDATES})")
-        logger.info("=" * 60)
-
-        from idss_agent.processing.dense_ranker import get_dense_embedding_store, build_query_text
-
-        try:
-            # Dense search entire database
-            store_dense = get_dense_embedding_store()
-            query_text = build_query_text(explicit_filters, implicit_preferences)
-            logger.info(f"  Dense backfill query: {query_text[:150]}{'...' if len(query_text) > 150 else ''}")
-
-            vins, scores = store_dense.search(query_text, k=MIN_CANDIDATES)
-
-            # Get VINs already in SQL results
-            existing_vins = {v.get("vehicle", {}).get("vin") or v.get("vin") for v in candidates}
-
-            # Pre-build sets for O(1) avoid vehicle lookup
-            avoid_vehicles = explicit_filters.get("avoid_vehicles", [])
-            avoid_makes = set()  # Entire makes to avoid
-            avoid_make_models = set()  # Specific make+model combinations to avoid
-
-            for avoid in avoid_vehicles:
-                avoid_make = avoid.get("make", "").upper()
-                avoid_model = avoid.get("model", "").upper()
-
-                if avoid_make and avoid_model:
-                    avoid_make_models.add((avoid_make, avoid_model))
-                elif avoid_make:
-                    avoid_makes.add(avoid_make)
-
-            # Backfill with dense results (excluding duplicates, avoided vehicles, and NULL price/mileage)
-            backfill_count = 0
-            for vin, score in zip(vins, scores):
-                if vin not in existing_vins:
-                    vehicle = store.get_by_vin(vin)
-                    if vehicle:
-                        # Extract price and mileage
-                        v_price = vehicle.get("vehicle", {}).get("price") or vehicle.get("price")
-                        v_mileage = vehicle.get("vehicle", {}).get("mileage") or vehicle.get("mileage")
-
-                        # Skip if price or mileage is NULL
-                        if v_price is None or v_mileage is None:
-                            continue
-
-                        # Fast O(1) check if vehicle should be avoided
-                        v_make = (vehicle.get("vehicle", {}).get("make") or vehicle.get("make") or "").upper()
-                        v_model = (vehicle.get("vehicle", {}).get("model") or vehicle.get("model") or "").upper()
-
-                        # Skip if make is in avoid list OR make+model combination is in avoid list
-                        if v_make not in avoid_makes and (v_make, v_model) not in avoid_make_models:
-                            vehicle["_dense_score"] = score
-                            vehicle["_vector_score"] = score
-                            candidates.append(vehicle)
-                            backfill_count += 1
-
-                if len(candidates) >= MIN_CANDIDATES:
-                    break
-
-            logger.info(f"Step 1.5: Backfilled {backfill_count} vehicles via dense search (total: {len(candidates)})")
-
-            # Log updated diversity stats
-            unique_makes = len(set(v.get("vehicle", {}).get("make", "") for v in candidates))
-            unique_models = len(set(v.get("vehicle", {}).get("model", "") for v in candidates))
-            logger.info(f"  Combined diversity: {unique_makes} makes, {unique_models} models")
-
-        except Exception as e:
-            logger.warning(f"Dense backfill failed: {e}")
-            logger.warning(f"Continuing with {len(candidates)} candidates from SQL only")
+    # Note: Dense backfill has been removed. We now rely solely on SQL filtering
+    # with progressive relaxation. Even if only 1 vehicle matches all criteria,
+    # we use it rather than diluting results with semantically-similar but
+    # filter-violating vehicles.
 
     # Step 2: Dense embedding ranking
     logger.info("Step 2: Ranking by dense embedding similarity...")
@@ -259,10 +366,32 @@ def recommend_method1(
 
     if not ranked:
         logger.warning("Dense embedding ranking returned no results")
-        return [], sql_query
+        return [], sql_query, relaxation_state
 
     logger.info(f"Step 2: Ranked {len(ranked)} vehicles")
-    logger.info(f"  Top vehicle score: {ranked[0].get('_dense_score', 0.0):.3f}")
+    top_score = ranked[0].get('_dense_score', 0.0)
+    logger.info(f"  Top vehicle score: {top_score:.3f}")
+
+    # Check if dense ranking actually succeeded (has real scores)
+    # If all scores are 0, ranking likely failed (e.g., faiss not installed)
+    ranking_succeeded = any(v.get('_dense_score', 0.0) > 0 for v in ranked)
+
+    # Step 2.1: Apply similarity threshold filter (only if ranking succeeded)
+    min_similarity = method1_config.get('min_similarity', 0.4)
+    if min_similarity > 0 and ranking_succeeded:
+        pre_filter_count = len(ranked)
+        ranked = [v for v in ranked if v.get('_dense_score', 0.0) >= min_similarity]
+        filtered_count = pre_filter_count - len(ranked)
+        logger.info(f"Step 2.1: Similarity threshold filter (>= {min_similarity})")
+        logger.info(f"  Filtered out {filtered_count} vehicles below threshold")
+        logger.info(f"  Remaining: {len(ranked)} vehicles")
+
+        if not ranked:
+            logger.warning(f"No vehicles met the similarity threshold of {min_similarity}")
+            return [], sql_query, relaxation_state
+    elif not ranking_succeeded:
+        logger.warning("Step 2.1: Skipping similarity threshold (dense ranking failed/unavailable)")
+        logger.info(f"  Proceeding with {len(ranked)} unranked vehicles")
 
     # Step 2.5: BM25 sparse ranking (optional)
     use_bm25 = method1_config.get('use_bm25', False)
@@ -321,62 +450,88 @@ def recommend_method1(
     ))
     logger.info(f"  Final diversity: {final_unique_makes} makes, {final_unique_models} models, {final_unique_make_models} make/model combinations")
 
-    # Step 4: Final ranking - re-rank final vehicles by BM25 scores
-    logger.info("Step 4: Final ranking by BM25 scores...")
+    # Step 4: Final ranking
+    final_ranking_method = method1_config.get('final_ranking_method', 'bm25')
 
-    try:
-        from idss_agent.processing.bm25_ranker import build_bm25_query, compute_bm25_scores
+    if final_ranking_method == 'year_value':
+        # Option 1: Sort by year (desc) then mileage/price (desc - more miles per dollar is better)
+        logger.info("Step 4: Final ranking by year → mileage/price ratio...")
 
-        # Build BM25 query from filters and preferences
-        bm25_query = build_bm25_query(explicit_filters, implicit_preferences)
-        logger.info(f"  BM25 query: {bm25_query[:100]}{'...' if len(bm25_query) > 100 else ''}")
-
-        # Compute BM25 scores for the final 20 vehicles
-        bm25_scores = compute_bm25_scores(diverse, bm25_query)
-
-        # Add BM25 scores to vehicles
-        for vehicle, score in zip(diverse, bm25_scores):
-            vehicle["_final_bm25_score"] = score
-
-        # Sort by BM25 score (highest first)
-        diverse_sorted = sorted(diverse, key=lambda v: v.get("_final_bm25_score", 0.0), reverse=True)
-
-        logger.info(f"Step 4: Ranked {len(diverse_sorted)} vehicles by BM25 scores")
-        if diverse_sorted:
-            top = diverse_sorted[0]
-            top_v = top.get("vehicle", {})
-            top_r = top.get("retailListing", {})
-            top_score = top.get("_final_bm25_score", 0.0)
-            price = top_r.get("price", top_v.get("price"))
-            mileage = top_r.get("miles", top_v.get("mileage"))
-            logger.info(f"  Top vehicle (BM25={top_score:.3f}): {top_v.get('year')} {top_v.get('make')} {top_v.get('model')} - ${price}, {mileage} mi")
-
-    except Exception as e:
-        logger.warning(f"BM25 final ranking failed: {e}")
-        logger.info("Falling back to year/price/mileage sorting")
-
-        # Fallback: sort by year, price, mileage
-        def get_sort_key(vehicle):
-            """Extract sorting key: (year_desc, price_asc, mileage_asc)"""
+        def get_year_value_key(vehicle):
+            """Extract sorting key: (year_desc, mileage_per_price_desc)"""
             v = vehicle.get("vehicle", {})
             year = v.get("year") or vehicle.get("year")
             price = v.get("price") or vehicle.get("price")
             mileage = v.get("mileage") or vehicle.get("mileage")
 
             year_val = int(year) if year else 0
-            price_val = float(price) if price is not None else float('inf')
-            mileage_val = float(mileage) if mileage is not None else float('inf')
+            price_val = float(price) if price is not None and price > 0 else 1.0
+            mileage_val = float(mileage) if mileage is not None else 0.0
 
-            return (-year_val, price_val, mileage_val)
+            # Mileage per dollar (higher = better value)
+            mileage_per_price = mileage_val / price_val
 
-        diverse_sorted = sorted(diverse, key=get_sort_key)
-        logger.info(f"  Fallback: Sorted {len(diverse_sorted)} vehicles by year/price/mileage")
+            return (-year_val, -mileage_per_price)  # Both descending
+
+        diverse_sorted = sorted(diverse, key=get_year_value_key)
+        logger.info(f"Step 4: Ranked {len(diverse_sorted)} vehicles by year → mileage/price")
+
+        if diverse_sorted:
+            top = diverse_sorted[0]
+            top_v = top.get("vehicle", {})
+            top_r = top.get("retailListing", {})
+            year = top_v.get("year")
+            price = top_r.get("price", top_v.get("price"))
+            mileage = top_r.get("miles", top_v.get("mileage"))
+            value_ratio = mileage / price if price and price > 0 else 0
+            logger.info(f"  Top vehicle: {year} {top_v.get('make')} {top_v.get('model')} - ${price}, {mileage} mi (value={value_ratio:.4f})")
+
+    elif final_ranking_method == 'bm25':
+        # Option 2: Re-rank by BM25 scores (original method)
+        logger.info("Step 4: Final ranking by BM25 scores...")
+
+        try:
+            from idss_agent.processing.bm25_ranker import build_bm25_query, compute_bm25_scores
+
+            # Build BM25 query from filters and preferences
+            bm25_query = build_bm25_query(explicit_filters, implicit_preferences)
+            logger.info(f"  BM25 query: {bm25_query[:100]}{'...' if len(bm25_query) > 100 else ''}")
+
+            # Compute BM25 scores for the final 20 vehicles
+            bm25_scores = compute_bm25_scores(diverse, bm25_query)
+
+            # Add BM25 scores to vehicles
+            for vehicle, score in zip(diverse, bm25_scores):
+                vehicle["_final_bm25_score"] = score
+
+            # Sort by BM25 score (highest first)
+            diverse_sorted = sorted(diverse, key=lambda v: v.get("_final_bm25_score", 0.0), reverse=True)
+
+            logger.info(f"Step 4: Ranked {len(diverse_sorted)} vehicles by BM25 scores")
+            if diverse_sorted:
+                top = diverse_sorted[0]
+                top_v = top.get("vehicle", {})
+                top_r = top.get("retailListing", {})
+                top_score = top.get("_final_bm25_score", 0.0)
+                price = top_r.get("price", top_v.get("price"))
+                mileage = top_r.get("miles", top_v.get("mileage"))
+                logger.info(f"  Top vehicle (BM25={top_score:.3f}): {top_v.get('year')} {top_v.get('make')} {top_v.get('model')} - ${price}, {mileage} mi")
+
+        except Exception as e:
+            logger.warning(f"BM25 final ranking failed: {e}")
+            logger.info("Falling back to MMR order (no reranking)")
+            diverse_sorted = diverse
+
+    else:
+        # Option 3: Keep original MMR order (no reranking)
+        logger.info("Step 4: Keeping original MMR order (no final reranking)")
+        diverse_sorted = diverse
 
     logger.info("=" * 60)
     logger.info(f"METHOD 1 COMPLETE: {len(diverse_sorted)} vehicles returned")
     logger.info("=" * 60)
 
-    return diverse_sorted, sql_query
+    return diverse_sorted, sql_query, relaxation_state
 
 
 __all__ = ["recommend_method1"]

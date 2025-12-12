@@ -3,6 +3,10 @@ Dense Embedding Ranker: Ranks vehicles using semantic similarity.
 
 Uses pre-trained sentence transformers to understand semantic meaning
 and natural language queries.
+
+Supports two embedding methods:
+1. Concat: Embed entire query as single sentence (legacy)
+2. Sum: Embed each feature separately, sum and normalize (recommended)
 """
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -60,6 +64,7 @@ def rank_vehicles_by_dense_similarity(
     implicit_preferences: Dict[str, Any],
     db_path: Optional[Path] = None,
     top_k: Optional[int] = None,
+    embedding_method: str = "sum"
 ) -> List[Dict[str, Any]]:
     """
     Rank vehicles using dense embedding similarity.
@@ -70,6 +75,7 @@ def rank_vehicles_by_dense_similarity(
         implicit_preferences: User's implicit preferences (priorities, lifestyle, etc.)
         db_path: Path to vehicle database (for loading embeddings)
         top_k: Optional limit on number of results
+        embedding_method: "sum" (sum-of-features, default) or "concat" (legacy)
 
     Returns:
         List of vehicles ranked by semantic similarity
@@ -77,7 +83,7 @@ def rank_vehicles_by_dense_similarity(
     if not vehicles:
         return vehicles
 
-    logger.info(f"Ranking {len(vehicles)} vehicles using dense embeddings")
+    logger.info(f"Ranking {len(vehicles)} vehicles using dense embeddings (method: {embedding_method})")
 
     # Get cached dense embedding store (avoids reloading model for batch processing)
     try:
@@ -87,9 +93,17 @@ def rank_vehicles_by_dense_similarity(
         logger.warning("Returning vehicles unranked")
         return vehicles
 
-    # Build natural language query from user preferences
-    query_text = build_query_text(explicit_filters, implicit_preferences)
-    logger.info(f"Query: {query_text[:150]}{'...' if len(query_text) > 150 else ''}")
+    # Build query based on method
+    if embedding_method == "sum":
+        # Sum-of-features: Extract individual features
+        query_features = extract_query_features(explicit_filters, implicit_preferences)
+        logger.info(f"Query features ({len(query_features)}): {', '.join(query_features[:5])}{'...' if len(query_features) > 5 else ''}")
+        query_input = query_features
+    else:
+        # Concat: Build single query text
+        query_text = build_query_text(explicit_filters, implicit_preferences)
+        logger.info(f"Query: {query_text[:150]}{'...' if len(query_text) > 150 else ''}")
+        query_input = query_text
 
     # Get VINs from vehicles
     vin_to_vehicle = {}
@@ -106,8 +120,9 @@ def rank_vehicles_by_dense_similarity(
     try:
         vins, scores = store.search_by_vins(
             list(vin_to_vehicle.keys()),
-            query_text,
-            k=None  # Rank all candidates
+            query_input,
+            k=None,  # Rank all candidates
+            method=embedding_method
         )
     except Exception as e:
         logger.error(f"Dense search failed: {e}")
@@ -132,12 +147,109 @@ def rank_vehicles_by_dense_similarity(
     return ranked
 
 
+def extract_query_features(
+    explicit_filters: Dict[str, Any],
+    implicit_preferences: Dict[str, Any]
+) -> List[str]:
+    """
+    Extract individual query features for sum-of-features embedding.
+
+    Extracts only fields that match vehicle embedding features:
+    - make, model, trim
+    - body_style
+    - engine, fuel_type, drivetrain, transmission
+    - doors, seats
+    - is_used
+
+    Plus implicit preferences as separate features.
+
+    Args:
+        explicit_filters: Explicit user filters
+        implicit_preferences: Implicit user preferences
+
+    Returns:
+        List of individual feature strings
+    """
+    features = []
+
+    # Vehicle Identity (make, model, trim)
+    identity_parts = []
+    if explicit_filters.get("make"):
+        identity_parts.append(str(explicit_filters["make"]))
+    if explicit_filters.get("model"):
+        identity_parts.append(str(explicit_filters["model"]))
+    if explicit_filters.get("trim"):
+        identity_parts.append(str(explicit_filters["trim"]))
+    if identity_parts:
+        features.append(" ".join(identity_parts))
+
+    # Body Style
+    if explicit_filters.get("body_style"):
+        features.append(f"{explicit_filters['body_style']} body style")
+
+    # Engine
+    if explicit_filters.get("engine"):
+        features.append(f"{explicit_filters['engine']} engine")
+
+    # Fuel Type
+    if explicit_filters.get("fuel_type"):
+        features.append(f"{explicit_filters['fuel_type']} fuel")
+
+    # Drivetrain
+    if explicit_filters.get("drivetrain"):
+        features.append(f"{explicit_filters['drivetrain']} drivetrain")
+
+    # Transmission
+    if explicit_filters.get("transmission"):
+        features.append(f"{explicit_filters['transmission']} transmission")
+
+    # Doors
+    if explicit_filters.get("doors"):
+        features.append(f"{explicit_filters['doors']} doors")
+
+    # Seats
+    if explicit_filters.get("seats"):
+        features.append(f"{explicit_filters['seats']} seats")
+
+    # Condition (is_used)
+    if explicit_filters.get("is_used") is False:
+        features.append("new vehicle")
+    elif explicit_filters.get("is_used") is True:
+        features.append("used vehicle")
+
+    # Implicit Preferences (each as separate feature)
+    priorities = implicit_preferences.get("priorities", []) or []
+    for priority in priorities:
+        if priority:
+            features.append(str(priority))
+
+    if implicit_preferences.get("usage_patterns"):
+        features.append(str(implicit_preferences["usage_patterns"]))
+
+    if implicit_preferences.get("lifestyle"):
+        features.append(str(implicit_preferences["lifestyle"]))
+
+    concerns = implicit_preferences.get("concerns", []) or []
+    for concern in concerns:
+        if concern:
+            features.append(str(concern))
+
+    if implicit_preferences.get("brand_affinity"):
+        features.append(f"Brand preference: {implicit_preferences['brand_affinity']}")
+
+    if implicit_preferences.get("notes"):
+        # Notes might contain multiple concepts, add as single feature
+        features.append(str(implicit_preferences["notes"]))
+
+    return features
+
+
 def build_query_text(
     explicit_filters: Dict[str, Any],
     implicit_preferences: Dict[str, Any]
 ) -> str:
     """
-    Build a natural language query text from user preferences.
+    Build a structured query text from user preferences.
     This will be encoded into a dense embedding for semantic matching.
 
     Args:
@@ -145,94 +257,105 @@ def build_query_text(
         implicit_preferences: Implicit user preferences
 
     Returns:
-        Natural language query string
+        Structured query string
     """
     parts = []
 
-    # Core vehicle identity
+    # Vehicle Identity
+    identity_parts = []
     if explicit_filters.get("make"):
-        parts.append(str(explicit_filters["make"]))
+        identity_parts.append(str(explicit_filters["make"]))
     if explicit_filters.get("model"):
-        parts.append(str(explicit_filters["model"]))
+        identity_parts.append(str(explicit_filters["model"]))
     if explicit_filters.get("trim"):
-        parts.append(str(explicit_filters["trim"]))
+        identity_parts.append(str(explicit_filters["trim"]))
+    if identity_parts:
+        parts.append(f"Vehicle: {' '.join(identity_parts)}")
 
-    # Body style
+    # Body Style
     if explicit_filters.get("body_style"):
-        parts.append(f"{explicit_filters['body_style']} body style")
+        parts.append(f"Body Style: {explicit_filters['body_style']}")
 
     # Powertrain
+    powertrain_parts = []
     if explicit_filters.get("engine"):
-        parts.append(f"{explicit_filters['engine']} engine")
+        powertrain_parts.append(f"Engine: {explicit_filters['engine']}")
     if explicit_filters.get("fuel_type"):
-        parts.append(f"{explicit_filters['fuel_type']} fuel")
+        powertrain_parts.append(f"Fuel: {explicit_filters['fuel_type']}")
     if explicit_filters.get("drivetrain"):
-        parts.append(f"{explicit_filters['drivetrain']} drivetrain")
+        powertrain_parts.append(f"Drivetrain: {explicit_filters['drivetrain']}")
     if explicit_filters.get("transmission"):
-        parts.append(f"{explicit_filters['transmission']} transmission")
+        powertrain_parts.append(f"Transmission: {explicit_filters['transmission']}")
+    if powertrain_parts:
+        parts.extend(powertrain_parts)
 
     # Colors
     if explicit_filters.get("exterior_color"):
-        parts.append(f"{explicit_filters['exterior_color']} exterior")
+        parts.append(f"Exterior Color: {explicit_filters['exterior_color']}")
     if explicit_filters.get("interior_color"):
-        parts.append(f"{explicit_filters['interior_color']} interior")
+        parts.append(f"Interior Color: {explicit_filters['interior_color']}")
 
-    # Year range
+    # Year
     if explicit_filters.get("year"):
         year_str = str(explicit_filters["year"])
         if "-" in year_str:
-            parts.append(f"year range {year_str}")
+            parts.append(f"Year Range: {year_str}")
         else:
-            parts.append(f"{year_str} year")
+            parts.append(f"Year: {year_str}")
 
-    # Price (semantic, not exact)
+    # Price
     if explicit_filters.get("price"):
         price_str = str(explicit_filters["price"])
         if "-" in price_str:
-            parts.append(f"price range ${price_str}")
+            parts.append(f"Price Range: ${price_str}")
         else:
-            parts.append(f"around ${price_str}")
+            parts.append(f"Price: ${price_str}")
 
     # Mileage
     if explicit_filters.get("mileage"):
         mileage_str = str(explicit_filters["mileage"])
         if "-" in mileage_str:
-            parts.append(f"{mileage_str} miles")
+            parts.append(f"Mileage: {mileage_str} miles")
         else:
-            parts.append(f"around {mileage_str} miles")
+            parts.append(f"Mileage: {mileage_str} miles")
 
     # Condition
+    condition_parts = []
     if explicit_filters.get("is_used") is False:
-        parts.append("new vehicle")
+        condition_parts.append("new")
     elif explicit_filters.get("is_used") is True:
-        parts.append("used vehicle")
-
+        condition_parts.append("used")
     if explicit_filters.get("is_cpo"):
-        parts.append("certified pre-owned")
+        condition_parts.append("certified pre-owned")
+    if condition_parts:
+        parts.append(f"Condition: {', '.join(condition_parts)}")
 
-    # Implicit preferences (this is where dense embeddings shine!)
+    # Implicit Preferences
     priorities = implicit_preferences.get("priorities", []) or []
-    for priority in priorities:
-        parts.append(str(priority))
+    if priorities:
+        parts.append(f"Priorities: {', '.join(str(p) for p in priorities)}")
 
     if implicit_preferences.get("usage_patterns"):
-        parts.append(str(implicit_preferences["usage_patterns"]))
+        parts.append(f"Usage: {implicit_preferences['usage_patterns']}")
 
     if implicit_preferences.get("lifestyle"):
-        parts.append(str(implicit_preferences["lifestyle"]))
+        parts.append(f"Lifestyle: {implicit_preferences['lifestyle']}")
 
     concerns = implicit_preferences.get("concerns", []) or []
-    for concern in concerns:
-        parts.append(str(concern))
+    if concerns:
+        parts.append(f"Concerns: {', '.join(str(c) for c in concerns)}")
 
     if implicit_preferences.get("brand_affinity"):
-        parts.append(str(implicit_preferences["brand_affinity"]))
+        parts.append(f"Brand Preference: {implicit_preferences['brand_affinity']}")
+
+    if implicit_preferences.get("budget_sensitivity"):
+        parts.append(f"Budget: {implicit_preferences['budget_sensitivity']}")
 
     if implicit_preferences.get("notes"):
-        parts.append(str(implicit_preferences["notes"]))
+        parts.append(f"Notes: {implicit_preferences['notes']}")
 
-    # Join into natural language query
-    query_text = ". ".join(parts) + "." if parts else "vehicle"
+    # Join into structured query
+    query_text = ". ".join(parts) + "." if parts else "Vehicle"
     return query_text
 
 
@@ -258,6 +381,7 @@ def preload_dense_embedding_store() -> None:
 
 __all__ = [
     "rank_vehicles_by_dense_similarity",
+    "extract_query_features",
     "build_query_text",
     "get_dense_embedding_store",
     "preload_dense_embedding_store",

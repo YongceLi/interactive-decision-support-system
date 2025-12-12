@@ -19,6 +19,7 @@ Output Format Example(JSON):
     "year": "2018-2020",  // single year "2020" or range "2018-2020"
     "price": "15000-25000",  // range format
     "mileage": "0-50000",  // mileage range
+    "highway_mpg": "30-40",  // highway MPG range, or "30" for minimum 30 mpg
     "body_style": "Sedan",  // or "Sedan,SUV"
     "transmission": "Automatic",
     "exterior_color": "White,Black",  // comma-separated
@@ -31,20 +32,17 @@ Output Format Example(JSON):
     "zip": "94102",
     "search_radius": 50,  // radius in miles
     "features": ["sunroof", "leather seats"],  // list of strings
-    "must_have_filters": ["body_style", "price"],  // list of field names that are strict requirements
+    "must_have_filters": ["body_style", "price"],  // HARD requirements (relaxed LAST)
+    "inferred_filters": ["year"],  // Filters INFERRED from context (relaxed FIRST)
     "avoid_vehicles": [  // vehicles to EXCLUDE from results
       {"make": "Toyota", "model": "Camry"},  // specific make+model to avoid
       {"make": "Honda"}  // entire make to avoid (all models)
     ]
   },
   "implicit_preferences": {
-    "priorities": ["reliability", "fuel_efficiency", "safety", ...],  // what matters to user
-    "lifestyle": "family-oriented",  // inferred from context
-    "budget_sensitivity": "moderate",  // budget-conscious/moderate/luxury-focused
-    "brand_affinity": ["Toyota", "Honda"],  // brands they seem to prefer
-    "concerns": ["maintenance costs", "resale value"],
-    "usage_patterns": "daily commuter",
-    "notes": "User mentioned they have kids, likely needs good safety ratings"
+    "liked_features": ["fuel efficiency", "reliability", "spacious interior", "smooth ride"],  // Vehicle attributes user wants (matched against PROS)
+    "disliked_features": ["high maintenance costs", "poor visibility", "stiff suspension"],  // Vehicle attributes to avoid (matched against CONS)
+    "notes": "User mentioned they have kids, likely values space and safety"
   }
 }
 
@@ -86,13 +84,25 @@ Do NOT include trim levels (Sport, EX, Limited, Premium, etc.), fuel type (Hybri
 
 **IMPORTANT:** If user mentions a vehicle negatively (disappointed, avoid, etc.), ALWAYS add it to avoid_vehicles. This takes precedence over make/model preferences.
 
-**Must-Have Filters (Strict Requirements):**
+**Inferred Filters (Relaxed FIRST):**
 
-In `must_have_filters`, list ONLY the field names that are hard requirements (will be enforced by SQL).
-Fields NOT in this list are treated as preferences (used for ranking only).
+In `inferred_filters`, list field names where you INFERRED a filter value from context rather than from explicit user statement.
+These filters are relaxed FIRST during search if no results are found.
+
+**CRITICAL: You must INFER filters from contextual clues. Examples:**
+
+**When NOT to add to inferred_filters (it's explicit instead):**
+- User explicitly states a value: "I want a 2024 car" → year is explicit, NOT inferred
+- User gives exact numbers: "under $30k" → price is explicit, NOT inferred
+
+**Must-Have Filters (Strict Requirements - Relaxed LAST):**
+
+In `must_have_filters`, list ONLY the field names that are hard requirements (will be enforced strictly).
+These filters are relaxed LAST during search.
 
 **When to include a field in must_have_filters:**
 - User gives no flexibility cues for that attribute
+- User uses strong language: "must be", "need", "require", "has to be"
 
 **When to EXCLUDE a field from must_have_filters:**
 - User implies flexibility or alternatives
@@ -101,6 +111,11 @@ Fields NOT in this list are treated as preferences (used for ranking only).
   - "Honda Accord or similar" → must_have_filters: [] (make and model are preferences only)
   - "ideally a Tesla Model Y" → must_have_filters: [] (make and model are preferences only)
   - "I'm open to alternatives but ideally a Ford F-150" → must_have_filters: [] (make and model are preferences)
+
+**Filter Relaxation Order (when no results found):**
+1. Inferred filters are relaxed FIRST (least certain)
+2. Regular filters (explicit but flexible) are relaxed SECOND
+3. Must-have filters are relaxed LAST (most important to user)
 
 **Valid Filter Options (You must use one of these exact values to fill the state):**
 
@@ -136,8 +151,8 @@ Output:
     "must_have_filters": ["body_style", "fuel_type", "price"]
   },
   "implicit_preferences": {
-    "priorities": ["affordability"],
-    "budget_sensitivity": "budget-conscious"
+    "liked_features": ["affordability", "zero emissions", "low operating costs"],
+    "disliked_features": ["high price", "expensive maintenance"]
   }
 }
 
@@ -151,11 +166,14 @@ Output:
     "model": "Camry,Accord",
     "year": "2018-2020",
     "exterior_color": "white,silver",
-    "must_have_filters": ["make", "model", "year"]
+    "highway_mpg": "30",
+    "must_have_filters": ["make", "model", "year"],
+    "inferred_filters": ["highway_mpg"]
   },
   "implicit_preferences": {
-    "brand_affinity": ["Toyota", "Honda"],
-    "priorities": ["reliability"]
+    "liked_features": ["reliability", "fuel efficiency", "comfortable ride"],
+    "disliked_features": [],
+    "notes": "Highway MPG inferred from selecting fuel-efficient models (Camry/Accord are known for good MPG) → 30+ mpg"
   }
 }
 
@@ -171,9 +189,7 @@ Output:
     "make": "Toyota",
     "must_have_filters": ["make"]
   },
-  "implicit_preferences": {
-    "brand_affinity": ["Toyota"]
-  }
+  "implicit_preferences": {}
 }
 
 Example 4:
@@ -191,8 +207,8 @@ Output:
     "must_have_filters": ["make", "model", "price"]
   },
   "implicit_preferences": {
-    "brand_affinity": ["Toyota"],
-    "budget_sensitivity": "budget-conscious"
+    "liked_features": ["affordability"],
+    "disliked_features": ["high price"]
   }
 }
 
@@ -239,12 +255,13 @@ Output:
   "has_new_filters": true,
   "explicit_filters": {
     "fuel_type": "Electric,Hybrid (Electric + Gasoline),Gasoline",
-    "must_have_filters": []
+    "highway_mpg": "30",
+    "must_have_filters": [],
+    "inferred_filters": ["highway_mpg"]
   },
   "implicit_preferences": {
-    "priorities": ["affordability", "compact size"],
-    "budget_sensitivity": "budget-conscious",
-    "notes": "User wants electric, hybrid, and compact gasoline vehicles"
+    "liked_features": ["affordability", "fuel efficiency", "compact size", "low operating costs"],
+    "disliked_features": ["high fuel costs", "expensive purchase price", "large size"]
   }
 }
 
@@ -261,9 +278,8 @@ Output:
     "must_have_filters": ["make", "model"]
   },
   "implicit_preferences": {
-    "brand_affinity": ["Honda"],
-    "priorities": ["reliability"],
-    "concerns": ["vehicle condition"],
+    "liked_features": ["reliability", "certified warranty", "quality assurance", "pre-owned value"],
+    "disliked_features": ["unknown vehicle history", "poor condition"],
     "notes": "User wants certified pre-owned for quality assurance"
   }
 }
@@ -280,8 +296,8 @@ Output:
     "must_have_filters": ["body_style", "price", "is_used"]
   },
   "implicit_preferences": {
-    "priorities": ["new vehicle warranty"],
-    "budget_sensitivity": "moderate"
+    "liked_features": ["new vehicle warranty", "latest features", "no previous owner"],
+    "disliked_features": []
   }
 }
 
@@ -298,9 +314,8 @@ Output:
     "must_have_filters": ["body_style", "price"]
   },
   "implicit_preferences": {
-    "brand_affinity": ["Honda"],
-    "priorities": ["reliability"],
-    "budget_sensitivity": "moderate"
+    "liked_features": ["reliability", "fuel efficiency", "cargo space"],
+    "disliked_features": []
   }
 }
 
@@ -318,10 +333,8 @@ Output:
     "must_have_filters": ["body_style", "year"]
   },
   "implicit_preferences": {
-    "priorities": ["luxury", "premium feel", "technology features", "low mileage"],
-    "usage_patterns": "business travel",
-    "budget_sensitivity": "luxury-focused",
-    "brand_affinity": ["BMW", "Mercedes"],
+    "liked_features": ["luxury", "premium feel", "advanced technology", "low mileage", "leather seats", "comfortable interior", "business-appropriate styling"],
+    "disliked_features": ["high mileage", "basic interior", "outdated technology"],
     "notes": "User wants luxury sedan for business use, flexible on brand but needs recent model year"
   }
 }
@@ -337,13 +350,54 @@ Output:
     "avoid_vehicles": [
       {"make": "Honda"}
     ],
-    "must_have_filters": ["body_style", "price"]
+    "must_have_filters": ["body_style", "price"],
+    "inferred_filters": []
   },
   "implicit_preferences": {
-    "priorities": ["reliability"],
-    "concerns": ["past negative experience"],
-    "budget_sensitivity": "budget-conscious",
+    "liked_features": ["reliability", "affordability"],
+    "disliked_features": ["poor quality", "unreliable"],
     "notes": "User had bad experience with Honda and wants to avoid the entire brand"
+  }
+}
+
+Example 14 (INFERRED FILTERS - CRITICAL):
+User: "I'm looking for a modern sedan that offers better performance and technology than the 2024 Chevrolet Malibu. I prefer a gas vehicle and am open to both new and used options, but I want something much newer than the Malibu. My budget is up to $30,000."
+Output:
+{
+  "has_new_filters": true,
+  "explicit_filters": {
+    "body_style": "Sedan",
+    "fuel_type": "Gasoline",
+    "price": "0-30000",
+    "year": "2025-{{ current_year }}",
+    "avoid_vehicles": [
+      {"make": "Chevrolet", "model": "Malibu"}
+    ],
+    "must_have_filters": ["body_style", "price"],
+    "inferred_filters": ["year"]
+  },
+  "implicit_preferences": {
+    "liked_features": ["performance", "advanced technology", "modern safety features", "responsive handling"],
+    "disliked_features": ["outdated technology", "slow acceleration", "basic safety features"],
+    "notes": "User wants alternatives to 2024 Malibu with better tech and performance. Year filter inferred from 'much newer than the Malibu' (2024) → 2025+"
+  }
+}
+
+Example 15 (INFERRED FILTERS - modern technology):
+User: "I need a reliable SUV with modern technology for my family"
+Output:
+{
+  "has_new_filters": true,
+  "explicit_filters": {
+    "body_style": "SUV",
+    "year": "2020-{{ current_year }}",
+    "must_have_filters": ["body_style"],
+    "inferred_filters": ["year"]
+  },
+  "implicit_preferences": {
+    "liked_features": ["reliability", "modern technology", "family-friendly features", "spacious interior", "advanced safety features", "infotainment system"],
+    "disliked_features": ["unreliable", "outdated technology", "cramped interior", "basic safety features"],
+    "notes": "Year filter inferred from 'modern technology' → 2020+ (modern tech standard in vehicles since ~2020)"
   }
 }
 
