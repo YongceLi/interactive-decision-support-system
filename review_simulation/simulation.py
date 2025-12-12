@@ -200,16 +200,18 @@ Persona query: {persona_query}
 
 Identify explicit preferences and respond with JSON containing:
 
+- condition_like: List the preferred conditions (new/used) that are explicitly mentioned. DO NOT infer preferred conditions beyond what is directly stated in the query.
+- condition_alternative: Whether the user are fine with options that are not aligned with their condition like or not. True if alternatives outside condition_like are acceptable; false otherwise. Phrases like "open to both new or used" indicate true.
 - make_like: List the preferred makes (empty if none) that are explicitly mentioned. DO NOT infer preferred makes beyond what is directly stated in the query.
 - make_dislike: List the makes to avoid (empty if none) that are explicitly mentioned. DO NOT infer makes to avoid beyond what is directly stated in the query.
-- make_alternative: Whether the user are fine with options that are not aligned with their make like or not. True if alternatives outside make_like are acceptable; false otherwise.
+- make_alternative: Whether the user are fine with options that are not aligned with their make like or not. True if alternatives outside make_like are acceptable; false otherwise. Phrases like "open to other makes" or "open to options" or "something similar" indicate true.
 - model_like: List the preferred models (empty if none) that are explicitly mentioned. DO NOT infer preferred models beyond what is directly stated in the query.
 - model_dislike: List the models to avoid (empty if none) that are explicitly mentioned. DO NOT infer models to avoid beyond what is directly stated in the query.
-- model_alternative: Whether the user are fine with options that are not aligned with their model like or not. True if alternatives outside model_like are acceptable; false otherwise.
+- model_alternative: Whether the user are fine with options that are not aligned with their model like or not. True if alternatives outside model_like are acceptable; false otherwise. Phrases like "open to other models" or "open to options" or "something similar" indicate true.
 - fuel_type_preference: List the preferred fuel types exactly as stated (empty if none).
-- fuel_type_alternative: Whether the user are fine with options that are not aligned with their fuel type like or not. True if other fuel types are acceptable; false otherwise.
+- fuel_type_alternative: Whether the user are fine with options that are not aligned with their fuel type like or not. True if other fuel types are acceptable; false otherwise. Phrases like "open to other fuel types" or "open to options" indicate true.
 - body_type_preference: List the preferred body types exactly as stated (empty if none).
-- body_type_alternative: Whether the user are fine with options that are not aligned with their body type like or not. True if other body types are acceptable; false otherwise.
+- body_type_alternative: Whether the user are fine with options that are not aligned with their body type like or not. True if other body types are acceptable; false otherwise. Phrases like "open to other body types" or "open to options" indicate true.
 
 When the query is silent about flexibility, set the corresponding alternative flag to True.
 """,
@@ -281,8 +283,6 @@ ASSESSMENT_PROMPT = ChatPromptTemplate.from_messages(
             "human",
             """
 Persona query: {persona_query}
-Year preference extraction:
-{year_preferences}
 
 Vehicle preference extraction:
 {vehicle_preferences}
@@ -293,29 +293,39 @@ Do NOT assume the modernity of the vehicle beyond the year provided (The closer 
 Do NOT make assumptions about the make or model beyond what is explicitly given.
 Only consider the information given in the Persona Query and the vehicle details provided to evaluate satisfaction.
 Use the rest of the information only as a guideline, as they might not reflect the actual preferences expressed in the Persona Query.
+Use the provided year judgement included with each vehicle entry instead of recalculating year fit.
+Use the provided price judgement included with each vehicle entry instead of recalculating year fit.
 
 For each vehicle below decide if the persona would be satisfied. Judge only the
 criteria explicitly mentioned in the persona_query; if a criterion was not
 mentioned, return null for that criterion. Respond with JSON using this shape:
 {{"assessments": [{{"index": <number>, "satisfied": <bool>, "rationale": <string>, "confidence": <float 0-1>,
-"condition": {{...}}, "year": {{...}},
+"price": {{...}}, "condition": {{...}}, "year": {{...}},
 "make": {{...}}, "model": {{...}}, "fuel_type": {{...}}, "body_type": {{...}}, "all_misc": {{...}}}}, ...]}}.
 In details, for each attribute, to determine overall satisfaction, consider:
 condition: (whether the condition satisfies the users' preference in the query or not.
-If the users are fine with both new and used or do not have preferences, return True).
-year: (whether the year satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-make: (whether the make satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
-model: (whether the model satisfies the users' preference in the query or not. If the users are fine with alternatives, return True.).
+Compare Preferred conditions (condition_like) + Open to other conditions (condition_alternative) with the condition of the vehicle to determine this.
+If the users are fine with both new and used or do not have preferences (condition_alternative = True), return True).
+make: (whether the make satisfies the users' preference in the query or not. 
+Compare Preferred makes (make_like) + Avoided makes (make_dislike) + Open to other makes (make_alternative) with the make of the vehicle to determine this.
+If the users are open to other makes (make_alternative = True), return True.).
+model: (whether the model satisfies the users' preference in the query or not. 
+Compare Preferred models (model_like) + Avoided models (model_dislike) + Open to other models (model_alternative) with the model of the vehicle to determine this.
+If the users are open to other models (model_alternative = True), return True.).
 fuel_type: (whether the Fuel Type satisfies the users' preference in the query or not.
+Compare Preferred fuel types (fuel_type_like) + Open to other fuel types (fuel_type_alternative) with the fuel_type of the vehicle to determine this.
+If the users are open to other fuel types (fuel_type_alternative = True), return True.
 Do NOT assume fuel efficiency in here, only compare fuel_type.
 For example, if the query wants Gasoline, and the fuel_type returns Gasoline,
 Premium Unleaded, E85, or any other type of Gasoline, return True. Return None if there is no mention of fuel type in the query).
-body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query. If the users are fine with alternatives, return True.).
+body_type: (whether the body type satisfies the users' preference in the query or not, return None if there is no mention of body type in the query. 
+Compare Preferred body types (body_type_like) + Open to other body types (body_type_alternative) with the body_type of the vehicle to determine this.
+If the users are fine with alternatives (body_type_alternative = True), return True.).
 all_misc: (whether others' preference of the users mentioned in the query satisfies the users' query or not. The preference checks are safetyness and luxury.
 . Only return value if there is an obvious mismatch with the highest confidence level, else return None. Example of obvious mismatch: user wants family SUV, but return industrial trucks.).
 For satisfied: only return true/false for each attribute when persona_query mentions it; otherwise set
 that attribute to null. Use the provided price judgement included with each vehicle entry instead of recalculating price fit.
-Use the provided year judgement included with each vehicle entry instead of recalculating year fit.
+
 Confidence should be a number between 0 and 1 indicating how confident you are in the overall satisfaction judgement.
 If there are a lot of conflicts between attributes and the final satisfaction judgement, the confidence score should be lower.
 Vice versa, if there are a lot of attributes that align with the final satisfaction judgement, the confidence score should be higher.
