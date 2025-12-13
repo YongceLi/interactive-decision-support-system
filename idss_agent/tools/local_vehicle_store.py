@@ -381,8 +381,8 @@ class LocalVehicleStore:
                     # Exclude entire make (all models)
                     add_condition("UPPER(make) != ?", (avoid_make.upper(),))
 
-        # Require price and mileage to be present (filter out NULL values)
-        conditions.append("price IS NOT NULL")
+        # Require price and mileage to be present and valid (filter out NULL and zero values)
+        conditions.append("price IS NOT NULL AND price > 0")
         conditions.append("mileage IS NOT NULL")
 
         # Require photos if configured
@@ -485,6 +485,8 @@ class LocalVehicleStore:
                 "make": row["make"],
                 "model": row["model"],
                 "trim": row["trim"],
+                "price": row["price"],  # Also in retailListing for compatibility
+                "mileage": row["mileage"],  # Also in retailListing as "miles"
                 "bodyStyle": row["body_style"],
                 "drivetrain": row["drivetrain"],
                 "engine": row["engine"],
@@ -545,11 +547,25 @@ class LocalVehicleStore:
             if row["photo_count"] is not None and not retail_listing.get("photoCount"):
                 retail_listing["photoCount"] = row["photo_count"]
 
-            # Add MPG data to vehicle section if available
+            # Add price/mileage to vehicle section for unified access
             vehicle = payload.setdefault("vehicle", {})
+            if row["price"] is not None:
+                vehicle.setdefault("price", row["price"])
+            if row["mileage"] is not None:
+                vehicle.setdefault("mileage", row["mileage"])
+
+            # Add MPG data to vehicle section if available
             if row["build_city_mpg"] is not None:
                 vehicle.setdefault("build_city_mpg", row["build_city_mpg"])
             if row["build_highway_mpg"] is not None:
                 vehicle.setdefault("build_highway_mpg", row["build_highway_mpg"])
+
+            # Add normalized columns to vehicle section
+            if row["norm_body_type"] is not None:
+                vehicle["norm_body_type"] = row["norm_body_type"]
+            if row["norm_fuel_type"] is not None:
+                vehicle["norm_fuel_type"] = row["norm_fuel_type"]
+            if row["norm_is_used"] is not None:
+                vehicle["norm_is_used"] = row["norm_is_used"]
 
             return payload

@@ -1,23 +1,21 @@
 """
 Method 3 Ranker: Coverage-Risk Optimization for vehicle ranking.
 
-Implements Method 3 from METHOD3_DESIGN.md using:
+Implements Method 3 using:
 - PhraseStore: Pre-computed individual phrase embeddings
-- PreferenceAlignment: Pos/Neg alignment scoring
+- PreferenceAlignment: Pos/Neg alignment scoring with two modes:
+  - "max": Original implementation (max over phrases, max over vehicles)
+  - "sum": Proposed noisy-or coverage with submodular guarantees
 - Greedy selection: Maximizes coverage while minimizing risk
+- Soft constraints: Relaxed hard filters become soft bonus terms
 
 This is a drop-in replacement for dense_ranker.rank_vehicles_by_dense_similarity().
 """
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-
-import numpy as np
+from typing import Dict, Any, List, Optional
 
 from idss_agent.processing.phrase_store import PhraseStore
-from idss_agent.processing.preference_alignment import (
-    rank_vehicles_by_alignment,
-    compute_alignment_matrix
-)
+from idss_agent.processing.preference_alignment import rank_vehicles_by_alignment
 from idss_agent.utils.logger import get_logger
 
 logger = get_logger("processing.method3_ranker")
@@ -67,7 +65,14 @@ def rank_vehicles_by_method3(
     implicit_preferences: Dict[str, Any],
     db_path: Optional[Path] = None,
     top_k: int = 20,
-    lambda_risk: float = 0.5
+    lambda_risk: float = 0.5,
+    mode: str = "max",
+    relaxation_state: Optional[Dict[str, Any]] = None,
+    min_similarity: float = 0.5,
+    tau: float = 0.5,
+    alpha: float = 1.0,
+    mu: Optional[float] = None,
+    rho: float = 1.0
 ) -> List[Dict[str, Any]]:
     """
     Rank vehicles using Method 3: Coverage-Risk Optimization.
@@ -82,6 +87,13 @@ def rank_vehicles_by_method3(
         db_path: Path to vehicle database (unused, for compatibility)
         top_k: Number of vehicles to recommend (default 20)
         lambda_risk: Risk penalty weight (default 0.5)
+        mode: Aggregation mode - "max" (original) or "sum" (noisy-or coverage)
+        relaxation_state: Dict with relaxed filters info (for soft constraints)
+        min_similarity: Minimum similarity threshold (max mode, default 0.5)
+        tau: Similarity threshold φ(t) = max(0, t - τ) at phrase level (default 0.5)
+        alpha: g function steepness for coverage mapping (sum mode, default 1.0)
+        mu: Soft bonus weight (None = auto-calibrate based on scale matching)
+        rho: Scale factor for μ calibration (default 1.0)
 
     Returns:
         List of top-k vehicles ranked by coverage-risk optimization
@@ -89,7 +101,7 @@ def rank_vehicles_by_method3(
     if not vehicles:
         return vehicles
 
-    logger.info(f"Ranking {len(vehicles)} vehicles using Method 3: Coverage-Risk Optimization")
+    logger.info(f"Ranking {len(vehicles)} vehicles using Method 3: Coverage-Risk Optimization ({mode} mode)")
 
     # Get cached phrase store (avoids reloading model for batch processing)
     try:
@@ -111,10 +123,18 @@ def rank_vehicles_by_method3(
             phrase_store=phrase_store,
             implicit_preferences=implicit_preferences,
             k=top_k,
-            lambda_risk=lambda_risk
+            lambda_risk=lambda_risk,
+            mode=mode,
+            min_similarity=min_similarity,
+            tau=tau,
+            alpha=alpha,
+            relaxation_state=relaxation_state,
+            explicit_filters=explicit_filters,
+            mu=mu,
+            rho=rho
         )
 
-        logger.info(f"✓ Method 3 ranking complete: returned {len(ranked_vehicles)} vehicles")
+        logger.info(f"✓ Method 3 ranking complete ({mode} mode): returned {len(ranked_vehicles)} vehicles")
         return ranked_vehicles
 
     except Exception as e:
