@@ -14,6 +14,7 @@ from review_simulation.persona import ReviewPersona, VehicleAffinity
 from scripts.test_recommendation_methods import (
     test_method1_pipeline,
     test_method2_pipeline,
+    test_method3_pipeline,
 )
 
 
